@@ -76,7 +76,7 @@ def _copy_suite(tmp_path) -> Path:
 
 def sh(root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run([str(root / "crissp" / "ux.sh"), *args], cwd=root, capture_output=True, text=True, timeout=60,
-                          env={**os.environ, "UXSUITE_PARALLEL": ""})
+                          env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""})  # the copy, never the project a run came from
 
 
 def test_ux_sh_lists_reports_and_refuses_what_it_does_not_know(tmp_path):
