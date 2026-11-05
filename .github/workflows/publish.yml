@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # Astral publishes full version tags only (no v10)
       - name: A release tag is the version in VERSION
         if: github.event_name == 'push'
         run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} is not v$(cat VERSION)"; exit 1; }
