@@ -1,6 +1,23 @@
 {
   "changes": [
     {
+      "id": "F-08-baseline-only-when-it-moves",
+      "title": "F-08: every green full run asked for a commit that only recorded a hash",
+      "problem": "The gate rewrote coverage-baseline.json on every green run of every suite, with only a new commit hash when no number changed, so every full run ended with 'the coverage baseline went up: commit …'.",
+      "fix": "lib/gate.py writes the baseline only when something moves: no baseline yet, --accept, a number that changed, or a commit the diff rule needs (none recorded, or one git no longer knows). Otherwise the older commit stays: the next diff rule looks back further, stricter, never laxer.",
+      "sources": [
+        {
+          "file": "crissp/testsuite/lib/gate.py",
+          "symbol": "def check("
+        }
+      ],
+      "tests": [
+        "test_gate::test_a_green_run_that_changes_no_number_leaves_the_baseline_as_it_is",
+        "test_gate::test_a_run_of_some_suites_keeps_the_baseline_commit",
+        "test_gate::test_a_baseline_commit_git_does_not_know_is_skipped_never_a_crash"
+      ]
+    },
+    {
       "id": "F-01-guard-options",
       "title": "F-01: crissp refused every option meant for a guard",
       "problem": "crissp check --plan, crissp deploy --cluster and crissp ux --shoot <walk> were refused: argparse's REMAINDER does not pass a leading --option on to a subcommand.",

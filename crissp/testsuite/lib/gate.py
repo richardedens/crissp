@@ -24,7 +24,7 @@ Rules
   The changed lines come from `git diff -U0 -M <commit>` against the checked-out tree, the code coverage measured (in
   crissp/check.sh and crissp/check-all.sh that is exactly HEAD: they only run on committed code).
 - Only a green run (or --accept with a reason) moves the baseline: its numbers, and (when every suite was checked) its
-  commit. A run of some suites keeps the commit, so the next diff rule looks back at least as far: stricter, never laxer.
+  commit; a run that moves no number leaves the file as it is. A run of some suites keeps the commit, so the next diff rule looks back at least as far: stricter, never laxer.
 
 Writes results/gate.json (everything above, for whoever reads it) and results/gate.log (what it printed).
 """
@@ -264,7 +264,12 @@ def check(accept_reason: str | None = None, suites: list[str] | None = None) -> 
         commit = (head_commit() if every else None) or baseline.get("commit")
         if commit:
             moved["commit"] = commit  # the diff rule of the next run starts here
-        BASELINE.write_text(json.dumps(moved, indent=1, sort_keys=True) + "\n")
+        # Only what moves is written: no baseline yet, an acceptance, a number that changed, or a commit the diff rule
+        # needs (none recorded yet, or one this checkout no longer knows). A run that moves no number keeps the file as it is (its older commit makes the next diff rule look back
+        # further: stricter, never laxer), so a green run never asks for a commit that only records a hash.
+        if (not BASELINE.exists() or accept_reason or new_suites != baseline.get("suites", {})
+                or (commit and diff["skipped"] and commit != baseline.get("commit"))):  # none recorded, or one git lost
+            BASELINE.write_text(json.dumps(moved, indent=1, sort_keys=True) + "\n")
     out: list[str] = [f"✗ {p}" for p in problems]
     if raised:
         out.append(f"↑ coverage went up in {len(raised)} file(s); baseline raised")

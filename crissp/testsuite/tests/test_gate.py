@@ -333,7 +333,10 @@ def test_a_run_of_some_suites_keeps_the_baseline_commit(repo):
     assert repo.check(suites=["backend"]) == 0
     assert json.loads(repo.BASELINE.read_text())["commit"] == start
     assert repo.check(suites=["backend", "worker"]) == 0
-    assert json.loads(repo.BASELINE.read_text())["commit"] == head(repo)
+    assert json.loads(repo.BASELINE.read_text())["commit"] == start  # no number moved: the older commit stays (stricter)
+    covered(repo, {"a.py": {"executed": [1, 2, 3, 5], "missing": [4]}})
+    assert repo.check(suites=["backend", "worker"]) == 0
+    assert json.loads(repo.BASELINE.read_text())["commit"] == head(repo)  # numbers moved in a run of every suite
 
 
 def test_a_branch_on_a_changed_line_that_is_never_taken_is_red(repo):
@@ -453,3 +456,18 @@ def test_run_as_a_script_it_exits_with_main(monkeypatch):
     with pytest.raises(SystemExit) as stopped:
         runpy.run_path(str(GATE), run_name="__main__")
     assert stopped.value.code == 2
+
+
+def test_a_green_run_that_changes_no_number_leaves_the_baseline_as_it_is(repo):
+    """Only numbers that move (or --accept) rewrite the baseline: a run with the same coverage on a later commit leaves
+    the file byte for byte (the diff rule then looks back further, stricter, never laxer), so a green full run never
+    asks for an extra commit just to record a hash."""
+    before = repo.BASELINE.read_bytes()
+    git(repo, "commit", "-q", "--allow-empty", "-m", "a change that moves no number")
+    covered(repo, {"a.py": {"executed": [1, 2], "missing": [3, 4]}})
+    assert repo.check() == 0
+    assert repo.BASELINE.read_bytes() == before
+    covered(repo, {"a.py": {"executed": [1, 2, 3], "missing": [4]}})  # a number moves: then the baseline and its commit do
+    assert repo.check() == 0
+    data = json.loads(repo.BASELINE.read_text())
+    assert data["commit"] == head(repo) and data["suites"]["backend"]["files"]["shop/a.py"]["line"] == 75.0
