@@ -18,8 +18,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
       - name: A release tag is the version in VERSION
         if: github.event_name == 'push'
         run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} is not v$(cat VERSION)"; exit 1; }
@@ -32,7 +32,7 @@ jobs:
         run: |
           uv venv /tmp/try && uv pip install --python /tmp/try dist/*.whl
           mkdir /tmp/project && cd /tmp/project && git init -q && /tmp/try/bin/crissp init --yes --product Example
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -45,7 +45,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -61,7 +61,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
