@@ -26,7 +26,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ux_config import Suite
+from ux_config import Suite, speak
 
 KINDS = ("round", "proposal")
 PREFIX = {"round": "r", "proposal": "v"}
@@ -340,7 +340,7 @@ def start(suite: Suite, conf: dict, kind: str, walk_id: str, focus: str = "") ->
             raise (Busy if code == "same" else Full)(why)
         seen = shots(suite, walk_id)
         if not any(s["path"] for s in seen):
-            raise ValueError(f"the walk {walk_id} has no screenshots yet: crissp/ux.sh --shoot {walk_id}")
+            raise ValueError(speak(f"the walk {walk_id} has no screenshots yet: crissp/ux.sh --shoot {walk_id}"))
         base = folder(suite, kind, walk_id)
         n = (_numbers(base, PREFIX[kind]) or [0])[-1] + 1
         vdir = base / f"{PREFIX[kind]}{n}"

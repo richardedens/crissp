@@ -12,7 +12,9 @@ traced from the first observation to the release that delivered it.
 - **Install it as a package**: `uvx crissp init` brings a folder in. It runs `git init` when the folder is not a
   repository yet, then writes the agreement, the backlog, the product's configuration and the deployment template. It
   never overwrites a file and never commits. Then `crissp check`, `check-all`, `deploy`, `dashboard`, `ux` and `mcp`
-  run the framework for the project in the current folder. `.mcp.json` pins the project's crissp version.
+  run the framework for the project in the current folder, and every message names those commands. The first full
+  run says what is left: commit the coverage baseline it wrote, then `crissp check`. `.mcp.json` pins the project's
+  crissp version.
   Requires Python 3.12 or newer; the engine uses only the standard library.
 - **The framework** (`crissp/CRISSP.md`): the six letters and how each one is checked, the artefacts every
   C.R.I.S.S.P. repository has, the formats of findings, decisions, epics, features and items, who does what, and the

@@ -328,3 +328,15 @@ def test_run_as_a_script_it_says_how_to_use_it(monkeypatch):
     with pytest.raises(SystemExit) as stopped:
         runpy.run_path(str(LIB / "check.py"), run_name="__main__")
     assert stopped.value.code == 2
+
+
+def test_the_first_full_run_says_plainly_what_is_left(repo, sh):
+    """F-06: a new project's first full run writes the baseline; it says that, and the exact commands that follow."""
+    first_commit(repo)
+    assert not (repo / "crissp/testsuite/coverage-baseline.json").exists()
+    (repo / "crissp/testsuite/run.sh").write_text(STAND_IN + 'echo "{\\"first\\": 1}" > "$R/../coverage-baseline.json"\n')
+    _git(repo, "commit", "-qam", "a run that writes the first baseline")
+    r = sh(repo, "check-all.sh")
+    assert r.returncode == 0 and "This was the first full run: it wrote the coverage baseline." in r.stdout
+    assert "git add crissp/testsuite/coverage-baseline.json && git commit -m \"Coverage baseline\"" in r.stdout
+    assert "went up" not in r.stdout

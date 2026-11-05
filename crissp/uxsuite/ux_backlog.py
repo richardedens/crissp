@@ -16,7 +16,7 @@ import importlib.util
 import re
 from pathlib import Path
 
-from ux_config import Suite
+from ux_config import Suite, speak
 
 MARKER = re.compile(r"UX\s+proposal\s+`([^`]+)`")
 
@@ -98,7 +98,7 @@ def file_pbi(suite: Suite, conf: dict, walk_id: str, version: int, proposal: dic
                       + (what or "The changes in the approved mockup.")),
         "done_when": _flat(f"The built screens match the approved mockup ({folder}/mockup.html) in light and dark, follow "
                            "crissp/uxsuite/PRINCIPLES.md, and the product owner accepts them."),
-        "tests": _flat(f"A test per must-change that fails without it; the walk shot again (crissp/ux.sh --shoot {walk_id}) "
-                       "and a new round."),
+        "tests": _flat(speak(f"A test per must-change that fails without it; the walk shot again (crissp/ux.sh --shoot {walk_id}) "
+                       "and a new round.")),
         "depends": f"UX proposal `{key}` (approved {datetime.date.today().isoformat()})"})
     return said.split()[0]

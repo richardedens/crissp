@@ -135,3 +135,17 @@ def test_run_as_a_script_it_says_how_to_use_it(monkeypatch):
     with pytest.raises(SystemExit) as stopped:
         runpy.run_path(str(LIB / "project.py"), run_name="__main__")
     assert stopped.value.code == 2
+
+
+def test_the_guards_speak_the_crissp_command_when_they_run_as_it():
+    """F-04: run by the `crissp` command (CRISSP_COMMAND), a guard names `crissp check-all`, not a script path."""
+    import io
+    said = "Run crissp/check-all.sh, then crissp/check.sh; crissp/deploy.sh --cluster; crissp/ux.sh --shoot w; crissp/test.sh --dashboard"
+    assert project.speak(said, {}) == said  # in a repository that carries the scripts: as it is
+    assert project.speak(said, {"CRISSP_COMMAND": "crissp"}) == (
+        "Run crissp check-all, then crissp check; crissp deploy --cluster; crissp ux --shoot w; crissp dashboard")
+    out = io.StringIO()
+    stream = project.Speaking(out, {"CRISSP_COMMAND": "crissp"})
+    assert stream.write("Green: crissp/deploy.sh may go.\n") == len("Green: crissp/deploy.sh may go.\n")
+    stream.flush()
+    assert out.getvalue() == "Green: crissp deploy may go.\n" and stream.getvalue() == out.getvalue()  # the rest passes through

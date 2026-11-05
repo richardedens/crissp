@@ -24,7 +24,12 @@ CONFIG="$ROOT/crissp/deploy/deploy.json"
 
 BLUE='\033[0;34m'; GREEN='\033[0;32m'; RED='\033[0;31m'; NC='\033[0m'
 log() { echo -e "${BLUE}[..]${NC} $*"; }; ok() { echo -e "${GREEN}[ok]${NC} $*"; }
-die() { echo -e "${RED}[xx]${NC} $*" >&2; exit 1; }
+speak() {  # F-04: run as the crissp command (CRISSP_COMMAND), name the command, not this script
+  if [ -n "${CRISSP_COMMAND:-}" ]; then
+    printf '%s' "$*" | sed -e 's#crissp/check-all\.sh#crissp check-all#g' -e 's#crissp/check\.sh#crissp check#g' -e 's#crissp/deploy\.sh#crissp deploy#g'
+  else printf '%s' "$*"; fi
+}
+die() { echo -e "${RED}[xx]${NC} $(speak "$*")" >&2; exit 1; }
 
 healthy() {  # healthy <url>: up to a minute for a 2xx answer
   local i

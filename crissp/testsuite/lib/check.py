@@ -215,7 +215,12 @@ def everything(root: Path, run=subprocess.run, out=None, err=None) -> int:
                   "again.", file=out)
         else:
             print(f"Release gate: green for this commit.\n{GREEN}", file=out)
-            if git(root, "status", "--porcelain", "--", "crissp/testsuite/coverage-baseline.json").stdout.strip():
+            state = git(root, "status", "--porcelain", "--", "crissp/testsuite/coverage-baseline.json").stdout
+            if state.startswith("??"):  # F-06: a new project's first full run wrote the baseline; say what is left, plainly
+                print("This was the first full run: it wrote the coverage baseline. Commit it, then crissp/check.sh moves "
+                      "the certificate to that commit:\n  git add crissp/testsuite/coverage-baseline.json && git commit -m "
+                      "\"Coverage baseline\" && crissp/check.sh", file=out)
+            elif state.strip():
                 print("The coverage baseline went up: commit crissp/testsuite/coverage-baseline.json (crissp/check.sh then "
                       "moves the certificate to that commit).", file=out)
         return status
@@ -235,4 +240,5 @@ def main(argv: list[str], root: Path | None = None) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover — run by crissp/check.sh and check-all.sh; main() is tested
+    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
     sys.exit(main(sys.argv))

@@ -300,4 +300,7 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import project
+    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
     sys.exit(main(sys.argv[1:]))

@@ -1,13 +1,107 @@
 {
   "changes": [
     {
+      "id": "F-01-guard-options",
+      "title": "F-01: crissp refused every option meant for a guard",
+      "problem": "crissp check --plan, crissp deploy --cluster and crissp ux --shoot <walk> were refused: argparse's REMAINDER does not pass a leading --option on to a subcommand.",
+      "fix": "src/crissp/cli.py splits the command line at the guard's name and passes the rest to the guard untouched.",
+      "sources": [
+        {
+          "file": "src/crissp/cli.py",
+          "symbol": "def split("
+        }
+      ],
+      "tests": [
+        "test_cli::test_a_guards_options_pass_through",
+        "test_cli::test_root_before_the_command_still_names_the_project"
+      ]
+    },
+    {
+      "id": "F-02-approve-installed",
+      "title": "F-02: approving a design failed in an installed project",
+      "problem": "The UX suite looked for the crissp tool only inside the project; a project made with crissp init has none, so Approve answered 400.",
+      "fix": "ux_backlog.tool() uses the project's own crissp/tool, else the engine's; designs show before and after with Approve, Approve with a remark, Again and Reject, and a remark comes first in the PBI.",
+      "sources": [
+        {
+          "file": "crissp/uxsuite/ux_backlog.py",
+          "symbol": "def tool("
+        },
+        {
+          "file": "crissp/uxsuite/ux_backlog.py",
+          "symbol": "def file_pbi("
+        }
+      ],
+      "tests": [
+        "test_ux_verdicts::test_an_installed_project_writes_with_the_engines_tool",
+        "test_ux_verdicts::test_an_approval_with_a_remark_carries_the_remark_into_the_pbi"
+      ]
+    },
+    {
+      "id": "F-03-pytest-and-ux-test",
+      "title": "F-03: pytest 9.0.3, and a UX test that read the wrong project",
+      "problem": "The CVE audit flagged pytest 8.4.2 (PYSEC-2026-1845); a UX test inherited the run's CRISSP_ROOT and read this repository during a full run.",
+      "fix": "pytest 9.0.3 pinned in crissp/testsuite/requirements.txt; the test starts ux.sh without CRISSP_ROOT.",
+      "sources": [
+        {
+          "file": "crissp/testsuite/requirements.txt",
+          "symbol": "pytest=="
+        }
+      ],
+      "tests": [
+        "test_ux_cli::test_ux_sh_lists_reports_and_refuses_what_it_does_not_know"
+      ]
+    },
+    {
+      "id": "F-04-speak-the-command",
+      "title": "F-04: an installed project's guards named script paths it does not have",
+      "problem": "In a project made with crissp init the guards said 'crissp/deploy.sh may go', 'run crissp/check-all.sh': files that only exist in a repository that carries the framework.",
+      "fix": "The crissp command sets CRISSP_COMMAND; project.speak() and the Speaking stream every guard writes through name crissp check, check-all, deploy, dashboard and ux instead; deploy.sh's messages and the UX suite's (and the PBIs it writes) do the same.",
+      "sources": [
+        {
+          "file": "crissp/testsuite/lib/project.py",
+          "symbol": "def speak("
+        },
+        {
+          "file": "src/crissp/cli.py",
+          "symbol": "def engine_env("
+        }
+      ],
+      "tests": [
+        "test_project::test_the_guards_speak_the_crissp_command_when_they_run_as_it",
+        "test_cli::test_the_engine_is_told_it_runs_as_the_crissp_command",
+        "test_package::test_init_makes_a_crissp_project_that_is_green"
+      ]
+    },
+    {
+      "id": "F-06-first-full-run",
+      "title": "F-06: the first full run did not say what was left",
+      "problem": "A new project's first green full run ended with 'the coverage baseline went up: commit …', which a new user could not place.",
+      "fix": "check.py tells a first baseline (not in git yet) from a raised one, and for the first says plainly: commit it, then crissp check moves the certificate, with the exact commands.",
+      "sources": [
+        {
+          "file": "crissp/testsuite/lib/check.py",
+          "symbol": "def everything("
+        }
+      ],
+      "tests": [
+        "test_check_scripts::test_the_first_full_run_says_plainly_what_is_left",
+        "test_package::test_init_makes_a_crissp_project_that_is_green"
+      ]
+    },
+    {
       "id": "check-without-git",
       "title": "check.sh crashed outside a git checkout",
       "problem": "The repository was taken out of git to become a project of its own; check.sh then failed on git commands with no clear reason, and check-all.sh refused to prove the tree at all.",
       "fix": "lib/check.py (check.sh and check-all.sh are its doors) asks first whether the project is a git checkout: check.sh stops with exit 2 and says to run git init and commit; check-all.sh still runs every step for proof and writes no release certificate.",
       "sources": [
-        {"file": "crissp/testsuite/lib/check.py", "symbol": "def changed("},
-        {"file": "crissp/testsuite/lib/check.py", "symbol": "def everything("}
+        {
+          "file": "crissp/testsuite/lib/check.py",
+          "symbol": "def changed("
+        },
+        {
+          "file": "crissp/testsuite/lib/check.py",
+          "symbol": "def everything("
+        }
       ],
       "tests": [
         "test_check_scripts::test_without_git_check_sh_says_so_and_check_all_still_proves_the_tree",
@@ -20,9 +114,18 @@
       "problem": "impact.py, run.sh, the gate, the certificate, setup and the audit named a backend, a frontend and their tools in code, so every other product had to edit the framework itself.",
       "fix": "One configuration, crissp/testsuite/suites.json (lib/project.py), describes the product's steps (folder, command, coverage, gate), what a change runs (paths), its shared ground, setup and audit; every guard reads it, and run.py runs the steps.",
       "sources": [
-        {"file": "crissp/testsuite/lib/project.py", "symbol": "def parse("},
-        {"file": "crissp/testsuite/lib/impact.py", "symbol": "def classify("},
-        {"file": "crissp/testsuite/lib/run.py", "symbol": "def run_step("}
+        {
+          "file": "crissp/testsuite/lib/project.py",
+          "symbol": "def parse("
+        },
+        {
+          "file": "crissp/testsuite/lib/impact.py",
+          "symbol": "def classify("
+        },
+        {
+          "file": "crissp/testsuite/lib/run.py",
+          "symbol": "def run_step("
+        }
       ],
       "tests": [
         "test_project",
@@ -38,8 +141,14 @@
       "problem": "Every library reached the repository's root with Path(__file__).parents[n], so the engine could not live apart from a project's data.",
       "fix": "The project is CRISSP_ROOT or the current directory (the scripts export CRISSP_ROOT); only the engine's own files (the dashboard page, the look, the UX page) are found next to the code.",
       "sources": [
-        {"file": "crissp/testsuite/lib/project.py", "symbol": "def root("},
-        {"file": "crissp/uxsuite/ux_config.py", "symbol": "def project_root("}
+        {
+          "file": "crissp/testsuite/lib/project.py",
+          "symbol": "def root("
+        },
+        {
+          "file": "crissp/uxsuite/ux_config.py",
+          "symbol": "def project_root("
+        }
       ],
       "tests": [
         "test_project::test_the_project_is_crissp_root_or_the_current_directory",
@@ -53,8 +162,14 @@
       "problem": "The dashboard and the UX suite had their own looks, ports and servers, and nothing linked an approved design to the PBI it became.",
       "fix": "One local server (lib/serve.py) serves /dashboard/, /ux/ and the shared look in crissp/look (tokens, font, theme, water), and nothing else of the repository; an approved design becomes a PBI through the crissp tool, and the board links it back.",
       "sources": [
-        {"file": "crissp/testsuite/lib/serve.py", "symbol": "def translate_path("},
-        {"file": "crissp/testsuite/lib/collect.py", "symbol": "UX_MARK"}
+        {
+          "file": "crissp/testsuite/lib/serve.py",
+          "symbol": "def translate_path("
+        },
+        {
+          "file": "crissp/testsuite/lib/collect.py",
+          "symbol": "UX_MARK"
+        }
       ],
       "tests": [
         "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite",

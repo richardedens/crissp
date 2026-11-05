@@ -27,9 +27,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "testsuite" / "lib"))  # the guards' shared module: how a message names the doors
+from project import Speaking, speak  # noqa: E402,F401 — F-04: `crissp ux --shoot` when run as the crissp command
 DEVICES = ("desktop", "mobile", "both")
 NEEDS = {"goto": ("path",), "click": (), "fill": ("selector", "value"), "press": ("key",), "wait": ("ms",), "shot": ("title",)}
 WALK_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,47}")

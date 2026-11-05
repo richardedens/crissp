@@ -73,4 +73,5 @@ def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int
 
 
 if __name__ == "__main__":  # pragma: no cover — run by crissp/ux.sh; main() is tested
+    sys.stdout, sys.stderr = ux_config.Speaking(sys.stdout), ux_config.Speaking(sys.stderr)  # F-04
     sys.exit(main(sys.argv[1:]))

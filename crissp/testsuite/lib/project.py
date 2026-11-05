@@ -53,6 +53,36 @@ class ConfigError(ValueError):
     """The configuration is wrong; the message says where and what."""
 
 
+# The guards' doors as scripts (a repository that carries the framework) and as the crissp command (an installed crissp:
+# the project has no crissp/*.sh of its own). The crissp command sets CRISSP_COMMAND; then every message names the command.
+DOORS = (("crissp/check-all.sh", "crissp check-all"), ("crissp/check.sh", "crissp check"), ("crissp/deploy.sh", "crissp deploy"),
+         ("crissp/test.sh --dashboard", "crissp dashboard"), ("crissp/test.sh --ux", "crissp ux"), ("crissp/ux.sh", "crissp ux"))
+
+
+def speak(text: str, env=None) -> str:
+    """text as the person reads it: with the crissp command's names when it runs as that command (CRISSP_COMMAND)."""
+    env = os.environ if env is None else env
+    if not env.get("CRISSP_COMMAND"):
+        return text
+    for script, command in DOORS:
+        text = text.replace(script, command)
+    return text
+
+
+class Speaking:
+    """A stream that speak()s everything written to it: a guard wraps its stdout and stderr in it."""
+
+    def __init__(self, stream, env=None) -> None:
+        self._stream, self._env = stream, env
+
+    def write(self, text: str) -> int:
+        self._stream.write(speak(text, self._env))
+        return len(text)
+
+    def __getattr__(self, name):  # flush, isatty, fileno, …: the stream's own
+        return getattr(self._stream, name)
+
+
 def root(env=None) -> Path:
     """The project: CRISSP_ROOT, or the current directory."""
     env = os.environ if env is None else env

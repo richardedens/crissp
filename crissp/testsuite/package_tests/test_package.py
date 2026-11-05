@@ -99,9 +99,20 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
         "from example import double\n\n\ndef test_double():\n    assert double(2) == 4\n")
     run(["git", "add", "-A"], project, env)
     run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed and committed
+    nothing = run([str(crissp), "deploy"], project, env, check=False)  # F-04: a project's guards speak `crissp …`
+    said = nothing.stdout + nothing.stderr
+    assert "crissp deploy --cluster" in said and ".sh" not in said, said
     full = run([str(crissp), "check-all"], project, env, check=False)
-    assert full.returncode == 0, full.stdout + full.stderr
+    said = full.stdout + full.stderr
+    assert full.returncode == 0, said
     assert (project / "crissp" / "testsuite" / "results").is_dir()
+    assert "Green: crissp deploy may go." in said and "crissp/" + "check" not in said and ".sh" not in said, said
+    # F-06: the first full run says plainly what is left: commit the baseline it wrote, then crissp check
+    assert "This was the first full run" in said and "git add crissp/testsuite/coverage-baseline.json" in said, said
+    run(["git", "add", "crissp/testsuite/coverage-baseline.json"], project, env)
+    run(["git", "commit", "-q", "-m", "Coverage baseline"], project, env)
+    moved = run([str(crissp), "check"], project, env, check=False)
+    assert moved.returncode == 0 and "Certificate moved: green for this commit." in moved.stdout, moved.stdout + moved.stderr
 
 
 def test_mcp_answers_for_the_project_it_is_started_in(crissp, tmp_path):

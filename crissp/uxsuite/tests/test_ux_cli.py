@@ -71,6 +71,8 @@ def _copy_suite(tmp_path) -> Path:
     shutil.copy(REPO / "crissp" / "ux.sh", root / "crissp" / "ux.sh")
     shutil.copytree(REPO / "crissp" / "uxsuite", root / "crissp" / "uxsuite",
                     ignore=shutil.ignore_patterns("results", "tests", "__pycache__"))
+    shutil.copytree(REPO / "crissp" / "testsuite" / "lib", root / "crissp" / "testsuite" / "lib",  # the engine's shared module
+                    ignore=shutil.ignore_patterns("__pycache__"))
     return root
 
 

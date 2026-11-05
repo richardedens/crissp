@@ -127,7 +127,8 @@ def init(root: Path, args, out=sys.stdout, ask=input) -> int:
 
 def engine_env(root: Path, env: dict) -> dict:
     """The environment the engine's scripts run in: the project, and this Python first on PATH (they call python3)."""
-    return {**env, "CRISSP_ROOT": str(root), "PATH": os.pathsep.join([str(Path(sys.executable).parent), env.get("PATH", "")])}
+    return {**env, "CRISSP_ROOT": str(root), "CRISSP_COMMAND": "crissp",  # the guards then name `crissp …` (F-04)
+            "PATH": os.pathsep.join([str(Path(sys.executable).parent), env.get("PATH", "")])}
 
 
 def run_script(root: Path, name: str, argv: list[str], env: dict) -> int:
