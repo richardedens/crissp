@@ -2,7 +2,7 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-11-05
 
 The first standalone release of C.R.I.S.S.P. (Consistent, Repeatable, Innovative, Secure, Scalable, Programming), the
 agentic SDLC framework for Claude Code: AI colleagues (Claude, its agents, the UX team and a designer) plan, build,
