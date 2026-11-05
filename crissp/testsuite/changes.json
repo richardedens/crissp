@@ -1,0 +1,75 @@
+{
+  "changes": [
+    {
+      "id": "check-without-git",
+      "title": "check.sh crashed outside a git checkout",
+      "problem": "The repository was taken out of git to become a project of its own; check.sh then failed on git commands with no clear reason, and check-all.sh refused to prove the tree at all.",
+      "fix": "lib/check.py (check.sh and check-all.sh are its doors) asks first whether the project is a git checkout: check.sh stops with exit 2 and says to run git init and commit; check-all.sh still runs every step for proof and writes no release certificate.",
+      "sources": [
+        {"file": "crissp/testsuite/lib/check.py", "symbol": "def changed("},
+        {"file": "crissp/testsuite/lib/check.py", "symbol": "def everything("}
+      ],
+      "tests": [
+        "test_check_scripts::test_without_git_check_sh_says_so_and_check_all_still_proves_the_tree",
+        "test_check_scripts::test_the_doors_run_check_py_for_their_own_project"
+      ]
+    },
+    {
+      "id": "parts-from-configuration",
+      "title": "The guards named one product's parts in their code",
+      "problem": "impact.py, run.sh, the gate, the certificate, setup and the audit named a backend, a frontend and their tools in code, so every other product had to edit the framework itself.",
+      "fix": "One configuration, crissp/testsuite/suites.json (lib/project.py), describes the product's steps (folder, command, coverage, gate), what a change runs (paths), its shared ground, setup and audit; every guard reads it, and run.py runs the steps.",
+      "sources": [
+        {"file": "crissp/testsuite/lib/project.py", "symbol": "def parse("},
+        {"file": "crissp/testsuite/lib/impact.py", "symbol": "def classify("},
+        {"file": "crissp/testsuite/lib/run.py", "symbol": "def run_step("}
+      ],
+      "tests": [
+        "test_project",
+        "test_impact::test_a_part_runs_the_steps_its_rule_names_and_a_gated_part_brings_the_gate",
+        "test_run::test_the_full_run_runs_every_step_in_its_folder_and_writes_what_it_proved",
+        "test_release_gate::test_the_needed_steps_are_the_steps_of_the_full_run",
+        "test_gate::test_the_gate_holds_the_suites_the_product_gates"
+      ]
+    },
+    {
+      "id": "project-not-code-location",
+      "title": "The tools found the project from their own file location",
+      "problem": "Every library reached the repository's root with Path(__file__).parents[n], so the engine could not live apart from a project's data.",
+      "fix": "The project is CRISSP_ROOT or the current directory (the scripts export CRISSP_ROOT); only the engine's own files (the dashboard page, the look, the UX page) are found next to the code.",
+      "sources": [
+        {"file": "crissp/testsuite/lib/project.py", "symbol": "def root("},
+        {"file": "crissp/uxsuite/ux_config.py", "symbol": "def project_root("}
+      ],
+      "tests": [
+        "test_project::test_the_project_is_crissp_root_or_the_current_directory",
+        "test_ux_api::test_by_default_it_is_the_suite_of_the_project_it_works_for",
+        "test_crissp_tool::test_it_works_for_the_project_it_is_started_in"
+      ]
+    },
+    {
+      "id": "one-server-one-look",
+      "title": "The Tests dashboard and the UX suite looked different and ran apart",
+      "problem": "The dashboard and the UX suite had their own looks, ports and servers, and nothing linked an approved design to the PBI it became.",
+      "fix": "One local server (lib/serve.py) serves /dashboard/, /ux/ and the shared look in crissp/look (tokens, font, theme, water), and nothing else of the repository; an approved design becomes a PBI through the crissp tool, and the board links it back.",
+      "sources": [
+        {"file": "crissp/testsuite/lib/serve.py", "symbol": "def translate_path("},
+        {"file": "crissp/testsuite/lib/collect.py", "symbol": "UX_MARK"}
+      ],
+      "tests": [
+        "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite",
+        "test_serve::test_nothing_else_of_the_repository_is_served",
+        "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
+        "test_ux_verdicts::test_an_approved_design_becomes_one_pbi_in_the_backlog_s_own_format"
+      ]
+    }
+  ],
+  "gaps": [
+    "No browser test of the framework's own pages: the dashboard's and the UX suite's JavaScript (app.js, ux.js, look.js) run only in a person's browser; the tests prove the data and the server behind them.",
+    "The UX team's rounds and designs are headless Claude Code runs and its screenshots need Playwright's Chromium: both are stood in by the tests, no real round has been proven by a test.",
+    "The deploy step needs helm (and terraform for its fmt and validate) on the machine; without terraform that part is skipped with a visible line, not proven.",
+    "The CVE audit needs the network (uv resolves the pinned tools, pip-audit asks the advisories): offline the audit step is red, never green.",
+    "Without git there is no release certificate: check.sh stops and check-all.sh proves the tree but certifies nothing until the repository has commits.",
+    "The coverage baseline starts empty: the first green full run with a commit sets it, and until then the rule that every changed line is covered is skipped."
+  ]
+}

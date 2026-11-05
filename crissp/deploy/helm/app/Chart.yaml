@@ -1,0 +1,6 @@
+apiVersion: v2
+name: app
+description: A C.R.I.S.S.P. product in the cluster - a backend, a frontend (nginx) and PostgreSQL with a nightly backup, behind Traefik.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

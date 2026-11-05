@@ -1,0 +1,145 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $np := .Values.networkPolicy }}
+{{- $db := .Values.database.enabled }}
+{{- if $np.defaultDeny }}
+# Nothing in, nothing out, unless a policy below allows it (Terraform makes this one when it owns the namespace).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+{{- end }}
+# The parts that serve requests: in only from the ingress controllers; out to DNS and PostgreSQL. The backend's way out
+# to the internet is its own policy below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-app
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+    matchExpressions:
+      - {key: app.kubernetes.io/component, operator: In, values: [{{ include "app.served" . }}]}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        {{- range $np.ingressControllerNamespaces | default (list "traefik") }}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ . }}}
+        {{- end }}
+      ports:
+        {{- if .Values.backend.enabled }}
+        - {port: {{ .Values.backend.port }}, protocol: TCP}
+        {{- end }}
+        {{- if .Values.frontend.enabled }}
+        - {port: {{ .Values.frontend.port }}, protocol: TCP}
+        {{- end }}
+    {{- if and .Values.frontend.enabled .Values.frontend.proxiesBackend .Values.backend.enabled }}
+    - from:
+        - podSelector:
+            matchLabels: {{- include "app.selector" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      ports:
+        - {port: {{ .Values.backend.port }}, protocol: TCP}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    {{- if $db }}
+    - to:
+        - podSelector:
+            matchLabels: {{- include "app.selector" . | nindent 14 }}
+              app.kubernetes.io/component: postgresql
+      ports:
+        - {port: 5432, protocol: TCP}
+    {{- end }}
+    {{- if and .Values.frontend.enabled .Values.frontend.proxiesBackend .Values.backend.enabled }}
+    - to:
+        - podSelector:
+            matchLabels: {{- include "app.selector" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - {port: {{ .Values.backend.port }}, protocol: TCP}
+    {{- end }}
+{{- if $db }}
+---
+# PostgreSQL: in only from the backend and the backup, nothing out.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-postgresql
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {{- include "app.selector" . | nindent 14 }}
+            matchExpressions:
+              - {key: app.kubernetes.io/component, operator: In, values: [backend, backup]}
+      ports:
+        - {port: 5432, protocol: TCP}
+  egress: []
+{{- if .Values.backup.enabled }}
+---
+# The backup: nothing in; out only to PostgreSQL and DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-backup
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: backup
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "app.selector" . | nindent 14 }}
+              app.kubernetes.io/component: postgresql
+      ports:
+        - {port: 5432, protocol: TCP}
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+{{- end }}
+{{- end }}
+{{- if and .Values.backend.enabled $np.backendEgress.ports }}
+---
+# The backend's way out: these ports, never to addresses inside the private ranges. The frontend has no way out.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-backend-egress
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: {{ toJson $np.backendEgress.except }}
+      ports:
+        {{- range $np.backendEgress.ports }}
+        - {port: {{ . }}, protocol: TCP}
+        {{- end }}
+{{- end }}
+{{- end }}

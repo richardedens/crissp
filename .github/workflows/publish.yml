@@ -1,0 +1,68 @@
+# Publish crissp.
+#   - A version tag (v0.1.0, ...) the product owner pushes → PyPI (https://pypi.org/project/crissp/).
+#   - The "Run workflow" button (Actions → publish) → TestPyPI as <VERSION>.dev<run number>, as often as you like,
+#     to try a release without spending the real version number.
+# Trusted publishing: no token is stored anywhere. Register this workflow once on pypi.org (environment pypi) and on
+# test.pypi.org (environment testpypi): owner richardedens, repository crissp, workflow publish.yml.
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: A release tag is the version in VERSION
+        if: github.event_name == 'push'
+        run: test "v$(cat VERSION)" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} is not v$(cat VERSION)"; exit 1; }
+      - name: A test release gets its own version
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "$(cat VERSION).dev${GITHUB_RUN_NUMBER}" > VERSION && cat VERSION
+      - name: Build the sdist and the wheel
+        run: uv build
+      - name: The wheel installs and initialises a project
+        run: |
+          uv venv /tmp/try && uv pip install --python /tmp/try dist/*.whl
+          mkdir /tmp/project && cd /tmp/project && git init -q && /tmp/try/bin/crissp init --yes --product Example
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

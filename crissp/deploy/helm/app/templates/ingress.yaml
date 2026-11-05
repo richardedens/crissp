@@ -1,0 +1,58 @@
+{{- if .Values.ingress.enabled }}
+# The product on its own address: with a frontend, backend.path to the backend and the rest to the frontend; with one
+# part, everything to it (Traefik, cert-manager).
+{{- $front := ternary "frontend" "backend" .Values.frontend.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "app.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ . }}
+    {{- end }}
+    {{- with include "app.middlewares" . }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ . }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "traefik" }}
+  tls: [{hosts: [{{ .Values.host }}], secretName: {{ .Release.Name }}-tls}]
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          {{- if and .Values.backend.enabled .Values.frontend.enabled }}
+          - path: {{ .Values.backend.path }}
+            pathType: Prefix
+            backend: {service: {name: {{ .Release.Name }}-backend, port: {name: http}}}
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: {{ .Release.Name }}-{{ $front }}, port: {name: http}}}
+{{- with .Values.redirectHosts }}
+---
+# Every other domain (and www): a permanent redirect to the product's address, with its own certificate.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $.Release.Name }}-redirect
+  labels: {{- include "app.labels" $ | nindent 4 }}
+  annotations:
+    {{- with $.Values.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ . }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ printf "%s-%s-redirect@kubernetescrd" $.Release.Namespace $.Release.Name }}
+spec:
+  ingressClassName: {{ $.Values.ingress.className | default "traefik" }}
+  tls: [{hosts: {{ toJson . }}, secretName: {{ $.Release.Name }}-redirect-tls}]
+  rules:
+    {{- range . }}
+    - host: {{ . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: {{ $.Release.Name }}-{{ $front }}, port: {name: http}}}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,5 @@
+# A product with only a backend, no database and no redirects: helm lint and the tests render this too.
+frontend: {enabled: false}
+database: {enabled: false}
+backup: {enabled: false}
+redirectHosts: []

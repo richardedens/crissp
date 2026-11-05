@@ -1,0 +1,3 @@
+# What crissp/deploy/tests need on top of crissp/testsuite/requirements.txt: a YAML reader for what helm renders.
+# crissp/deploy/check.sh runs the tests with both (uv run --with-requirements).
+pyyaml==6.0.3

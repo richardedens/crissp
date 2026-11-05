@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crissp"
+dynamic = ["version"]
+description = "C.R.I.S.S.P.: a way of working for a product owner, Claude and its agents in one repository, with the guards that prove it"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "crissp/look/LICENSE-figtree.txt"]
+authors = [{ name = "Richard Edens" }]
+requires-python = ">=3.12"
+dependencies = []  # the engine is standard library only
+keywords = ["claude", "claude-code", "mcp", "agents", "tdd", "release-gate", "backlog", "way-of-working"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/richardedens/crissp"
+Source = "https://github.com/richardedens/crissp"
+Issues = "https://github.com/richardedens/crissp/issues"
+Changelog = "https://github.com/richardedens/crissp/blob/main/CHANGELOG.md"
+
+[project.scripts]
+crissp = "crissp.cli:main"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>[^\\s]+)"
+
+# The wheel: the crissp package (src/crissp) and, under crissp/engine/, the framework a project runs: the guards, the
+# crissp tool, the testsuite and uxsuite engines, the shared look, the deploy template and the project template.
+# Never this repository's own data (its agreement, backlog, configuration, results) and never the engine's own tests.
+[tool.hatch.build.targets.wheel]
+only-include = [
+  "src/crissp",
+  "crissp/CRISSP.md",
+  "crissp/check.sh",
+  "crissp/check-all.sh",
+  "crissp/test.sh",
+  "crissp/ux.sh",
+  "crissp/deploy.sh",
+  "crissp/tool",
+  "crissp/look",
+  "crissp/template",
+  "crissp/testsuite/lib",
+  "crissp/testsuite/dashboard",
+  "crissp/testsuite/run.sh",
+  "crissp/testsuite/setup.sh",
+  "crissp/testsuite/requirements.txt",
+  "crissp/testsuite/README.md",
+  "crissp/uxsuite",
+  "crissp/deploy",
+]
+exclude = [
+  "**/__pycache__",
+  "**/*.pyc",
+  "**/results",
+  "crissp/uxsuite/tests",
+  "crissp/uxsuite/team.json",
+  "crissp/uxsuite/walks",
+  "crissp/testsuite/dashboard/data.js",
+  "**/.DS_Store",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+"crissp" = "crissp/engine"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src", "crissp", "LICENSE", "NOTICE", "VERSION", "README.md", "CHANGELOG.md", "pyproject.toml"]
+exclude = ["**/__pycache__", "**/*.pyc", "**/results", "crissp/testsuite/dashboard/data.js", "**/.DS_Store"]

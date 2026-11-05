@@ -1,0 +1,17 @@
+{
+ "title": "First visit: what is this, and how do I start?",
+ "steps": [
+  {
+   "do": "goto",
+   "path": "/"
+  },
+  {
+   "do": "wait",
+   "ms": 1500
+  },
+  {
+   "do": "shot",
+   "title": "The first screen"
+  }
+ ]
+}

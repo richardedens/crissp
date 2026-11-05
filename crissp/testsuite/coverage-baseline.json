@@ -1,0 +1,100 @@
+{
+ "accepted": [],
+ "commit": "9dbf5f61628bc47ee7d7990a5f8f369aed626f3b",
+ "suites": {
+  "tools": {
+   "branch": 100.0,
+   "files": {
+    "crissp/testsuite/lib/audit.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/check.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/cluster_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/collect.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/deploy_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/gate.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/impact.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/measure.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/project.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/release.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/run.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/serve.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/sessionview.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/setup_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/tool/server.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/api.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/cli.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_backlog.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_config.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_shoot.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_team.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_verdicts.py": {
+     "branch": 100.0,
+     "line": 100.0
+    }
+   },
+   "line": 100.0
+  }
+ }
+}

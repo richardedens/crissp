@@ -1,0 +1,20 @@
+{
+ "$comment": "CRISSP: the parts of {{PRODUCT}}: what every run, crissp/check.sh's map and the dashboard are made of. crissp/testsuite/lib/project.py says what each field means; python3 crissp/testsuite/lib/project.py check says what is wrong.",
+ "product": "{{PRODUCT}}",
+ "steps": [
+  {"key": "unit", "label": "CRISSP: the product's own tests (pytest under coverage)", "dir": ".",
+   "run": "covered tests", "seconds": 20, "gate": true, "sources": ["src"], "omit": ["*/tests/*"]},
+  {"key": "lint", "label": "CRISSP: the product's lint", "dir": ".", "run": "py -m ruff check --no-cache .", "seconds": 3}
+ ],
+ "paths": [
+  {"match": "src/", "steps": ["unit", "lint"]},
+  {"match": "tests/", "steps": ["unit", "lint"]}
+ ],
+ "shared": [
+  {"match": "*/Dockerfile", "why": "what goes into an image"},
+  {"match": "*/requirements.txt", "why": "the dependencies"}
+ ],
+ "notes": [],
+ "setup": {"venvs": [], "npm": [], "needs": []},
+ "texts": {}
+}

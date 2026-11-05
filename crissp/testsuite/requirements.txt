@@ -1,0 +1,6 @@
+# The pinned tools of the testsuite: the one place their versions live.
+# crissp/testsuite/setup.sh installs them into app/backend/.venv (through app/backend/requirements-dev.txt),
+# and crissp/testsuite/run.sh runs the testsuite's own tests with them (uv run --with-requirements).
+pytest==8.4.2
+coverage==7.16.2
+ruff==0.17.1

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C.R.I.S.S.P. — the agentic SDLC framework</title>
+<meta name="description" content="C.R.I.S.S.P. is the open-source agentic SDLC framework for Claude Code: AI colleagues plan, build, review and test your product, guards prove every change, and you decide. uvx crissp init.">
+<meta name="theme-color" content="#0b0c12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%239b7bff'/%3E%3Ctext x='32' y='44' font-family='system-ui,sans-serif' font-size='36' font-weight='800' fill='white' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
+<script src="look/look.js"></script>
+<link rel="stylesheet" href="look/look.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#start">Skip to content</a>
+
+<header class="top">
+  <a class="brand" href="#" aria-label="C.R.I.S.S.P. home"><span class="logo">C</span><span class="word">C.R.I.S.S.P.</span></a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#colleagues">AI colleagues</a>
+    <a href="#sdlc">The lifecycle</a>
+    <a href="#see">See it</a>
+    <a href="#start">Get started</a>
+  </nav>
+  <div class="actions">
+    <a class="ghost" href="https://github.com/richardedens/crissp">GitHub</a>
+    <a class="ghost hide-s" href="https://pypi.org/project/crissp/">PyPI</a>
+    <button class="ghost" id="theme" type="button" aria-label="Switch between dark and light">◐</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">The agentic SDLC framework · for Claude Code · Apache-2.0</p>
+      <h1>AI colleagues build.<br><span class="grad">Guards prove. You decide.</span></h1>
+      <p class="lede">C.R.I.S.S.P. turns one repository into a team. AI colleagues plan, build, review and test your
+        product with you. Guards prove every change. You, the product owner, decide what gets built, what is accepted
+        and what goes live. The whole software lifecycle runs in plain files next to the code.</p>
+      <div class="install" role="group" aria-label="Install">
+        <code id="cmd">uvx crissp init</code>
+        <button class="primary" type="button" data-copy="uvx crissp init">Copy</button>
+      </div>
+      <p class="small muted">Python 3.12+, git and bash. The engine uses only the Python standard library.</p>
+    </div>
+
+    <figure class="term card" aria-label="An example session">
+      <div class="dots" aria-hidden="true"><i></i><i></i><i></i><span>shop</span></div>
+<pre><span class="p">$</span> uvx crissp init --product Shop
+git init: ~/shop
+C.R.I.S.S.P. 0.1.0 for Shop: 47 made, 0 kept as they were.
+<span class="muted">Nothing was committed: review the diff first.</span>
+
+<span class="p">$</span> crissp check-all
+<span class="ok">▸</span> The product's own tests        <span class="ok">passed</span>
+<span class="ok">▸</span> Coverage gate (may only go up) <span class="ok">passed</span>
+<span class="ok">▸</span> The product's lint             <span class="ok">passed</span>
+Release certificate: <span class="ok">green</span> on 3f2a9c1
+
+<span class="p">$</span> crissp deploy
+Release gate: <span class="ok">green</span> · deploying 3f2a9c1</pre>
+    </figure>
+  </section>
+
+  <section id="colleagues" class="block">
+    <p class="eyebrow">Your AI colleagues</p>
+    <h2>A team with clear jobs, and clear limits.</h2>
+    <p class="intro">None of them can declare its own work done, and none of them can release. That stays with you.</p>
+    <div class="box">
+      <article class="card"><span class="tag">Lead</span><h3>Claude, your main session</h3><p>Reads the agreement first, keeps the backlog, builds test-first, hands parts to agents, reviews and merges their work, runs the checks, writes the release notes and reports to you per item.</p><p class="never">Never pushes, deploys or publishes without your yes.</p></article>
+      <article class="card"><span class="tag">Builders</span><h3>Agents</h3><p>One part each (a backend, a frontend, a chart) in their own git worktree. They write the failing test first, make it green, run their part's suite and report.</p><p class="never">Never edit the backlog, the release notes or secrets.</p></article>
+      <article class="card"><span class="tag">UX team</span><h3>Five personas and a moderator</h3><p>An engineer, someone who rarely uses a computer, a student on a phone, a product owner and a UX expert walk your running product, debate it and advise: must, should, could.</p><p class="never">Advise only: their advice waits for your verdict.</p></article>
+      <article class="card"><span class="tag">Designer</span><h3>Designs on request</h3><p>A mockup of the screen after the advice, shown next to the screen as it is now. Approve it, with a remark if you like, and it becomes a backlog item.</p><p class="never">A design is a proposal, never a change.</p></article>
+      <article class="card"><span class="tag">MCP</span><h3>The crissp tool</h3><p>The team's shared memory and hands: it answers Claude with exactly the lines it needs, writes the backlog in its own format under the next free number, and starts the checks.</p><p class="never">Never deploys, never marks work done.</p></article>
+      <article class="card you"><span class="tag">You</span><h3>The product owner</h3><p>You take the decisions (each comes with options and a recommendation), ask for UX rounds, accept work, push and deploy. Every change to production asks you y/N.</p><p class="never">The only one who moves work to done.</p></article>
+    </div>
+  </section>
+
+  <section id="sdlc" class="block">
+    <p class="eyebrow">The agentic SDLC</p>
+    <h2>From the first observation to the release that delivered it.</h2>
+    <figure class="diagram card"><img src="images/agentic-sdlc.svg" alt="Six stages, Discover, Plan, Build, Verify, Review and Release, in three lanes: what the AI colleagues do, what the guards prove, and what the product owner decides." width="1240" height="600"></figure>
+  </section>
+
+  <section id="see" class="block">
+    <p class="eyebrow">See it</p>
+    <h2>One local dashboard for the tests, the board and the UX team.</h2>
+    <div class="shots">
+      <figure class="card shot wide"><img src="images/ux-design.jpg" alt="A design: the screen as it is now next to the designer's proposal, with Approve, Approve with a remark, Again and Reject" loading="lazy"><figcaption><b>Before and after, then approve.</b> What people see now next to the design, the same size. Your remark goes into the backlog item.</figcaption></figure>
+      <figure class="card shot"><img src="images/dashboard.jpg" alt="The Tests dashboard: tests passing, line and branch coverage, the coverage gate" loading="lazy"><figcaption><b>What the last run proved:</b> tests, coverage, the gate, every step.</figcaption></figure>
+      <figure class="card shot"><img src="images/board.jpg" alt="The backlog board with epics, features and items per status" loading="lazy"><figcaption><b>The board:</b> written by Claude through the crissp tool; only you move work to done.</figcaption></figure>
+      <figure class="card shot"><img src="images/ux-advice.jpg" alt="A UX round: scores per persona and advice marked must, should and could" loading="lazy"><figcaption><b>The UX team's advice:</b> scores, agreements, disputes, and advice you answer.</figcaption></figure>
+      <figure class="card shot"><img src="images/ux-team.jpg" alt="The UX team: five personas with their device and what they look for" loading="lazy"><figcaption><b>The team:</b> who they are and what they look for, per product.</figcaption></figure>
+    </div>
+    <p class="small muted">A demo project made with <code>crissp init</code>: its backlog, test run and screenshots are real; the UX round's and the design's text is a sample (a real round runs on your own Claude login).</p>
+  </section>
+
+  <section id="letters" class="block">
+    <p class="eyebrow">The six letters</p>
+    <h2>Six promises, each with something that checks it.</h2>
+    <div class="letters">
+      <article class="card letter"><b>C</b><h3>Consistent</h3><p>One way, everywhere: the same files, formats and words in every repository.</p><p class="by">Checked by the formats and review</p></article>
+      <article class="card letter"><b>R</b><h3>Repeatable</h3><p>A test that fails without the fix, scripted checks and deploys, and a certificate for exactly one commit.</p><p class="by">Checked by crissp check and the certificate</p></article>
+      <article class="card letter"><b>I</b><h3>Innovative</h3><p>Every observation is written down at once. Decisions come as options with a recommendation. Virtual users debate the interface before real ones meet it.</p><p class="by">Checked by findings, decisions and the UX suite</p></article>
+      <article class="card letter"><b>S</b><h3>Secure</h3><p>Secrets never in git, an image, a log or a chat. Every change to production asks first.</p><p class="by">Checked by ignore rules, security tests and the y/N</p></article>
+      <article class="card letter"><b>S</b><h3>Scalable</h3><p>Small steps that add up: work that fits one commit, agents per part, tests that run what a change can affect.</p><p class="by">Checked by sizes, the impact plan and worktrees</p></article>
+      <article class="card letter"><b>P</b><h3>Programming</h3><p>Done means done: one commit per item, coverage only goes up, release notes always.</p><p class="by">Checked by the definition of done and the coverage gate</p></article>
+    </div>
+  </section>
+
+
+  <section id="box" class="block">
+    <p class="eyebrow">What you get</p>
+    <h2>One package. Everything a repository needs to work this way.</h2>
+    <div class="box">
+      <article class="card"><span class="tag">MCP</span><h3>The crissp tool</h3><p>Claude asks for the lines it needs instead of reading whole files: <code>brief</code>, <code>backlog</code>. It writes findings, decisions, epics, features and items in the backlog's own format, and starts the checks. It never deploys and never marks work as done.</p></article>
+      <article class="card"><span class="tag">Guards</span><h3>Check, gate, certificate</h3><p>The impact plan tests what a change can affect; the full run tests everything; the coverage gate only goes up; the certificate names the commit that was proven.</p></article>
+      <article class="card"><span class="tag">Dashboard</span><h3>Tests and the board</h3><p>What the last runs proved, the coverage per suite, and the backlog board, on one local server. It never runs a test.</p></article>
+      <article class="card"><span class="tag">UX suite</span><h3>People who are not us</h3><p>Fictional users walk your running product on a laptop and a phone, debate it, and a moderator turns it into advice. An approved design becomes a backlog item.</p></article>
+      <article class="card"><span class="tag">Deploy</span><h3>Helm and Terraform</h3><p>A chart for a backend, a frontend and PostgreSQL with a nightly backup, behind Traefik: non-root, read-only, with NetworkPolicies. Terraform for the cluster side.</p></article>
+      <article class="card"><span class="tag">Template</span><h3>The agreement and the backlog</h3><p>How your product is built, tested, released and run, read first in every Claude session, with a backlog in plain Markdown next to the code.</p></article>
+    </div>
+  </section>
+
+  <section class="block rules">
+    <div class="card rule"><h3>No bypass</h3><p>The release gate has no switch to turn it off, and Claude never builds one.</p></div>
+    <div class="card rule"><h3>A person decides</h3><p>Claude builds, proposes and reports. The product owner accepts, pushes and deploys.</p></div>
+    <div class="card rule"><h3>Secrets stay secret</h3><p>Never in git, an image, a log or a chat. Only their presence is ever printed.</p></div>
+    <div class="card rule"><h3>Local first</h3><p>The dashboard and the UX suite run on 127.0.0.1 and load nothing from the internet.</p></div>
+  </section>
+
+  <section id="start" class="block">
+    <p class="eyebrow">Get started</p>
+    <h2>Four steps to a project that proves itself.</h2>
+    <div class="steps">
+      <div class="card step"><span class="n">1</span><div><h3>Bring a folder in</h3><pre>mkdir my-product &amp;&amp; cd my-product
+uvx crissp init --product "My product"</pre><p class="muted">In an existing repository it adds only what is missing and never overwrites a file.</p></div></div>
+      <div class="card step"><span class="n">2</span><div><h3>Fill it in with Claude</h3><pre>claude</pre><p class="muted">Ask it to fill in the <code>&lt;!-- CRISSP: … --&gt;</code> blocks: your parts, your tests, your deploy.</p></div></div>
+      <div class="card step"><span class="n">3</span><div><h3>Review and commit</h3><pre>git diff
+git add -A &amp;&amp; git commit -m "CRISSP: adopt C.R.I.S.S.P."</pre><p class="muted">Nothing is committed before you have seen it.</p></div></div>
+      <div class="card step"><span class="n">4</span><div><h3>Prove it</h3><pre>crissp check-all
+crissp dashboard</pre><p class="muted">The full run, then what it proved, on your own machine.</p></div></div>
+    </div>
+
+    <div class="card commands">
+      <table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>crissp init</code></td><td>Brings a folder in: <code>git init</code>, the agreement, the backlog, the configuration, the deploy template</td></tr>
+          <tr><td><code>crissp check [--plan]</code></td><td>Runs only what the changes since the last green state can affect</td></tr>
+          <tr><td><code>crissp check-all</code></td><td>The full run, with the coverage gate</td></tr>
+          <tr><td><code>crissp deploy [--cluster]</code></td><td>Deploys behind the release gate; <code>--cluster-plan</code> only shows what it would do</td></tr>
+          <tr><td><code>crissp dashboard</code></td><td>The Tests dashboard, the backlog board and the UX suite on 127.0.0.1</td></tr>
+          <tr><td><code>crissp ux</code></td><td>The UX suite: walks, rounds, designs</td></tr>
+          <tr><td><code>crissp mcp</code></td><td>The MCP server Claude Code starts from <code>.mcp.json</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><b>C.R.I.S.S.P.</b> — Consistent · Repeatable · Innovative · Secure · Scalable · Programming</p>
+  <p class="muted small">Copyright 2026 Richard Edens. Licensed under the
+    <a href="https://github.com/richardedens/crissp/blob/main/LICENSE">Apache License 2.0</a>. The Figtree typeface is
+    licensed under the SIL Open Font License 1.1.
+    · <a href="https://github.com/richardedens/crissp">GitHub</a>
+    · <a href="https://pypi.org/project/crissp/">PyPI</a>
+    · <a href="https://github.com/richardedens/crissp/blob/main/CHANGELOG.md">Release notes</a></p>
+</footer>
+
+<script src="look/water.js"></script>
+<script>
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-copy]");
+  if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; }
+  catch { b.textContent = "Select and copy"; }
+  setTimeout(() => { b.textContent = "Copy"; }, 1600);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+ "title": "The backlog board: what is open, what waits for the product owner?",
+ "steps": [
+  {
+   "do": "goto",
+   "path": "/dashboard/#board"
+  },
+  {
+   "do": "wait",
+   "ms": 1500
+  },
+  {
+   "do": "shot",
+   "title": "The board"
+  }
+ ]
+}

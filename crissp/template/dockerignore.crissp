@@ -1,0 +1,19 @@
+# --- C.R.I.S.S.P.: never in an image -------------------------------------------------------------
+# Only runtime code goes into an image. Never exclude a path a Dockerfile COPYs: after merging these rules, check with
+# a build that every COPY path is still in the context.
+.git
+.github
+.claude
+.env
+.env.*
+*.sql
+*.sql.gz
+*.dump
+backups
+**/.DS_Store
+CRISSP.md
+CLAUDE.md
+AGENTS.md
+backlog
+testsuite
+docs/stories

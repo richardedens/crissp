@@ -1,0 +1,65 @@
+{{- if .Values.backend.enabled }}
+{{- $b := .Values.backend }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ $b.replicas }}
+  selector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels: {{- include "app.selector" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ toJson .Values.secrets | sha256sum }}
+    spec:
+      {{- include "app.pod" (dict "root" . "uid" $b.runAsUser) | nindent 6 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.image.repository }}:backend-{{ .Values.image.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "app.secure" . | nindent 10 }}
+          envFrom:
+            - configMapRef: {name: {{ .Release.Name }}-config}
+            - secretRef: {name: {{ .Release.Name }}-secret}
+          env:
+            {{- if .Values.versionEnv }}
+            - {name: {{ .Values.versionEnv }}, value: {{ .Values.image.version | quote }}}
+            {{- end }}
+            {{- if .Values.database.enabled }}
+            {{- $d := .Values.database }}
+            - name: {{ $d.passwordKey }}
+              valueFrom: {secretKeyRef: {name: {{ .Release.Name }}-secret, key: {{ $d.passwordKey }}}}
+            - {name: PGHOST, value: {{ .Release.Name }}-postgresql}
+            - {name: PGPORT, value: "5432"}
+            - {name: PGDATABASE, value: {{ $d.name }}}
+            - {name: PGUSER, value: {{ $d.user }}}
+            {{- if $d.urlEnv }}
+            - name: {{ $d.urlEnv }}
+              value: "postgresql://{{ $d.user }}:$({{ $d.passwordKey }})@{{ .Release.Name }}-postgresql:5432/{{ $d.name }}"
+            {{- end }}
+            {{- end }}
+          ports: [{name: http, containerPort: {{ $b.port }}}]
+          readinessProbe: {httpGet: {path: {{ $b.health }}, port: http}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: {{ $b.health }}, port: http}, initialDelaySeconds: 20, periodSeconds: 20, failureThreshold: 4}
+          resources: {{- toYaml $b.resources | nindent 12 }}
+          volumeMounts: {{- include "app.writableMounts" $b.writablePaths | nindent 12 }}
+      volumes: {{- include "app.writableVolumes" $b.writablePaths | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  selector: {{- include "app.selector" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  ports: [{name: http, port: 80, targetPort: http}]
+{{- end }}

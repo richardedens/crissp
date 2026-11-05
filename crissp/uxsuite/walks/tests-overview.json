@@ -1,0 +1,17 @@
+{
+ "title": "The Tests overview: is it green, and what did the last run prove?",
+ "steps": [
+  {
+   "do": "goto",
+   "path": "/dashboard/#overview"
+  },
+  {
+   "do": "wait",
+   "ms": 1500
+  },
+  {
+   "do": "shot",
+   "title": "The overview"
+  }
+ ]
+}

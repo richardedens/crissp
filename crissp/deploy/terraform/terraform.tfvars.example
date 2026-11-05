@@ -1,0 +1,13 @@
+# Example variables, neutral names only. Copy to terraform.tfvars (git-ignored) for a manual run; crissp/deploy.sh
+# --cluster writes its own private variables file from deploy.json and .env.production instead. The registry's
+# username and password never go in a tfvars file in git: give them as TF_VAR_registry_username/_password, or let
+# deploy.sh pass them.
+kubeconfig_path    = "~/.kube/config"
+kube_context       = "example-cluster"
+namespace          = "example"
+labels             = { "app.kubernetes.io/part-of" = "example" }
+pod_security       = "restricted"
+pull_secret_name   = "registry-credentials"
+create_pull_secret = false
+registry_server    = "registry.example.org"
+default_deny       = true

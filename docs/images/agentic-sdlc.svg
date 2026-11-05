@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 600" width="1240" height="600" role="img" aria-labelledby="t d">
+  <title id="t">The agentic SDLC of C.R.I.S.S.P.</title>
+  <desc id="d">Six stages, Discover, Plan, Build, Verify, Review and Release, in three lanes: what the AI colleagues do, what the guards prove, and what the product owner decides. What is seen after a release becomes the next finding.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#9b7bff"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9a9cab"/></marker>
+    <style>
+      text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: #e6e7ea; }
+      .h { font-size: 19px; font-weight: 800; }
+      .n { font-size: 12px; font-weight: 700; fill: #0b0c12; }
+      .lane { font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+      .c { font-size: 13px; fill: #c9cad3; }
+      .b { font-size: 13px; font-weight: 700; }
+      .m { font-size: 12.5px; fill: #9a9cab; }
+    </style>
+  </defs>
+  <rect width="1240" height="600" rx="22" fill="#0b0c12"/>
+  <rect x="1" y="1" width="1238" height="598" rx="21" fill="none" stroke="#2a2c38"/>
+
+  <text x="40" y="52" font-size="24" font-weight="800">An agentic SDLC: <tspan fill="url(#g)">AI colleagues build, guards prove, a person decides.</tspan></text>
+
+  <!-- lane labels -->
+  <text x="40" y="196" class="lane" fill="#9b7bff">AI COLLEAGUES</text>
+  <text x="40" y="346" class="lane" fill="#2dd4bf">GUARDS</text>
+  <text x="40" y="476" class="lane" fill="#fbbf24">PRODUCT OWNER</text>
+  <text x="40" y="214" class="m">Claude, its agents,</text><text x="40" y="230" class="m">the UX team</text>
+  <text x="40" y="364" class="m">scripts that prove,</text><text x="40" y="380" class="m">no AI in the gate</text>
+  <text x="40" y="494" class="m">a person, always</text>
+
+  <!-- lanes -->
+  <rect x="190" y="160" width="1010" height="120" rx="14" fill="#9b7bff" fill-opacity=".07" stroke="#9b7bff" stroke-opacity=".25"/>
+  <rect x="190" y="300" width="1010" height="116" rx="14" fill="#2dd4bf" fill-opacity=".06" stroke="#2dd4bf" stroke-opacity=".25"/>
+  <rect x="190" y="430" width="1010" height="90" rx="14" fill="#fbbf24" fill-opacity=".06" stroke="#fbbf24" stroke-opacity=".25"/>
+
+  <!-- stage heads -->
+  <g>
+    <circle cx="212" cy="110" r="13" fill="#9b7bff"/><text x="212" y="114" class="n" text-anchor="middle">1</text><text x="234" y="117" class="h">Discover</text>
+    <circle cx="380" cy="110" r="13" fill="#9b7bff"/><text x="380" y="114" class="n" text-anchor="middle">2</text><text x="402" y="117" class="h">Plan</text>
+    <circle cx="548" cy="110" r="13" fill="#ff6b6b"/><text x="548" y="114" class="n" text-anchor="middle">3</text><text x="570" y="117" class="h">Build</text>
+    <circle cx="716" cy="110" r="13" fill="#2dd4bf"/><text x="716" y="114" class="n" text-anchor="middle">4</text><text x="738" y="117" class="h">Verify</text>
+    <circle cx="884" cy="110" r="13" fill="#fbbf24"/><text x="884" y="114" class="n" text-anchor="middle">5</text><text x="906" y="117" class="h">Review</text>
+    <circle cx="1052" cy="110" r="13" fill="#34d399"/><text x="1052" y="114" class="n" text-anchor="middle">6</text><text x="1074" y="117" class="h">Release</text>
+    <path d="M330 110H362" stroke="#9a9cab" stroke-width="1.5" marker-end="url(#a)"/><path d="M470 110H530" stroke="#9a9cab" stroke-width="1.5" marker-end="url(#a)"/><path d="M634 110H698" stroke="#9a9cab" stroke-width="1.5" marker-end="url(#a)"/><path d="M800 110H866" stroke="#9a9cab" stroke-width="1.5" marker-end="url(#a)"/><path d="M990 110H1034" stroke="#9a9cab" stroke-width="1.5" marker-end="url(#a)"/>
+  </g>
+
+  <!-- AI colleagues lane -->
+  <text x="204" y="190" class="b">UX team</text>
+  <text x="204" y="210" class="c">5 personas walk the</text><text x="204" y="227" class="c">running product,</text><text x="204" y="244" class="c">debate, advise</text>
+  <text x="204" y="266" class="m">→ findings F-xx</text>
+
+  <text x="372" y="190" class="b">Claude</text>
+  <text x="372" y="210" class="c">epics, features and</text><text x="372" y="227" class="c">items; decisions with</text><text x="372" y="244" class="c">options and advice</text>
+  <text x="372" y="266" class="m">→ via the crissp tool</text>
+
+  <text x="540" y="190" class="b">Agents</text>
+  <text x="540" y="210" class="c">one part each, in</text><text x="540" y="227" class="c">their own worktree:</text><text x="540" y="244" class="c">a red test, then green</text>
+  <text x="540" y="266" class="m">→ one commit per item</text>
+
+  <text x="708" y="190" class="b">Claude</text>
+  <text x="708" y="210" class="c">starts the checks</text><text x="708" y="227" class="c">(crissp tool: run),</text><text x="708" y="244" class="c">never reports red</text><text x="708" y="261" class="c">as green</text>
+
+  <text x="876" y="190" class="b">Claude + UX team</text>
+  <text x="876" y="210" class="c">reviews and merges</text><text x="876" y="227" class="c">agents' work; writes</text><text x="876" y="244" class="c">the release notes; the</text><text x="876" y="261" class="c">team walks it again</text>
+
+  <text x="1044" y="190" class="b">Claude</text>
+  <text x="1044" y="210" class="c">shows the deploy plan</text><text x="1044" y="227" class="c">(--cluster-plan);</text><text x="1044" y="244" class="c">never deploys, pushes</text><text x="1044" y="261" class="c">or publishes</text>
+
+  <!-- guards lane -->
+  <text x="204" y="330" class="c">private names and</text><text x="204" y="347" class="c">secrets kept out</text><text x="204" y="364" class="c">(ignore rules, guards)</text>
+  <text x="372" y="330" class="c">one format: the</text><text x="372" y="347" class="c">tool writes the next</text><text x="372" y="364" class="c">free number, never done</text>
+  <text x="540" y="330" class="c">the test must fail</text><text x="540" y="347" class="c">without the change;</text><text x="540" y="364" class="c">every line covered</text>
+  <text x="708" y="330" class="b" fill="#2dd4bf">crissp check</text><text x="708" y="350" class="c">impact plan, coverage</text><text x="708" y="367" class="c">gate (only goes up),</text><text x="708" y="384" class="c">certificate per commit</text>
+  <text x="876" y="330" class="c">the dashboard: what</text><text x="876" y="347" class="c">each run proved, the</text><text x="876" y="364" class="c">board, the UX advice</text>
+  <text x="1044" y="330" class="b" fill="#2dd4bf">release gate</text><text x="1044" y="350" class="c">green full run ≤ 7 days</text><text x="1044" y="367" class="c">+ every change since,</text><text x="1044" y="384" class="c">on this commit.</text><text x="1044" y="401" class="b" fill="#2dd4bf">No bypass.</text>
+
+  <!-- product owner lane -->
+  <text x="204" y="462" class="c">asks for a UX round</text><text x="204" y="479" class="c">(it costs tokens)</text>
+  <text x="372" y="462" class="c">takes the decisions</text><text x="372" y="479" class="c">(D-xx), sets the order</text>
+  <text x="540" y="462" class="c">sees the plan, not</text><text x="540" y="479" class="c">the noise</text>
+  <text x="708" y="462" class="c">starts the full run</text><text x="708" y="479" class="c">(crissp check-all)</text>
+  <text x="876" y="462" class="b" fill="#fbbf24">accepts</text><text x="876" y="482" class="c">only a person moves</text><text x="876" y="499" class="c">work to done</text>
+  <text x="1044" y="462" class="b" fill="#fbbf24">pushes, deploys</text><text x="1044" y="482" class="c">every change to</text><text x="1044" y="499" class="c">production asks y/N</text>
+
+  <!-- the loop -->
+  <path d="M1120 530 V560 H212 V536" fill="none" stroke="#9a9cab" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#a)"/>
+  <text x="620" y="584" class="m" text-anchor="middle">what is seen after a release (a scan, a UX round, a bug) becomes the next finding</text>
+</svg>

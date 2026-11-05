@@ -1,0 +1,114 @@
+# A C.R.I.S.S.P. product in the cluster, behind Traefik. Neutral example values: crissp/deploy.sh --cluster fills in
+# the product's own from crissp/deploy/deploy.json and .env.production through a private values file (mode 600,
+# removed afterwards). Never a real secret, host or registry here. Tested by rendering: crissp/deploy/tests.
+
+# product: the app.kubernetes.io/name of every resource (default: the chart's name)
+product: example
+
+# image: one repository, the parts told apart by tag: <repository>:<part>-<version> (deploy.sh pushes each part)
+image:
+  repository: registry.example.org/example/app
+  version: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# imagePullSecrets: the registry's pull secret in the namespace (Terraform makes it, crissp/deploy/terraform)
+imagePullSecrets:
+  - name: registry-credentials
+
+# versionEnv: the environment variable the backend gets the image version in (empty: none)
+versionEnv: APP_VERSION
+
+# host: the product's address; redirectHosts: the other domains, sent there with a 301 (their own certificate, so a
+# domain whose DNS does not point here yet never blocks the product's certificate)
+host: app.example.org
+redirectHosts:
+  - www.example.org
+
+# clusterIssuer: the cert-manager ClusterIssuer for the certificates (empty: no certificate annotation)
+clusterIssuer: letsencrypt
+
+# ingress: the Ingress (Traefik) and the Middlewares it asks for
+ingress:
+  enabled: true
+  className: traefik
+  maxRequestBodyBytes: 2097152  # 2 MiB; 0 = no limit
+  rateLimit: {average: 20, period: 1s, burst: 100}  # per client address; empty ({}) = no limit
+  securityHeaders:  # a Traefik headers Middleware on every answer; enabled: false when the frontend sets its own
+    enabled: true
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    frameDeny: true
+    contentTypeNosniff: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+    contentSecurityPolicy: "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+# backend: the API; with a frontend the Ingress sends `path` to it, without one everything
+backend:
+  enabled: true
+  replicas: 1
+  port: 8000
+  path: /api
+  health: /api/health
+  runAsUser: 10001
+  writablePaths: [/tmp]  # emptyDirs: the root file system is read-only
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 384Mi}
+
+# frontend: nginx (unprivileged: uid 101, port 8080) serving the built frontend; the Ingress sends the rest to it
+frontend:
+  enabled: true
+  replicas: 1
+  port: 8080
+  health: /
+  runAsUser: 101
+  proxiesBackend: false  # true when nginx itself proxies to the backend (then it may reach it)
+  writablePaths: [/tmp, /var/cache/nginx, /etc/nginx/conf.d]
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+# env: settings that are no secret, for the backend (a ConfigMap)
+env:
+  APP_ENV: production
+  TRUST_PROXY: "true"
+  SESSION_COOKIE_SECURE: "true"
+
+# secrets: KEY: value, for the backend (a Secret); filled by deploy.sh from .env.production, never here. On an upgrade
+# without a value the one already in the cluster is kept. secretKeys: the keys the Secret always has.
+secrets: {}
+secretKeys: []
+
+# database: PostgreSQL in a StatefulSet; the backend gets its password from the Secret and its address in urlEnv
+database:
+  enabled: true
+  image: postgres:17-alpine  # the official image (uid 70); a hardened private mirror can replace it
+  name: app
+  user: app
+  passwordKey: DB_PASSWORD
+  urlEnv: DATABASE_URL  # empty: no URL, the backend builds its own from PG* settings
+  runAsUser: 70
+  storage: 5Gi
+  storageClassName: ""
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# backup: every night pg_dump -Fc into /backup/<yyyymmdd-hhmm>/<database>.dump on its own volume, kept keepDays days
+backup:
+  enabled: true
+  schedule: "45 2 * * *"
+  storage: 5Gi
+  storageClassName: ""
+  keepDays: 14
+# Restore: pg_restore -h <release>-postgresql -U <user> -d postgres --clean --create <database>.dump
+
+# networkPolicy: who may talk to whom; the namespace's default-deny comes from Terraform (or defaultDeny here)
+networkPolicy:
+  enabled: true
+  defaultDeny: false
+  ingressControllerNamespaces: [traefik]
+  backendEgress:  # the backend's way out: these ports, never to the private ranges; ports: [] = no way out
+    ports: [443]
+    except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]

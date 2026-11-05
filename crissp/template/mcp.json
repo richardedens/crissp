@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "crissp": {
+      "command": "uvx",
+      "args": ["crissp=={{CRISSP_VERSION}}", "mcp"]
+    }
+  }
+}

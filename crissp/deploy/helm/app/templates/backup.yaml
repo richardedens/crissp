@@ -1,0 +1,67 @@
+{{- if and .Values.database.enabled .Values.backup.enabled }}
+{{- $d := .Values.database }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-backup
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+  annotations:
+    helm.sh/resource-policy: keep  # an uninstall never takes the backups with it
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.backup.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources: {requests: {storage: {{ .Values.backup.storage }}}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backup
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels: {{- include "app.selector" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: Never
+          {{- include "app.pod" (dict "root" . "uid" $d.runAsUser) | nindent 10 }}
+          containers:
+            - name: backup
+              image: {{ $d.image }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              {{- include "app.secure" . | nindent 14 }}
+              env:
+                - name: PGPASSWORD
+                  valueFrom: {secretKeyRef: {name: {{ .Release.Name }}-secret, key: {{ $d.passwordKey }}}}
+                - {name: PGHOST, value: {{ .Release.Name }}-postgresql}
+                - {name: PGUSER, value: {{ $d.user }}}
+                - {name: PGDATABASE, value: {{ $d.name }}}
+                - {name: KEEP_DAYS, value: {{ .Values.backup.keepDays | quote }}}
+              # into /backup/<stamp>.partial, renamed only when the dump succeeded; runs older than KEEP_DAYS go
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  dir="/backup/$(date +%Y%m%d-%H%M)"
+                  rm -rf "$dir.partial"; mkdir -p "$dir.partial"
+                  pg_dump -Fc -d "$PGDATABASE" -f "$dir.partial/$PGDATABASE.dump"
+                  pg_dumpall --globals-only --no-role-passwords -l "$PGDATABASE" > "$dir.partial/globals.sql"
+                  mv "$dir.partial" "$dir"
+                  find /backup -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +"$KEEP_DAYS" -exec rm -rf {} +
+                  ls -la /backup "$dir"
+              resources: {{- toYaml $d.resources | nindent 16 }}
+              volumeMounts: [{name: backup, mountPath: /backup}, {name: tmp, mountPath: /tmp}]
+          volumes:
+            - {name: backup, persistentVolumeClaim: {claimName: {{ .Release.Name }}-backup}}
+            - {name: tmp, emptyDir: {}}
+{{- end }}

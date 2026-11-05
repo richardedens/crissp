@@ -1,0 +1,6 @@
+{{- if not (or .Values.backend.enabled .Values.frontend.enabled) }}
+{{- fail "enable at least one part: backend.enabled or frontend.enabled" }}
+{{- end }}
+{{- if and .Values.ingress.enabled (not .Values.host) }}
+{{- fail "host is empty: the Ingress needs the product's address" }}
+{{- end }}

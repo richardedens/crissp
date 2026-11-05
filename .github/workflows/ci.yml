@@ -1,0 +1,26 @@
+# Every push and pull request: the framework's own tests at 100% coverage, the coverage gate, the deploy template
+# (helm lint and template, its tests) and the package (build, install, init a project, that project's full run).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: azure/setup-helm@v4
+      - name: Git can commit (the package test commits in a throwaway project)
+        run: git config --global user.name "ci" && git config --global user.email "ci@example.org"
+      - name: Tools, gate, deploy template and package
+        run: crissp/testsuite/run.sh --quick tools gate deploy package
+      - name: The logs of a red run
+        if: failure()
+        run: tail -n 60 crissp/testsuite/results/*.log

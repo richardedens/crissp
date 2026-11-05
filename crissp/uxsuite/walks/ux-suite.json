@@ -1,0 +1,17 @@
+{
+ "title": "The UX suite: what did the team advise, and what do I decide?",
+ "steps": [
+  {
+   "do": "goto",
+   "path": "/ux/"
+  },
+  {
+   "do": "wait",
+   "ms": 1500
+  },
+  {
+   "do": "shot",
+   "title": "The UX overview"
+  }
+ ]
+}

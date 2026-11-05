@@ -1,0 +1,34 @@
+# --- C.R.I.S.S.P.: never in git ------------------------------------------------------------------
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.gpg
+kubeconfig*
+# Customer data: dumps, backups, uploads
+*.sql
+*.sql.gz
+*.dump
+*.bundle
+backups/
+# Generated and local
+node_modules/
+.venv/
+__pycache__/
+.coverage
+htmlcov/
+crissp/testsuite/results/
+.claude/settings.local.json
+.claude/worktrees/
+.DS_Store
+crissp/uxsuite/results/
+# Terraform: state and real variables hold secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example

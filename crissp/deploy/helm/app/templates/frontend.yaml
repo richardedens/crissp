@@ -1,0 +1,44 @@
+{{- if .Values.frontend.enabled }}
+{{- $f := .Values.frontend }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-frontend
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ $f.replicas }}
+  selector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels: {{- include "app.selector" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      # nginx-unprivileged: no root, no port below 1024. In the cluster the Ingress sends the API to the backend itself.
+      {{- include "app.pod" (dict "root" . "uid" $f.runAsUser) | nindent 6 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.repository }}:frontend-{{ .Values.image.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "app.secure" . | nindent 10 }}
+          ports: [{name: http, containerPort: {{ $f.port }}}]
+          readinessProbe: {httpGet: {path: {{ $f.health }}, port: http}, initialDelaySeconds: 3, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: {{ $f.health }}, port: http}, initialDelaySeconds: 10, periodSeconds: 20}
+          resources: {{- toYaml $f.resources | nindent 12 }}
+          # what nginx writes: its pid and temp files, its cache, and the config rendered from its template at start
+          volumeMounts: {{- include "app.writableMounts" $f.writablePaths | nindent 12 }}
+      volumes: {{- include "app.writableVolumes" $f.writablePaths | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-frontend
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  selector: {{- include "app.selector" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+  ports: [{name: http, port: 80, targetPort: http}]
+{{- end }}

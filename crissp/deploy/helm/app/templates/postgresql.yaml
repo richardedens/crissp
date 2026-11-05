@@ -1,0 +1,62 @@
+{{- if .Values.database.enabled }}
+{{- $d := .Values.database }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgresql
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  serviceName: {{ .Release.Name }}-postgresql
+  replicas: 1
+  selector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels: {{- include "app.selector" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      # postgres alpine runs as uid 70; OnRootMismatch keeps kubelet from re-chmodding the data dir on every attach
+      {{- include "app.pod" (dict "root" . "uid" $d.runAsUser) | nindent 6 }}
+      containers:
+        - name: postgresql
+          image: {{ $d.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # read-only root: it writes only to its data, its socket folder and /tmp
+          {{- include "app.secure" . | nindent 10 }}
+          env:
+            - {name: POSTGRES_DB, value: {{ $d.name }}}
+            - {name: POSTGRES_USER, value: {{ $d.user }}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Release.Name }}-secret, key: {{ $d.passwordKey }}}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports: [{name: postgresql, containerPort: 5432}]
+          readinessProbe: {exec: {command: [pg_isready, -U, {{ $d.user }}, -d, {{ $d.name }}]}, initialDelaySeconds: 5, periodSeconds: 10}
+          livenessProbe: {exec: {command: [pg_isready, -U, {{ $d.user }}, -d, {{ $d.name }}]}, initialDelaySeconds: 30, periodSeconds: 20}
+          resources: {{- toYaml $d.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: run, mountPath: /var/run/postgresql}
+            - {name: tmp, mountPath: /tmp}
+      volumes: [{name: run, emptyDir: {}}, {name: tmp, emptyDir: {}}]
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $d.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources: {requests: {storage: {{ $d.storage }}}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgresql
+  labels: {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  selector: {{- include "app.selector" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+  ports: [{name: postgresql, port: 5432, targetPort: postgresql}]
+{{- end }}

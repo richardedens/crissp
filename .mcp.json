@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "crissp": {
+      "command": "python3",
+      "args": ["-I", "crissp/tool/server.py"]
+    }
+  }
+}

@@ -1,0 +1,102 @@
+/* The C.R.I.S.S.P. look: one set of tokens and components for every local page of the framework (the Tests dashboard,
+   the UX suite, the Claude session pages). Dark by default; light when the viewer chooses it (look.js remembers it).
+   Everything is local: the font is Figtree (SIL OFL 1.1, LICENSE-figtree.txt), next to this file. */
+@font-face { font-family: "Figtree"; font-style: normal; font-display: swap; font-weight: 300 900;
+  src: url("figtree-latin-variable.woff2") format("woff2"); }
+
+:root {
+  --bg: #0b0c12; --panel: #15161d; --panel2: #1b1d26; --line: #2a2c38; --text: #e6e7ea; --muted: #9a9cab;
+  --accent: #9b7bff; --teal: #2dd4bf; --green: #34d399; --red: #ff6b6b; --amber: #fbbf24; --blue: #60a5fa;
+  --must: var(--red); --should: var(--amber); --could: var(--teal);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px; color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f6f7fb; --panel: #ffffff; --panel2: #f1f2f7; --line: #e2e4ec; --text: #1c1d24; --muted: #5d6071;
+  --accent: #6d3cf0; --teal: #0d9488; --green: #047857; --red: #c62828; --amber: #a34d00; --blue: #1d5fd6;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: transparent; color: var(--text); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--blue); text-decoration: none; } a:hover { text-decoration: underline; }
+code, pre { font-family: var(--mono); font-size: 12px; }
+h1 { margin: 0; font-size: 16px; } h2 { font-size: 18px; margin: 28px 0 12px; } h2:first-child { margin-top: 0; }
+h3 { font-size: 15px; margin: 0; }
+.muted { color: var(--muted); } .small { font-size: 12px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the top bar: brand, the sections (Tests · UX · Sessions), the section's own tabs, the theme switch */
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 18px; padding: 12px 24px;
+  border-bottom: 1px solid var(--line); flex-wrap: wrap; background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); }
+.brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.brand > div { min-width: 0; }
+.brand p { margin: 0; color: var(--muted); font-size: 12px; max-width: 46ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff;
+  font-weight: 800; flex: none; }
+.sections { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
+.sections a { color: var(--muted); padding: 5px 12px; border-radius: 7px; font: 600 13px var(--font); }
+.sections a:hover { text-decoration: none; color: var(--text); }
+.sections a[aria-current="page"] { background: var(--panel2); color: var(--text); }
+.tabs { display: flex; gap: 4px; flex: 1 1 420px; min-width: 0; flex-wrap: wrap; justify-content: center; }
+.tabs button { border: 0; background: none; color: var(--muted); padding: 7px 12px; border-radius: 8px; font: 500 13px var(--font); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--panel2); color: var(--text); }
+.tabs button .n { margin-left: 6px; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--line); }
+.ghost { border: 1px solid var(--line); background: none; color: var(--text); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: 13px var(--font); }
+.primary { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 7px 14px; cursor: pointer; font: 600 13px var(--font); }
+.primary:disabled, .ghost:disabled { opacity: .5; cursor: not-allowed; }
+main { max-width: 1320px; margin: 0 auto; padding: 24px; }
+
+/* building blocks */
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.card { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0;
+  background: color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%); }
+.kpi .v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.kpi .l, .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.kpi .s { font-size: 12px; color: var(--muted); }
+.kpi.row { display: flex; gap: 14px; align-items: center; }
+.ring { --p: 0; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--c, var(--green)) calc(var(--p) * 1%), var(--line) 0); display: grid; place-items: center; flex: none; }
+.ring::after { content: attr(data-label); display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--panel); font-size: 12px; font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
+.badge.passed { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.badge.failed { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+.badge.missing, .badge.skipped { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.badge.area { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.badge.ver { color: var(--muted); background: var(--panel2); }
+.badge.must { color: var(--must); background: color-mix(in srgb, var(--must) 14%, transparent); }
+.badge.should { color: var(--should); background: color-mix(in srgb, var(--should) 14%, transparent); }
+.badge.could { color: var(--could); background: color-mix(in srgb, var(--could) 14%, transparent); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; min-width: 80px; }
+.bar i { display: block; height: 100%; background: var(--c, var(--green)); }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+input[type=search], input[type=text], select, textarea { background: var(--panel); border: 1px solid var(--line); color: var(--text);
+  border-radius: 8px; padding: 7px 10px; font: 13px var(--font); }
+input[type=search] { min-width: 280px; flex: 1; max-width: 460px; }
+textarea { width: 100%; min-height: 64px; resize: vertical; }
+label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; max-height: 360px; overflow: auto; }
+.chip { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid currentColor; background: var(--panel); }
+/* a dialog asks the person to decide: solid, never see-through */
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); max-width: min(640px, 92vw); }
+dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.kcard, .kt, .card p { overflow-wrap: anywhere; }
+
+/* the water (water.js) under everything: the page lets it through, the panels are glass over it */
+.water { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.water canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .78; }
+:root[data-theme="light"] .water canvas { opacity: .16; filter: saturate(1.4) hue-rotate(-8deg); }
+.water i { position: absolute; inset: 0; background: radial-gradient(1200px 700px at 78% -10%, rgba(123,47,247,.18), transparent 60%),
+  radial-gradient(900px 600px at -10% 110%, rgba(61,214,198,.08), transparent 60%), linear-gradient(180deg, rgba(11,12,18,.2), rgba(11,12,18,.62) 85%); }
+:root[data-theme="light"] .water i { background: radial-gradient(1200px 700px at 78% -10%, rgba(124,77,255,.14), transparent 60%),
+  linear-gradient(180deg, rgba(246,247,251,.3), rgba(246,247,251,.82) 85%); }
+
+@media (max-width: 800px) { main { padding: 16px; } input[type=search] { min-width: 0; } .top { padding: 12px 16px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }

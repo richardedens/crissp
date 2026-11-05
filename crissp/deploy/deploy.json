@@ -1,0 +1,49 @@
+{
+  "about": "The product's deploy settings, read by crissp/deploy.sh, crissp/testsuite/lib/deploy_plan.py and cluster_plan.py. These are neutral example values (reserved example names): a cluster deploy stops until they are filled in. Never a secret here: secrets live in the untracked .env.production.",
+  "product": "example",
+  "compose": {
+    "file": "docker-compose.yml",
+    "url": "http://127.0.0.1:{port}",
+    "port": {"setting": "APP_PORT", "default": 8080},
+    "health": ["/", "/api/health"],
+    "services": {
+      "backend": {
+        "inputs": ["docker-compose.yml", "app/backend/"],
+        "exclude": ["app/backend/tests/", "app/backend/requirements-dev.txt", "*.md"]
+      },
+      "frontend": {
+        "inputs": ["docker-compose.yml", "app/frontend/"],
+        "exclude": ["app/frontend/test/", "*.md"]
+      }
+    }
+  },
+  "cluster": {
+    "chart": "crissp/deploy/helm/app",
+    "release": "example",
+    "namespace": "example",
+    "kubeContext": "example-cluster",
+    "kubeconfig": "",
+    "domains": {"primary": "app.example.org", "redirects": ["www.example.org"]},
+    "image": {
+      "repository": "registry.example.org/example/app",
+      "platform": "linux/amd64",
+      "parts": {"backend": "app/backend", "frontend": "app/frontend"}
+    },
+    "health": "https://app.example.org/api/health",
+    "pullSecret": {"name": "registry-credentials", "sourceNamespace": ""},
+    "terraform": "crissp/deploy/terraform",
+    "values": {"database": {"enabled": true}},
+    "env": {
+      "file": ".env.production",
+      "example": "crissp/deploy/.env.production.example",
+      "secrets": ["DB_PASSWORD", "APP_SECRET_KEY", "MAIL_PASSWORD"],
+      "settings": ["MAIL_HOST", "MAIL_USER", "MAIL_FROM"],
+      "required": ["DB_PASSWORD", "APP_SECRET_KEY"],
+      "rules": {
+        "DB_PASSWORD": {"minLength": 20},
+        "APP_SECRET_KEY": {"minLength": 32}
+      },
+      "registry": {"server": "REGISTRY_SERVER", "username": "REGISTRY_USERNAME", "password": "REGISTRY_PASSWORD"}
+    }
+  }
+}

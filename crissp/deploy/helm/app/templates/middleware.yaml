@@ -1,0 +1,64 @@
+{{- if .Values.ingress.enabled }}
+# What the Ingresses ask of Traefik, as Middlewares in this namespace (values: ingress.*, host, redirectHosts).
+{{- with .Values.ingress.securityHeaders }}
+{{- if .enabled }}
+# The security headers on every answer.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $.Release.Name }}-headers
+  labels: {{- include "app.labels" $ | nindent 4 }}
+spec:
+  headers:
+    stsSeconds: {{ int64 .stsSeconds }}
+    stsIncludeSubdomains: {{ .stsIncludeSubdomains }}
+    frameDeny: {{ .frameDeny }}
+    contentTypeNosniff: {{ .contentTypeNosniff }}
+    referrerPolicy: {{ .referrerPolicy | quote }}
+    permissionsPolicy: {{ .permissionsPolicy | quote }}
+    {{- with .contentSecurityPolicy }}
+    contentSecurityPolicy: {{ . | quote }}
+    {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- if .Values.ingress.maxRequestBodyBytes }}
+# The upload limit.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-body-size
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  buffering:
+    maxRequestBodyBytes: {{ int64 .Values.ingress.maxRequestBodyBytes }}
+---
+{{- end }}
+{{- with .Values.ingress.rateLimit }}
+# Requests per second per client address.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $.Release.Name }}-ratelimit
+  labels: {{- include "app.labels" $ | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ int64 .average }}
+    period: {{ .period | default "1s" }}
+    burst: {{ int64 .burst }}
+---
+{{- end }}
+{{- if .Values.redirectHosts }}
+# The other domains: 301 to the product's address, keeping the path.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-redirect
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  redirectRegex:
+    regex: "^https?://[^/]+(.*)$"
+    replacement: {{ printf "https://%s${1}" .Values.host | quote }}
+    permanent: true
+{{- end }}
+{{- end }}

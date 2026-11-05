@@ -1,0 +1,144 @@
+{
+ "$comment": "This repository's parts: the framework itself is the product (lib/project.py says what each field means).",
+ "product": "C.R.I.S.S.P.",
+ "monogram": "C",
+ "steps": [
+  {
+   "key": "tools",
+   "label": "The framework's own tests (testsuite, uxsuite, crissp tool)",
+   "dir": "crissp/testsuite",
+   "run": "covered tests ../uxsuite/tests",
+   "seconds": 40,
+   "gate": true,
+   "sources": [
+    "crissp/testsuite/lib",
+    "crissp/tool",
+    "crissp/uxsuite"
+   ],
+   "omit": [
+    "*/tests/*"
+   ],
+   "fail_under": 100,
+   "tests": [
+    "crissp/testsuite/tests",
+    "crissp/uxsuite/tests"
+   ]
+  },
+  {
+   "key": "deploy",
+   "label": "Deploy template (helm lint and template, Terraform, its tests)",
+   "dir": ".",
+   "run": "crissp/deploy/check.sh",
+   "seconds": 30,
+   "when": "crissp/deploy/check.sh",
+   "tests": [
+    "crissp/deploy/tests"
+   ]
+  },
+  {
+   "key": "package",
+   "label": "The package: build, install, init a project, its full run",
+   "dir": ".",
+   "run": "uv run --quiet --no-project --with-requirements crissp/testsuite/requirements.txt python -m pytest -q -p no:cacheprovider crissp/testsuite/package_tests",
+   "seconds": 30,
+   "tests": [
+    "crissp/testsuite/package_tests"
+   ]
+  },
+  {
+   "key": "audit",
+   "label": "CVE audit of the pinned test tools (pip-audit)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py run",
+   "seconds": 60,
+   "full_only": true
+  }
+ ],
+ "paths": [
+  {
+   "match": "crissp/testsuite/accepted-risks.json",
+   "steps": [
+    "audit"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/uxsuite/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/ux.sh",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/tool/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/look/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/template/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
+   "match": "crissp/deploy/",
+   "steps": [
+    "deploy"
+   ]
+  },
+  {
+   "match": "crissp/deploy.sh",
+   "steps": [
+    "deploy"
+   ]
+  },
+  {
+   "match": "src/",
+   "steps": [
+    "package"
+   ]
+  },
+  {
+   "match": "pyproject.toml",
+   "steps": [
+    "package"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/package_tests/",
+   "steps": [
+    "package"
+   ]
+  }
+ ],
+ "shared": [
+  {
+   "match": ".mcp.json",
+   "why": "how Claude Code starts the crissp tool"
+  }
+ ],
+ "audit": {
+  "pip": [
+   "crissp/testsuite/requirements.txt",
+   "crissp/deploy/requirements.txt"
+  ]
+ },
+ "texts": {}
+}
