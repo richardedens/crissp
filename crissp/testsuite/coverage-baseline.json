@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "9661dd041a4bb23d8445b50a1c295188feff5c7b",
+ "commit": "2ebc691b4b8358be6c0731d09713a427d33f6185",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -46,6 +46,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/release.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/repair.py": {
      "branch": 100.0,
      "line": 100.0
     },
