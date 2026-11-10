@@ -429,6 +429,7 @@ def test_served_means_the_dashboard_itself_answers(tmp_path):
 def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
+    (tmp_path / "web" / "dashboard" / "stamp").write_text(json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())}))  # ours
     httpd = _serve(tmp_path / "web")
     url = f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
     try:
@@ -444,6 +445,7 @@ def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch)
 def test_the_ux_view_is_the_same_server_opened_on_the_ux_suite(tmp_path):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
+    (tmp_path / "web" / "dashboard" / "stamp").write_text(json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())}))  # ours
     httpd = _serve(tmp_path / "web")
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
@@ -486,6 +488,74 @@ def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_pa
         srv.dashboard(tmp_path / "nowhere")
 
 
+def test_served_is_only_this_projects_dashboard(tmp_path):
+    """F-09: the address answers with a dashboard, and its stamp names this project; another project's is not ours."""
+    import http.server
+    import threading
+
+    def stamp(root):
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                body = (b'<a id="sessions"></a>' if not self.path.endswith("stamp")
+                        else json.dumps({"stamp": 1.0, "root": root}).encode())
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        return httpd, f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
+
+    ours, url = stamp(str(tmp_path.resolve()))
+    other, other_url = stamp("/elsewhere/shop")
+    try:
+        assert srv.served(url, tmp_path) is True and srv.served(other_url, tmp_path) is False
+        assert srv.served(other_url) is True  # without a project to compare: any dashboard
+    finally:
+        ours.shutdown()
+        other.shutdown()
+
+
+def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tmp_path):
+    """F-09: crissp dashboard in a second project never opens the first project's dashboard."""
+    import http.server
+    import shutil
+    import subprocess
+    import threading
+    root = tmp_path / "repo"
+    (root / "crissp/testsuite/lib").mkdir(parents=True)
+    shutil.copy(SERVER.parents[1] / "test.sh", root / "crissp" / "test.sh")
+    for name in ("place.py", "project.py"):  # the real port choice
+        shutil.copy(SERVER.parents[1] / "testsuite" / "lib" / name, root / "crissp/testsuite/lib" / name)
+    for name in ("measure.py", "collect.py"):  # stand-ins: no sessions, no results to read
+        (root / "crissp/testsuite/lib" / name).write_text("")
+    (root / "crissp/testsuite/lib/serve.py").write_text("import sys\nprint('serve', *sys.argv[1:])\n")  # never a real server
+
+    class Other(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json.dumps({"stamp": 1.0, "root": "/elsewhere/shop"}).encode())
+
+        def log_message(self, *a):
+            pass
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Other)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    port = httpd.server_address[1]
+    try:
+        done = subprocess.run([str(root / "crissp" / "test.sh"), "--dashboard"], capture_output=True, text=True, timeout=30,
+                              env={**{k: v for k, v in srv.os.environ.items() if k != "CRISSP_ROOT"},
+                                   "CRISSP_DASHBOARD_PORT": str(port), "CRISSP_NO_BROWSER": "1"})
+    finally:
+        httpd.shutdown()
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert f"Port {port} serves the dashboard of /elsewhere/shop: this project gets port" in done.stdout
+    served_on = int(done.stdout.split("serve --port ")[1].split()[0])
+    assert served_on != port and f"Dashboard: http://127.0.0.1:{served_on}/dashboard/" in done.stdout
+
+
 def test_test_sh_names_a_port_held_by_something_else(tmp_path):
     import shutil
     import socket
@@ -493,6 +563,8 @@ def test_test_sh_names_a_port_held_by_something_else(tmp_path):
     root = tmp_path / "repo"
     (root / "crissp/testsuite/lib").mkdir(parents=True)
     shutil.copy(SERVER.parents[1] / "test.sh", root / "crissp" / "test.sh")
+    for name in ("place.py", "project.py"):  # the real port choice
+        shutil.copy(SERVER.parents[1] / "testsuite" / "lib" / name, root / "crissp/testsuite/lib" / name)
     for name in ("measure.py", "collect.py"):  # stand-ins: no sessions, no results to read
         (root / "crissp/testsuite/lib" / name).write_text("")
     with socket.socket() as held:

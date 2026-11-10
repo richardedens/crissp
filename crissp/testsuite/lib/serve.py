@@ -113,7 +113,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
         if path == "/dashboard/stamp":
-            return self._json(200, {"stamp": self.live.stamp()})
+            return self._json(200, {"stamp": self.live.stamp(), "root": str(self.live.root.resolve())})  # whose (F-09)
         if path.startswith("/look/"):
             return self._look(path[len("/look/"):])
         if path == "/ux" or path.startswith("/ux/"):

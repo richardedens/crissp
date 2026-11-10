@@ -2,6 +2,16 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.1.1 — unreleased
+
+- `crissp dashboard` opens this project's dashboard, never another one. With a dashboard of another project already on
+  the port (8766, or `CRISSP_DASHBOARD_PORT`), it leaves that one running, takes the next free port and says so
+  ("Port 8766 serves the dashboard of …: this project gets port 8767."). Before, it opened the other project's
+  dashboard, so this project's tests and UX results seemed missing. The crissp tool's `dashboard` action follows the
+  same rule.
+- The coverage baseline is rewritten only when a number moves, so a green `crissp check-all` no longer asks for an
+  extra commit that only records a commit hash.
+
 ## 0.1.0 — 2026-11-05
 
 The first standalone release of C.R.I.S.S.P. (Consistent, Repeatable, Innovative, Secure, Scalable, Programming), the

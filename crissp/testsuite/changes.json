@@ -1,6 +1,33 @@
 {
   "changes": [
     {
+      "id": "F-09-dashboard-of-this-project",
+      "title": "F-09: crissp dashboard opened another project's dashboard",
+      "problem": "test.sh reused any crissp dashboard answering on the port without checking which project it served: with one project's dashboard running, crissp dashboard in a second project opened the first, so the second's tests and UX results seemed missing. The crissp tool's dashboard action had the same check.",
+      "fix": "The stamp (/dashboard/stamp) names the project it serves; lib/place.py picks the port: this project's dashboard is reused, another project's (or one that does not say whose) is left alone and the next free port taken with a note, a program that is no dashboard on the asked port stops it with a clear message. The tool's served() also requires the stamp to name its project.",
+      "sources": [
+        {
+          "file": "crissp/testsuite/lib/place.py",
+          "symbol": "def place("
+        },
+        {
+          "file": "crissp/tool/server.py",
+          "symbol": "def served("
+        },
+        {
+          "file": "crissp/testsuite/lib/serve.py",
+          "symbol": "/dashboard/stamp"
+        }
+      ],
+      "tests": [
+        "test_place::test_another_projects_dashboard_is_left_alone_and_the_next_port_taken",
+        "test_place::test_this_projects_dashboard_is_reused",
+        "test_crissp_tool::test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it",
+        "test_crissp_tool::test_served_is_only_this_projects_dashboard",
+        "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite"
+      ]
+    },
+    {
       "id": "F-08-baseline-only-when-it-moves",
       "title": "F-08: every green full run asked for a commit that only recorded a hash",
       "problem": "The gate rewrote coverage-baseline.json on every green run of every suite, with only a new commit hash when no number changed, so every full run ended with 'the coverage baseline went up: commit …'.",

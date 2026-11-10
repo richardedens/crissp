@@ -144,6 +144,7 @@ def test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite(worl
         assert code == 200 and body == b'window.SUITE = {"build": 1};\n' and headers["Cache-Control"] == "no-store"
         code, headers, body = _get(base + "/dashboard/stamp?t=1")
         first = json.loads(body)["stamp"]
+        assert json.loads(body)["root"] == str(root.resolve())  # F-09: the stamp says whose dashboard this is
         assert headers["Content-Type"] == "application/json" and calls == [1]
         _age(root / "crissp/testsuite/results/data.js", 60)
         (root / "crissp/testsuite/changes.json").write_text('{"changes": [{"id": "F-27"}]}')  # a change recorded

@@ -507,12 +507,18 @@ def status(root: Path) -> str:
     return "\n".join(lines) if runs else lines[0] + "\nNothing started with run yet."
 
 
-def served(url: str) -> bool:
-    """The address answers with the dashboard itself, not with an error page or another program."""
+def served(url: str, root: Path | None = None) -> bool:
+    """The address answers with the dashboard itself, not with an error page or another program; given a project, its
+    stamp names that project too (F-09: never another project's dashboard)."""
     try:
         with urllib.request.urlopen(url, timeout=2) as answer:
-            return 'id="sessions"' in answer.read(65536).decode(errors="replace")
-    except OSError:
+            if 'id="sessions"' not in answer.read(65536).decode(errors="replace"):
+                return False
+        if root is None:
+            return True
+        with urllib.request.urlopen(url.rstrip("/") + "/stamp", timeout=2) as answer:
+            return json.loads(answer.read(65536)).get("root") == str(Path(root).resolve())
+    except (OSError, ValueError):
         return False
 
 
@@ -528,7 +534,7 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         text = read(log)
         found = re.search(r"Dashboard: (\S+)", text)
         # what the script says is checked: it says so before the server is up (the Tests page answers for both views)
-        if found and served(re.sub(r"/ux/$", "/dashboard/", found.group(1))):
+        if found and served(re.sub(r"/ux/$", "/dashboard/", found.group(1)), root):
             return f"Dashboard: {found.group(1)} (data rebuilt from the last runs)"
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])

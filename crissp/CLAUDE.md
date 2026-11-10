@@ -35,7 +35,7 @@ instead of reading the backlog files; write findings, decisions, epics, features
 | `crissp/check.sh --plan` | Shows what changed since the last green state, what it would run and how long |
 | `crissp/check.sh` | Runs only what the changes can affect (`crissp/testsuite/lib/impact.py`, from `suites.json`), then moves the release certificate to this commit |
 | `crissp/check-all.sh` | The full run: every step below, plus the CVE audit of the pinned tools |
-| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`): the Tests dashboard, the backlog board and the UX suite (never runs a test) |
+| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`; this project's dashboard is reused, another project's is left alone and the next free port taken): the Tests dashboard, the backlog board and the UX suite (never runs a test) |
 
 This project's steps (`crissp/testsuite/suites.json`):
 
