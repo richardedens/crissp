@@ -33,6 +33,7 @@ is waiting for whom.
 | `crissp/CLAUDE.md` (loaded by a short root `CLAUDE.md`: `@crissp/CLAUDE.md`) | **The agreement**: how this repository is built, tested, released and run; read first in every session. Names C.R.I.S.S.P. and fills it in for this product | Claude, with the product owner |
 | `crissp/AGENTS.md` (a short root `AGENTS.md` points to it) | What an agent next to the main session must know: its part, its limits, how to report | Claude |
 | `README.md` | What the product is, how to start it, its commands; for people | Claude |
+| `app/backend/`, `app/frontend/`, `docker-compose.yml` | **The product**, by default: the backend (Python, its tests in `app/backend/tests/`), the frontend (npm, its tests by `npm test`), and the local stack that runs them together. The testsuite's steps, the deploy template (`crissp/deploy/deploy.json`) and the UX suite all expect this layout; a product with another layout names it in its agreement and its `suites.json` | Claude, per PBI |
 | `crissp/tool/` + `.mcp.json` | The crissp MCP server: `brief` and `backlog`, so Claude asks for lines instead of reading files; `finding`, `decision`, `epic`, `feature` and `item`, so it writes them instead of editing files; `run`, `status` and `dashboard`, so it starts the checks (never a deploy) and shows the dashboard | the framework (never edited in a project) |
 | `crissp/uxsuite/` | **The UX suite**: virtual people walk the running product, debate what is right and wrong, and a moderator turns it into advice; designs on request; an approved design becomes a PBI (below). Its rounds, designs and verdicts stay in `crissp/uxsuite/results/` (git-ignored) | Claude fills `team.json` and the walks; the engine is part of the package |
 | `crissp/check.sh`, `crissp/check-all.sh`, `crissp/deploy.sh`, `crissp/test.sh`, `crissp/testsuite/` | The guards and the dashboard: everything of the way of working in one visible folder, the root keeps the product | Claude, per stack (E2-05) |
@@ -192,6 +193,22 @@ Journeys come in kinds: a **path** (learning, by level), a **guide** (one buildi
 page. A new capability is documented by a journey in the same piece of work.
 
 ---
+
+## The product's place — app/ and the local stack
+
+- **The default layout**: `app/backend/` (an API with `/api/health`), `app/frontend/` (served by nginx, proxying
+  `/api`), and `docker-compose.yml` at the root with a service for each (plus PostgreSQL when the product needs a
+  database). `crissp deploy` (no flag) rebuilds the Compose services; the Helm chart deploys the same two parts.
+- **The template expects it**: the testsuite's steps (`backend`, `backend-lint`, `frontend`) exist once their part does,
+  so a project that was just brought in runs green with no code yet; the UX suite walks the local stack
+  (`compose.url`, `http://127.0.0.1:8080`).
+- **The first PBIs build the skeleton**: the two parts and the stack, each with a test, before any screen. Until it
+  runs, the UX suite has nothing to walk; a look at a screen before it is built is `crissp ux --propose <walk>` (a
+  mockup in `crissp/uxsuite/results/`), never a prototype written into `crissp/uxsuite/`, which holds only its
+  configuration (`team.json`, `walks/`, `PRINCIPLES.md`).
+- **Out of place?** `crissp repair` says what a project brought in earlier has out of place (old steps on `src/`, a UX
+  suite walking a dev server, files in `crissp/uxsuite/`); `crissp repair --yes` puts it in place, never deleting or
+  committing.
 
 ## The UX team — people who are not us
 

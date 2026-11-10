@@ -4,6 +4,26 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.1 — unreleased
 
+- **The product has a default place**: `app/backend/`, `app/frontend/` and `docker-compose.yml` at the root. A new
+  project's steps (`backend`, `backend-lint`, `frontend`) appear once their part exists, so `crissp check-all` is green
+  before there is any code. The UX suite walks the local stack (`http://127.0.0.1:8080`) instead of a dev server. Until
+  that stack runs, a design is `crissp ux --propose`; `crissp/uxsuite/` holds only its configuration. CRISSP.md has a
+  new section, *The product's place*.
+- **`crissp repair`** says what a project brought in earlier has out of place, and `crissp repair --yes` puts it in
+  place:
+  - the old template's steps on `src/`;
+  - a UX suite walking `127.0.0.1:5173`;
+  - files such as a prototype in `crissp/uxsuite/`, which move to `docs/ux/`;
+  - the agreement's old `crissp/tool` line;
+  - template files missing from `crissp/`;
+  - an old `crissp/CRISSP.md`;
+  - missing `.gitignore` rules.
+
+  It also says what needs you, such as no commit yet or no `docker-compose.yml`. It never deletes, never commits and
+  never changes the backlog's content.
+- The template's agreement says the crissp tools come from the crissp MCP server in `.mcp.json`, not from a
+  `crissp/tool` folder that an installed project does not have.
+
 - `crissp dashboard` opens this project's dashboard, never another one. With a dashboard of another project already on
   the port (8766, or `CRISSP_DASHBOARD_PORT`), it leaves that one running, takes the next free port and says so
   ("Port 8766 serves the dashboard of …: this project gets port 8767."). Before, it opened the other project's

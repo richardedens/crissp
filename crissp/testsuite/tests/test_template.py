@@ -17,14 +17,48 @@ def filled(path: Path, product: str = "Example") -> dict:
     return json.loads(text.replace("{{PRODUCT}}", product))
 
 
-def test_the_testsuite_skeleton_is_a_valid_configuration(tmp_path):
+def configured(tmp_path: Path, *parts: str) -> tuple[dict, Path]:
     root = tmp_path / "example"
     (root / "crissp" / "testsuite").mkdir(parents=True)
     (root / "crissp" / "testsuite" / "suites.json").write_text(json.dumps(filled(TEMPLATE / "testsuite" / "suites.json")))
-    (root / "src").mkdir()
-    conf = project.load(root)
-    assert conf["product"] == "Example" and [s["key"] for s in project.steps(conf, root)] == ["unit", "gate", "lint"]
+    for part in parts:
+        (root / part).parent.mkdir(parents=True, exist_ok=True)
+        (root / part).mkdir() if not part.endswith(".json") else (root / part).write_text("{}")
+    return project.load(root), root
+
+
+def test_the_testsuite_skeleton_is_a_valid_configuration(tmp_path):
+    conf, root = configured(tmp_path)
+    assert conf["product"] == "Example"
     assert all(s["label"].startswith("CRISSP: ") for s in conf["steps"])  # what the project fills in is marked
+
+
+def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_once_its_part_does(tmp_path):
+    conf, root = configured(tmp_path)  # D-02: a project just brought in has no part yet, so no step fails on nothing
+    assert project.steps(conf, root) == []
+    conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
+    assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend"]
+    assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
+                                                         "frontend": "app/frontend"}
+    assert [(r["match"], r["steps"]) for r in conf["paths"]] == [("app/backend/", ["backend", "backend-lint"]),
+                                                                ("app/frontend/", ["frontend"])]
+    assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
+
+
+def test_the_ux_suite_walks_the_local_stack_the_deploy_template_names():
+    compose = json.loads((REPO / "crissp" / "deploy" / "deploy.json").read_text())["compose"]
+    assert compose["file"] == "docker-compose.yml" and set(compose["services"]) == {"backend", "frontend"}
+    url = compose["url"].replace("{port}", str(compose["port"]["default"]))
+    assert filled(TEMPLATE / "uxsuite" / "team.json")["url"] == url  # not a dev server, not a prototype
+
+
+def test_the_framework_and_the_agreement_name_the_default_layout():
+    for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md"):
+        text = doc.read_text()
+        for name in ("app/backend", "app/frontend", "docker-compose.yml", "crissp ux --propose"):
+            assert name in text, (doc.name, name)
+    agreement = (TEMPLATE / "CLAUDE.md").read_text()
+    assert "`crissp/tool`" not in agreement  # an installed project's tools come from the crissp MCP server (F-10)
 
 
 def test_the_testsuite_skeleton_starts_with_no_changes_an_honest_gap_and_no_accepted_risk():

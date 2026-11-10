@@ -4,11 +4,15 @@ Read this first in every session (the root CLAUDE.md loads it). It is the agreem
 {{PRODUCT}} is built, tested, released and run. Keep it current: when a way of working changes, change it here (in
 the same commit). The backlog (`crissp/backlog/`) holds *what* to build; this file holds *how*. It is the C.R.I.S.S.P.
 framework ([CRISSP.md](CRISSP.md): Consistent, Repeatable, Innovative, Secure, Scalable, Programming) filled in for
-{{PRODUCT}}. Where the work stands and the backlog: ask the crissp tools (`brief`, `backlog`; `crissp/tool`, registered
+{{PRODUCT}}. Where the work stands and the backlog: ask the crissp tools (`brief`, `backlog`; the crissp MCP server, registered
 in `.mcp.json`) instead of reading the backlog files; write findings, decisions, epics, features and PBIs with `finding`,
 `decision`, `epic`, `feature` and `item` instead of editing them.
 
 ## The product
+
+- The parts, by default (CRISSP.md, *The product's place*): `app/backend/`, `app/frontend/`, and `docker-compose.yml`
+  at the root that runs them together locally. The first PBIs build that skeleton; the UX suite walks it once it runs.
+  A design before then is `crissp ux --propose <walk>`; `crissp/uxsuite/` holds only its configuration.
 
 <!-- CRISSP: what the product is in two sentences, who uses it; the parts of the repository (apps, packages, charts)
 with their stack; where it runs (production URL, cluster and namespace); the languages its texts are in; words the

@@ -50,3 +50,14 @@ def test_the_engine_is_told_it_runs_as_the_crissp_command(tmp_path):
     """So the guards say `crissp check-all`, not a script path the project does not have (F-04)."""
     env = cli.engine_env(tmp_path, {"PATH": "/usr/bin"})
     assert env["CRISSP_COMMAND"] == "crissp" and env["CRISSP_ROOT"] == str(tmp_path)
+
+
+@pytest.mark.parametrize("argv, passed", [(["repair"], []), (["repair", "--yes"], ["--yes"])])
+def test_repair_runs_the_engines_repair_for_the_project(monkeypatch, tmp_path, argv, passed):
+    calls = []
+    monkeypatch.setattr(cli.subprocess, "run", lambda cmd, cwd, env: calls.append((cmd, cwd, env["CRISSP_ROOT"]))
+                        or type("Done", (), {"returncode": 1})())
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(argv, env={}) == 1
+    (cmd, cwd, root), = calls
+    assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "repair.py"), *passed] and str(cwd) == root == str(tmp_path.resolve())

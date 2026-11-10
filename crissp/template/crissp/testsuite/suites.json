@@ -1,18 +1,24 @@
 {
- "$comment": "CRISSP: the parts of {{PRODUCT}}: what every run, crissp/check.sh's map and the dashboard are made of. crissp/testsuite/lib/project.py says what each field means; python3 crissp/testsuite/lib/project.py check says what is wrong.",
+ "$comment": "CRISSP: the parts of {{PRODUCT}}: what every run, crissp/check.sh's map and the dashboard are made of. By default the backend is app/backend, the frontend app/frontend, and docker-compose.yml at the root runs them together; a step exists once its part does (`when`). crissp/testsuite/lib/project.py says what each field means; python3 crissp/testsuite/lib/project.py check says what is wrong.",
  "product": "{{PRODUCT}}",
  "steps": [
-  {"key": "unit", "label": "CRISSP: the product's own tests (pytest under coverage)", "dir": ".",
-   "run": "covered tests", "seconds": 20, "gate": true, "sources": ["src"], "omit": ["*/tests/*"]},
-  {"key": "lint", "label": "CRISSP: the product's lint", "dir": ".", "run": "py -m ruff check --no-cache .", "seconds": 3}
+  {"key": "backend", "label": "CRISSP: the backend's tests (pytest under coverage)", "dir": "app/backend",
+   "run": "covered tests", "seconds": 20, "gate": true, "sources": ["app/backend"], "omit": ["*/tests/*"],
+   "when": "app/backend"},
+  {"key": "backend-lint", "label": "CRISSP: the backend's lint (ruff)", "dir": "app/backend",
+   "run": "py -m ruff check --no-cache .", "seconds": 3, "when": "app/backend"},
+  {"key": "frontend", "label": "CRISSP: the frontend's tests", "dir": "app/frontend", "run": "npm test",
+   "seconds": 20, "when": "app/frontend/package.json"}
  ],
  "paths": [
-  {"match": "src/", "steps": ["unit", "lint"]},
-  {"match": "tests/", "steps": ["unit", "lint"]}
+  {"match": "app/backend/", "steps": ["backend", "backend-lint"]},
+  {"match": "app/frontend/", "steps": ["frontend"]}
  ],
  "shared": [
+  {"match": "docker-compose.yml", "why": "how the parts run together"},
   {"match": "*/Dockerfile", "why": "what goes into an image"},
-  {"match": "*/requirements.txt", "why": "the dependencies"}
+  {"match": "*/requirements.txt", "why": "the dependencies"},
+  {"match": "*/package-lock.json", "why": "the frontend's dependencies"}
  ],
  "notes": [],
  "setup": {"venvs": [], "npm": [], "needs": []},

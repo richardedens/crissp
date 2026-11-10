@@ -1,234 +1,263 @@
 {
-  "changes": [
+ "changes": [
+  {
+   "id": "F-10-default-layout-and-repair",
+   "title": "F-10: the framework named no place for the product, and nothing put a project back in place",
+   "problem": "CRISSP.md only said 'the root keeps the product'. The template's steps pointed at src/ with no `when`, its UX suite walked a Vite dev server (127.0.0.1:5173), and deploy.json expected app/backend and app/frontend. So a first session hand-built a prototype inside crissp/uxsuite/ and served it as the product. The template's agreement also named a crissp/tool an installed project does not have.",
+   "fix": "D-02: app/backend + app/frontend + docker-compose.yml is the default (CRISSP.md 'The product's place', the template's agreement). The template's steps (backend, backend-lint, frontend) exist once their part does, and the UX suite walks the Compose stack (8080). crissp repair (lib/repair.py) shows what a project has out of place: old steps, the old UX address, files in crissp/uxsuite/, the old agreement line, missing template files, an old CRISSP.md, missing ignore rules. crissp repair --yes puts each in place; it never deletes, never commits and never changes the backlog's content.",
+   "sources": [
     {
-      "id": "F-09-dashboard-of-this-project",
-      "title": "F-09: crissp dashboard opened another project's dashboard",
-      "problem": "test.sh reused any crissp dashboard answering on the port without checking which project it served: with one project's dashboard running, crissp dashboard in a second project opened the first, so the second's tests and UX results seemed missing. The crissp tool's dashboard action had the same check.",
-      "fix": "The stamp (/dashboard/stamp) names the project it serves; lib/place.py picks the port: this project's dashboard is reused, another project's (or one that does not say whose) is left alone and the next free port taken with a note, a program that is no dashboard on the asked port stops it with a clear message. The tool's served() also requires the stamp to name its project.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/place.py",
-          "symbol": "def place("
-        },
-        {
-          "file": "crissp/tool/server.py",
-          "symbol": "def served("
-        },
-        {
-          "file": "crissp/testsuite/lib/serve.py",
-          "symbol": "/dashboard/stamp"
-        }
-      ],
-      "tests": [
-        "test_place::test_another_projects_dashboard_is_left_alone_and_the_next_port_taken",
-        "test_place::test_this_projects_dashboard_is_reused",
-        "test_crissp_tool::test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it",
-        "test_crissp_tool::test_served_is_only_this_projects_dashboard",
-        "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite"
-      ]
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def find("
     },
     {
-      "id": "F-08-baseline-only-when-it-moves",
-      "title": "F-08: every green full run asked for a commit that only recorded a hash",
-      "problem": "The gate rewrote coverage-baseline.json on every green run of every suite, with only a new commit hash when no number changed, so every full run ended with 'the coverage baseline went up: commit …'.",
-      "fix": "lib/gate.py writes the baseline only when something moves: no baseline yet, --accept, a number that changed, or a commit the diff rule needs (none recorded, or one git no longer knows). Otherwise the older commit stays: the next diff rule looks back further, stricter, never laxer.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/gate.py",
-          "symbol": "def check("
-        }
-      ],
-      "tests": [
-        "test_gate::test_a_green_run_that_changes_no_number_leaves_the_baseline_as_it_is",
-        "test_gate::test_a_run_of_some_suites_keeps_the_baseline_commit",
-        "test_gate::test_a_baseline_commit_git_does_not_know_is_skipped_never_a_crash"
-      ]
+     "file": "crissp/template/crissp/testsuite/suites.json",
+     "symbol": "\"key\": \"backend\""
     },
     {
-      "id": "F-01-guard-options",
-      "title": "F-01: crissp refused every option meant for a guard",
-      "problem": "crissp check --plan, crissp deploy --cluster and crissp ux --shoot <walk> were refused: argparse's REMAINDER does not pass a leading --option on to a subcommand.",
-      "fix": "src/crissp/cli.py splits the command line at the guard's name and passes the rest to the guard untouched.",
-      "sources": [
-        {
-          "file": "src/crissp/cli.py",
-          "symbol": "def split("
-        }
-      ],
-      "tests": [
-        "test_cli::test_a_guards_options_pass_through",
-        "test_cli::test_root_before_the_command_still_names_the_project"
-      ]
-    },
-    {
-      "id": "F-02-approve-installed",
-      "title": "F-02: approving a design failed in an installed project",
-      "problem": "The UX suite looked for the crissp tool only inside the project; a project made with crissp init has none, so Approve answered 400.",
-      "fix": "ux_backlog.tool() uses the project's own crissp/tool, else the engine's; designs show before and after with Approve, Approve with a remark, Again and Reject, and a remark comes first in the PBI.",
-      "sources": [
-        {
-          "file": "crissp/uxsuite/ux_backlog.py",
-          "symbol": "def tool("
-        },
-        {
-          "file": "crissp/uxsuite/ux_backlog.py",
-          "symbol": "def file_pbi("
-        }
-      ],
-      "tests": [
-        "test_ux_verdicts::test_an_installed_project_writes_with_the_engines_tool",
-        "test_ux_verdicts::test_an_approval_with_a_remark_carries_the_remark_into_the_pbi"
-      ]
-    },
-    {
-      "id": "F-03-pytest-and-ux-test",
-      "title": "F-03: pytest 9.0.3, and a UX test that read the wrong project",
-      "problem": "The CVE audit flagged pytest 8.4.2 (PYSEC-2026-1845); a UX test inherited the run's CRISSP_ROOT and read this repository during a full run.",
-      "fix": "pytest 9.0.3 pinned in crissp/testsuite/requirements.txt; the test starts ux.sh without CRISSP_ROOT.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/requirements.txt",
-          "symbol": "pytest=="
-        }
-      ],
-      "tests": [
-        "test_ux_cli::test_ux_sh_lists_reports_and_refuses_what_it_does_not_know"
-      ]
-    },
-    {
-      "id": "F-04-speak-the-command",
-      "title": "F-04: an installed project's guards named script paths it does not have",
-      "problem": "In a project made with crissp init the guards said 'crissp/deploy.sh may go', 'run crissp/check-all.sh': files that only exist in a repository that carries the framework.",
-      "fix": "The crissp command sets CRISSP_COMMAND; project.speak() and the Speaking stream every guard writes through name crissp check, check-all, deploy, dashboard and ux instead; deploy.sh's messages and the UX suite's (and the PBIs it writes) do the same.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/project.py",
-          "symbol": "def speak("
-        },
-        {
-          "file": "src/crissp/cli.py",
-          "symbol": "def engine_env("
-        }
-      ],
-      "tests": [
-        "test_project::test_the_guards_speak_the_crissp_command_when_they_run_as_it",
-        "test_cli::test_the_engine_is_told_it_runs_as_the_crissp_command",
-        "test_package::test_init_makes_a_crissp_project_that_is_green"
-      ]
-    },
-    {
-      "id": "F-06-first-full-run",
-      "title": "F-06: the first full run did not say what was left",
-      "problem": "A new project's first green full run ended with 'the coverage baseline went up: commit …', which a new user could not place.",
-      "fix": "check.py tells a first baseline (not in git yet) from a raised one, and for the first says plainly: commit it, then crissp check moves the certificate, with the exact commands.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/check.py",
-          "symbol": "def everything("
-        }
-      ],
-      "tests": [
-        "test_check_scripts::test_the_first_full_run_says_plainly_what_is_left",
-        "test_package::test_init_makes_a_crissp_project_that_is_green"
-      ]
-    },
-    {
-      "id": "check-without-git",
-      "title": "check.sh crashed outside a git checkout",
-      "problem": "The repository was taken out of git to become a project of its own; check.sh then failed on git commands with no clear reason, and check-all.sh refused to prove the tree at all.",
-      "fix": "lib/check.py (check.sh and check-all.sh are its doors) asks first whether the project is a git checkout: check.sh stops with exit 2 and says to run git init and commit; check-all.sh still runs every step for proof and writes no release certificate.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/check.py",
-          "symbol": "def changed("
-        },
-        {
-          "file": "crissp/testsuite/lib/check.py",
-          "symbol": "def everything("
-        }
-      ],
-      "tests": [
-        "test_check_scripts::test_without_git_check_sh_says_so_and_check_all_still_proves_the_tree",
-        "test_check_scripts::test_the_doors_run_check_py_for_their_own_project"
-      ]
-    },
-    {
-      "id": "parts-from-configuration",
-      "title": "The guards named one product's parts in their code",
-      "problem": "impact.py, run.sh, the gate, the certificate, setup and the audit named a backend, a frontend and their tools in code, so every other product had to edit the framework itself.",
-      "fix": "One configuration, crissp/testsuite/suites.json (lib/project.py), describes the product's steps (folder, command, coverage, gate), what a change runs (paths), its shared ground, setup and audit; every guard reads it, and run.py runs the steps.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/project.py",
-          "symbol": "def parse("
-        },
-        {
-          "file": "crissp/testsuite/lib/impact.py",
-          "symbol": "def classify("
-        },
-        {
-          "file": "crissp/testsuite/lib/run.py",
-          "symbol": "def run_step("
-        }
-      ],
-      "tests": [
-        "test_project",
-        "test_impact::test_a_part_runs_the_steps_its_rule_names_and_a_gated_part_brings_the_gate",
-        "test_run::test_the_full_run_runs_every_step_in_its_folder_and_writes_what_it_proved",
-        "test_release_gate::test_the_needed_steps_are_the_steps_of_the_full_run",
-        "test_gate::test_the_gate_holds_the_suites_the_product_gates"
-      ]
-    },
-    {
-      "id": "project-not-code-location",
-      "title": "The tools found the project from their own file location",
-      "problem": "Every library reached the repository's root with Path(__file__).parents[n], so the engine could not live apart from a project's data.",
-      "fix": "The project is CRISSP_ROOT or the current directory (the scripts export CRISSP_ROOT); only the engine's own files (the dashboard page, the look, the UX page) are found next to the code.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/project.py",
-          "symbol": "def root("
-        },
-        {
-          "file": "crissp/uxsuite/ux_config.py",
-          "symbol": "def project_root("
-        }
-      ],
-      "tests": [
-        "test_project::test_the_project_is_crissp_root_or_the_current_directory",
-        "test_ux_api::test_by_default_it_is_the_suite_of_the_project_it_works_for",
-        "test_crissp_tool::test_it_works_for_the_project_it_is_started_in"
-      ]
-    },
-    {
-      "id": "one-server-one-look",
-      "title": "The Tests dashboard and the UX suite looked different and ran apart",
-      "problem": "The dashboard and the UX suite had their own looks, ports and servers, and nothing linked an approved design to the PBI it became.",
-      "fix": "One local server (lib/serve.py) serves /dashboard/, /ux/ and the shared look in crissp/look (tokens, font, theme, water), and nothing else of the repository; an approved design becomes a PBI through the crissp tool, and the board links it back.",
-      "sources": [
-        {
-          "file": "crissp/testsuite/lib/serve.py",
-          "symbol": "def translate_path("
-        },
-        {
-          "file": "crissp/testsuite/lib/collect.py",
-          "symbol": "UX_MARK"
-        }
-      ],
-      "tests": [
-        "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite",
-        "test_serve::test_nothing_else_of_the_repository_is_served",
-        "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
-        "test_ux_verdicts::test_an_approved_design_becomes_one_pbi_in_the_backlog_s_own_format"
-      ]
+     "file": "src/crissp/cli.py",
+     "symbol": "args.command == \"repair\""
     }
-  ],
-  "gaps": [
-    "No browser test of the framework's own pages: the dashboard's and the UX suite's JavaScript (app.js, ux.js, look.js) run only in a person's browser; the tests prove the data and the server behind them.",
-    "The UX team's rounds and designs are headless Claude Code runs and its screenshots need Playwright's Chromium: both are stood in by the tests, no real round has been proven by a test.",
-    "The deploy step needs helm (and terraform for its fmt and validate) on the machine; without terraform that part is skipped with a visible line, not proven.",
-    "The CVE audit needs the network (uv resolves the pinned tools, pip-audit asks the advisories): offline the audit step is red, never green.",
-    "Without git there is no release certificate: check.sh stops and check-all.sh proves the tree but certifies nothing until the repository has commits.",
-    "The coverage baseline starts empty: the first green full run with a commit sets it, and until then the rule that every changed line is covered is skipped."
-  ]
+   ],
+   "tests": [
+    "test_template::test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_once_its_part_does",
+    "test_template::test_the_ux_suite_walks_the_local_stack_the_deploy_template_names",
+    "test_template::test_the_framework_and_the_agreement_name_the_default_layout",
+    "test_repair::test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes",
+    "test_repair::test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote",
+    "test_repair::test_a_move_never_overwrites_it_says_so_instead",
+    "test_repair::test_the_crissp_folder_keeps_its_own_walks_and_a_gitignore_is_made_when_there_is_none"
+   ]
+  },
+  {
+   "id": "F-09-dashboard-of-this-project",
+   "title": "F-09: crissp dashboard opened another project's dashboard",
+   "problem": "test.sh reused any crissp dashboard answering on the port without checking which project it served: with one project's dashboard running, crissp dashboard in a second project opened the first, so the second's tests and UX results seemed missing. The crissp tool's dashboard action had the same check.",
+   "fix": "The stamp (/dashboard/stamp) names the project it serves; lib/place.py picks the port: this project's dashboard is reused, another project's (or one that does not say whose) is left alone and the next free port taken with a note, a program that is no dashboard on the asked port stops it with a clear message. The tool's served() also requires the stamp to name its project.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/place.py",
+     "symbol": "def place("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def served("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "/dashboard/stamp"
+    }
+   ],
+   "tests": [
+    "test_place::test_another_projects_dashboard_is_left_alone_and_the_next_port_taken",
+    "test_place::test_this_projects_dashboard_is_reused",
+    "test_crissp_tool::test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it",
+    "test_crissp_tool::test_served_is_only_this_projects_dashboard",
+    "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite"
+   ]
+  },
+  {
+   "id": "F-08-baseline-only-when-it-moves",
+   "title": "F-08: every green full run asked for a commit that only recorded a hash",
+   "problem": "The gate rewrote coverage-baseline.json on every green run of every suite, with only a new commit hash when no number changed, so every full run ended with 'the coverage baseline went up: commit …'.",
+   "fix": "lib/gate.py writes the baseline only when something moves: no baseline yet, --accept, a number that changed, or a commit the diff rule needs (none recorded, or one git no longer knows). Otherwise the older commit stays: the next diff rule looks back further, stricter, never laxer.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/gate.py",
+     "symbol": "def check("
+    }
+   ],
+   "tests": [
+    "test_gate::test_a_green_run_that_changes_no_number_leaves_the_baseline_as_it_is",
+    "test_gate::test_a_run_of_some_suites_keeps_the_baseline_commit",
+    "test_gate::test_a_baseline_commit_git_does_not_know_is_skipped_never_a_crash"
+   ]
+  },
+  {
+   "id": "F-01-guard-options",
+   "title": "F-01: crissp refused every option meant for a guard",
+   "problem": "crissp check --plan, crissp deploy --cluster and crissp ux --shoot <walk> were refused: argparse's REMAINDER does not pass a leading --option on to a subcommand.",
+   "fix": "src/crissp/cli.py splits the command line at the guard's name and passes the rest to the guard untouched.",
+   "sources": [
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def split("
+    }
+   ],
+   "tests": [
+    "test_cli::test_a_guards_options_pass_through",
+    "test_cli::test_root_before_the_command_still_names_the_project"
+   ]
+  },
+  {
+   "id": "F-02-approve-installed",
+   "title": "F-02: approving a design failed in an installed project",
+   "problem": "The UX suite looked for the crissp tool only inside the project; a project made with crissp init has none, so Approve answered 400.",
+   "fix": "ux_backlog.tool() uses the project's own crissp/tool, else the engine's; designs show before and after with Approve, Approve with a remark, Again and Reject, and a remark comes first in the PBI.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_backlog.py",
+     "symbol": "def tool("
+    },
+    {
+     "file": "crissp/uxsuite/ux_backlog.py",
+     "symbol": "def file_pbi("
+    }
+   ],
+   "tests": [
+    "test_ux_verdicts::test_an_installed_project_writes_with_the_engines_tool",
+    "test_ux_verdicts::test_an_approval_with_a_remark_carries_the_remark_into_the_pbi"
+   ]
+  },
+  {
+   "id": "F-03-pytest-and-ux-test",
+   "title": "F-03: pytest 9.0.3, and a UX test that read the wrong project",
+   "problem": "The CVE audit flagged pytest 8.4.2 (PYSEC-2026-1845); a UX test inherited the run's CRISSP_ROOT and read this repository during a full run.",
+   "fix": "pytest 9.0.3 pinned in crissp/testsuite/requirements.txt; the test starts ux.sh without CRISSP_ROOT.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/requirements.txt",
+     "symbol": "pytest=="
+    }
+   ],
+   "tests": [
+    "test_ux_cli::test_ux_sh_lists_reports_and_refuses_what_it_does_not_know"
+   ]
+  },
+  {
+   "id": "F-04-speak-the-command",
+   "title": "F-04: an installed project's guards named script paths it does not have",
+   "problem": "In a project made with crissp init the guards said 'crissp/deploy.sh may go', 'run crissp/check-all.sh': files that only exist in a repository that carries the framework.",
+   "fix": "The crissp command sets CRISSP_COMMAND; project.speak() and the Speaking stream every guard writes through name crissp check, check-all, deploy, dashboard and ux instead; deploy.sh's messages and the UX suite's (and the PBIs it writes) do the same.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/project.py",
+     "symbol": "def speak("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def engine_env("
+    }
+   ],
+   "tests": [
+    "test_project::test_the_guards_speak_the_crissp_command_when_they_run_as_it",
+    "test_cli::test_the_engine_is_told_it_runs_as_the_crissp_command",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
+  },
+  {
+   "id": "F-06-first-full-run",
+   "title": "F-06: the first full run did not say what was left",
+   "problem": "A new project's first green full run ended with 'the coverage baseline went up: commit …', which a new user could not place.",
+   "fix": "check.py tells a first baseline (not in git yet) from a raised one, and for the first says plainly: commit it, then crissp check moves the certificate, with the exact commands.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def everything("
+    }
+   ],
+   "tests": [
+    "test_check_scripts::test_the_first_full_run_says_plainly_what_is_left",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
+  },
+  {
+   "id": "check-without-git",
+   "title": "check.sh crashed outside a git checkout",
+   "problem": "The repository was taken out of git to become a project of its own; check.sh then failed on git commands with no clear reason, and check-all.sh refused to prove the tree at all.",
+   "fix": "lib/check.py (check.sh and check-all.sh are its doors) asks first whether the project is a git checkout: check.sh stops with exit 2 and says to run git init and commit; check-all.sh still runs every step for proof and writes no release certificate.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def changed("
+    },
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def everything("
+    }
+   ],
+   "tests": [
+    "test_check_scripts::test_without_git_check_sh_says_so_and_check_all_still_proves_the_tree",
+    "test_check_scripts::test_the_doors_run_check_py_for_their_own_project"
+   ]
+  },
+  {
+   "id": "parts-from-configuration",
+   "title": "The guards named one product's parts in their code",
+   "problem": "impact.py, run.sh, the gate, the certificate, setup and the audit named a backend, a frontend and their tools in code, so every other product had to edit the framework itself.",
+   "fix": "One configuration, crissp/testsuite/suites.json (lib/project.py), describes the product's steps (folder, command, coverage, gate), what a change runs (paths), its shared ground, setup and audit; every guard reads it, and run.py runs the steps.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/project.py",
+     "symbol": "def parse("
+    },
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def classify("
+    },
+    {
+     "file": "crissp/testsuite/lib/run.py",
+     "symbol": "def run_step("
+    }
+   ],
+   "tests": [
+    "test_project",
+    "test_impact::test_a_part_runs_the_steps_its_rule_names_and_a_gated_part_brings_the_gate",
+    "test_run::test_the_full_run_runs_every_step_in_its_folder_and_writes_what_it_proved",
+    "test_release_gate::test_the_needed_steps_are_the_steps_of_the_full_run",
+    "test_gate::test_the_gate_holds_the_suites_the_product_gates"
+   ]
+  },
+  {
+   "id": "project-not-code-location",
+   "title": "The tools found the project from their own file location",
+   "problem": "Every library reached the repository's root with Path(__file__).parents[n], so the engine could not live apart from a project's data.",
+   "fix": "The project is CRISSP_ROOT or the current directory (the scripts export CRISSP_ROOT); only the engine's own files (the dashboard page, the look, the UX page) are found next to the code.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/project.py",
+     "symbol": "def root("
+    },
+    {
+     "file": "crissp/uxsuite/ux_config.py",
+     "symbol": "def project_root("
+    }
+   ],
+   "tests": [
+    "test_project::test_the_project_is_crissp_root_or_the_current_directory",
+    "test_ux_api::test_by_default_it_is_the_suite_of_the_project_it_works_for",
+    "test_crissp_tool::test_it_works_for_the_project_it_is_started_in"
+   ]
+  },
+  {
+   "id": "one-server-one-look",
+   "title": "The Tests dashboard and the UX suite looked different and ran apart",
+   "problem": "The dashboard and the UX suite had their own looks, ports and servers, and nothing linked an approved design to the PBI it became.",
+   "fix": "One local server (lib/serve.py) serves /dashboard/, /ux/ and the shared look in crissp/look (tokens, font, theme, water), and nothing else of the repository; an approved design becomes a PBI through the crissp tool, and the board links it back.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def translate_path("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "UX_MARK"
+    }
+   ],
+   "tests": [
+    "test_serve::test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite",
+    "test_serve::test_nothing_else_of_the_repository_is_served",
+    "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
+    "test_ux_verdicts::test_an_approved_design_becomes_one_pbi_in_the_backlog_s_own_format"
+   ]
+  }
+ ],
+ "gaps": [
+  "No browser test of the framework's own pages: the dashboard's and the UX suite's JavaScript (app.js, ux.js, look.js) run only in a person's browser; the tests prove the data and the server behind them.",
+  "The UX team's rounds and designs are headless Claude Code runs and its screenshots need Playwright's Chromium: both are stood in by the tests, no real round has been proven by a test.",
+  "The deploy step needs helm (and terraform for its fmt and validate) on the machine; without terraform that part is skipped with a visible line, not proven.",
+  "The CVE audit needs the network (uv resolves the pinned tools, pip-audit asks the advisories): offline the audit step is red, never green.",
+  "Without git there is no release certificate: check.sh stops and check-all.sh proves the tree but certifies nothing until the repository has commits.",
+  "The coverage baseline starts empty: the first green full run with a commit sets it, and until then the rule that every changed line is covered is skipped."
+ ]
 }

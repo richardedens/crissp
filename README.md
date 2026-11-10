@@ -105,6 +105,7 @@ diff first.
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
 | `crissp dashboard` | The Tests dashboard, the backlog board and the UX team on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
+| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files); `--yes` puts it in place, never deleting or committing |
 | `crissp mcp` | The crissp MCP server that Claude Code starts from `.mcp.json` |
 
 The framework itself is described in [crissp/CRISSP.md](crissp/CRISSP.md).

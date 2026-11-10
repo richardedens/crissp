@@ -13,7 +13,8 @@ instead of reading the backlog files; write findings, decisions, epics, features
 
 - **C.R.I.S.S.P.** is open source (Apache-2.0, see LICENSE and NOTICE) and ships as the Python package `crissp` on
   PyPI. People run `uvx crissp init` to bring a project in, then `crissp check`, `check-all`, `deploy`, `dashboard`,
-  `ux` and `mcp`. Texts, code, commits, docs, backlog and release notes are English.
+  `ux`, `repair` and `mcp`. A product's default place is `app/backend/`, `app/frontend/` and `docker-compose.yml`
+  (D-02). Texts, code, commits, docs, backlog and release notes are English.
 - This repository is both the source of the package and a C.R.I.S.S.P. project of its own:
   - `src/crissp/` — the `crissp` command (`cli.py`). Installed, the engine is package data under `crissp/engine/`.
   - `crissp/` — the engine, exactly as it ships: the guards (`check.sh`, `check-all.sh`, `deploy.sh`, `test.sh`,

@@ -91,11 +91,11 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     assert (project / "crissp" / "CLAUDE.md").read_text() == "ours\n" and "kept" in again
 
     # a tiny product, then the full run in its own repository
-    (project / "src").mkdir()
-    (project / "src" / "example.py").write_text("def double(x):\n    return 2 * x\n")
-    (project / "tests").mkdir()
-    (project / "tests" / "conftest.py").write_text('import sys\n\nsys.path.insert(0, "src")\n')
-    (project / "tests" / "test_example.py").write_text(
+    backend = project / "app" / "backend"  # D-02: the default layout
+    (backend / "tests").mkdir(parents=True)
+    (backend / "example.py").write_text("def double(x):\n    return 2 * x\n")
+    (backend / "tests" / "conftest.py").write_text('import sys\n\nsys.path.insert(0, ".")\n')
+    (backend / "tests" / "test_example.py").write_text(
         "from example import double\n\n\ndef test_double():\n    assert double(2) == 4\n")
     run(["git", "add", "-A"], project, env)
     run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed and committed

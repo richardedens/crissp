@@ -4,7 +4,7 @@
  "audience": "CRISSP: who uses it (and who should be able to).",
  "ui_language": "CRISSP: the language of the UI",
  "report_language": "English",
- "url": "http://127.0.0.1:5173",
+ "url": "http://127.0.0.1:8080",
  "rounds": 2,
  "parallel": 3,
  "backlog": {

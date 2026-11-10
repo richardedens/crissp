@@ -6,7 +6,8 @@ proposal, and an approved one becomes a PBI. The engine is the C.R.I.S.S.P. fram
 
 To fill in when CRISSPifying (the `CRISSP:` hints in `team.json`):
 
-1. `team.json`: what {{PRODUCT}} is, who uses it, the language of its texts, and the URL it runs on locally. Change the
+1. `team.json`: what {{PRODUCT}} is, who uses it, the language of its texts, and the URL it runs on locally (the
+   Compose stack, `http://127.0.0.1:8080` by default; not a dev server, not a prototype). Change the
    five personas into the product's own people; keep one moderator.
 2. `walks/`: one file per path a person takes through the product (`goto`, `click`, `fill`, `press`, `wait`, `shot`).
    `first-visit.json` is the first.

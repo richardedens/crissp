@@ -8,6 +8,8 @@
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
     crissp dashboard          the Tests dashboard and the UX suite on one local server (crissp/test.sh --dashboard)
     crissp ux [...]           the UX suite (crissp/ux.sh: --list, --status, --shoot, --round, --propose)
+    crissp repair [--yes]     say what this project has out of place (old steps on src/, a UX suite walking a dev
+                              server, files in crissp/uxsuite/); --yes puts it in place, never deleting or committing
     crissp mcp                the crissp MCP server on stdin/stdout (.mcp.json starts it)
     crissp --version
 
@@ -151,6 +153,8 @@ def parser() -> argparse.ArgumentParser:
                         ("ux", "the UX suite (--list, --status, --shoot, --round, --propose)")):
         sub.add_parser(name, help=help_, add_help=False)  # its options belong to the guard: passed on untouched
     sub.add_parser("dashboard", help="the Tests dashboard and the UX suite on 127.0.0.1")
+    r = sub.add_parser("repair", help="what this project has out of place; --yes puts it in place")
+    r.add_argument("--yes", action="store_true", help="put it in place (never deletes, never commits)")
     sub.add_parser("mcp", help="the crissp MCP server on stdin/stdout")
     return p
 
@@ -177,6 +181,9 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     root = Path(args.root).resolve() if args.root else find_root(Path(os.getcwd()).resolve(), env)
     if args.command == "dashboard":
         return run_script(root, "test.sh", ["--dashboard"], env)
+    if args.command == "repair":
+        return subprocess.run([sys.executable, str(ENGINE / "testsuite" / "lib" / "repair.py"), *(["--yes"] if args.yes else [])],
+                              cwd=root, env=engine_env(root, env)).returncode
     if args.command == "mcp":
         return subprocess.run([sys.executable, "-I", str(ENGINE / "tool" / "server.py")], cwd=root,
                               env=engine_env(root, env)).returncode
