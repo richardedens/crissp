@@ -1,6 +1,26 @@
 {
  "changes": [
   {
+   "id": "F-11-moderator-check-of-a-design",
+   "title": "F-11: a design had no moderator result",
+   "problem": "In a design run the moderator checked the design and had the designer fix it once, but wrote nothing down. proposal.json held only the designer's part, so neither the results nor the UX suite showed the moderator's word on a design. A round does have it, in round.json.",
+   "fix": "The proposal prompt names the moderator and has it write check.json (verdict ready / ready-with-remarks / not-ready, summary, found with fixed or not, remaining) before the run may say done. versions() carries it as `check`, and the Designs tab shows it under the design, or says that a finished design has none.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "check.json"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function moderatorCheck("
+    }
+   ],
+   "tests": [
+    "test_ux_team::test_the_moderator_writes_its_check_of_a_design_and_the_design_carries_it",
+    "test_ux_team::test_a_proposal_reads_the_last_round_the_agreement_and_the_focus"
+   ]
+  },
+  {
    "id": "F-10-default-layout-and-repair",
    "title": "F-10: the framework named no place for the product, and nothing put a project back in place",
    "problem": "CRISSP.md only said 'the root keeps the product'. The template's steps pointed at src/ with no `when`, its UX suite walked a Vite dev server (127.0.0.1:5173), and deploy.json expected app/backend and app/frontend. So a first session hand-built a prototype inside crissp/uxsuite/ and served it as the product. The template's agreement also named a crissp/tool an installed project does not have.",

@@ -21,6 +21,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
   It also says what needs you, such as no commit yet or no `docker-compose.yml`. It never deletes, never commits and
   never changes the backlog's content.
+- **A design has the moderator's check**: the moderator now writes down what it found in a design (a verdict: ready,
+  ready with remarks or not ready; what the designer fixed; what still stands), and the UX suite shows it under the
+  design. A finished design without a check says so. Before, the check happened but left nothing behind.
 - The template's agreement says the crissp tools come from the crissp MCP server in `.mcp.json`, not from a
   `crissp/tool` folder that an installed project does not have.
 

@@ -227,7 +227,7 @@ them.
   others (agree, disagree, nuance — and why); then the moderator's **verdict**: what is right, what is wrong (worst
   first; who raised, agreed, disputed), where they still disagree, and proposed findings.
 - **The results build up** in `crissp/uxsuite/results/` (git-ignored): every round's reviews, debate and advice, every
-  design, and the product owner's verdict on each (*agree · disagree · later*, with a reason). An approved design
+  design with the moderator's check of it, and the product owner's verdict on each (*agree · disagree · later*, with a reason). An approved design
   becomes a PBI through the crissp tool's own writer; the board links it back to its design. Nothing else writes to
   the backlog by itself.
 - **One place to look**: the UX suite runs on the same local server as the Tests dashboard (`crissp dashboard`), in the

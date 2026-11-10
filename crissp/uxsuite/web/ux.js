@@ -82,6 +82,18 @@
       }).join("") || '<div class="card">No round yet. <button class="ghost" data-request="round" data-walk="' + esc(w.id) + '">Ask for a round</button></div>');
   }
 
+  /* The moderator's word on a design (check.json, F-11): its verdict, what it found and whether the designer fixed it,
+     and what still stands. A finished design without one says so instead of looking complete. */
+  function moderatorCheck(p) {
+    const c = p.check;
+    if (!c) return p.status?.phase === "done" ? '<p class="small muted">The moderator wrote no check of this design.</p>' : "";
+    const tone = c.verdict === "ready" ? "passed" : c.verdict === "not-ready" ? "failed" : "missing";
+    return `<div class="label">The moderator's check${c.moderator ? " (" + esc(c.moderator) + ")" : ""} ${badge(tone, c.verdict || "?")}</div>
+      ${c.summary ? `<p>${esc(c.summary)}</p>` : ""}
+      ${(c.found || []).length ? `<ul>${c.found.map(x => `<li>${badge(x.severity || "should", x.severity || "should")} ${esc(x.what)} <span class="small muted">${x.fixed ? "fixed" : "still open"}</span></li>`).join("")}</ul>` : ""}
+      ${(c.remaining || []).length ? `<div class="label">Still stands</div><ul>${c.remaining.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}`;
+  }
+
   function proposals() {
     const w = walkOf(query.get("walk"));
     if (!w) return '<div class="card">No walks yet.</div>';
@@ -96,7 +108,8 @@
           ${res ? `<div class="decide">${verdictButtons(p.key, [["approve", "Approve"], ["approve-remark", "Approve with a remark…"], ["redo", "Again, with…"], ["reject", "Reject"]])}<span class="small muted">Approve makes it a backlog item (a remark goes with it); Again asks the designer for the next version.</span></div>` : ""}
           ${p.request?.focus ? `<p class="small muted">Focus: ${esc(p.request.focus)}</p>` : ""}
           ${res ? `<p>${esc(res.summary)}</p>${(res.changes || []).length ? `<ol>${res.changes.map(c => `<li>${badge(c.priority || "should", c.priority || "should")} ${esc(c.what)} <span class="small muted">${esc(c.why)}</span></li>`).join("")}</ol>` : ""}
-            ${(res.open_questions || []).length ? `<div class="label">Open questions</div><ul>${res.open_questions.map(q => `<li>${esc(q)}</li>`).join("")}</ul>` : ""}` : `<p class="small muted">${esc(p.status.note || "")}</p>`}
+            ${(res.open_questions || []).length ? `<div class="label">Open questions</div><ul>${res.open_questions.map(q => `<li>${esc(q)}</li>`).join("")}</ul>` : ""}
+            ${moderatorCheck(p)}` : `<p class="small muted">${esc(p.status.note || "")}</p>`}
 </article>`;
       }).join("") || '<div class="card">No design yet.</div>');
   }

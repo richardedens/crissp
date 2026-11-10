@@ -85,7 +85,7 @@ def versions(suite: Suite, kind: str, walk: str) -> list[dict]:
             status = {**status, "phase": "failed", "note": f"the run stopped (exit code {proc.returncode})"}
         rel = vdir.relative_to(suite.results).as_posix()
         out.append({"version": n, "key": f"{walk}#{PREFIX[kind]}{n}", "request": _load(vdir / "request.json"),
-                    "status": status, "result": _load(vdir / RESULT[kind]),
+                    "status": status, "result": _load(vdir / RESULT[kind]), "check": _load(vdir / "check.json"),
                     "mockup": f"/ux/results/{rel}/mockup.html" if (vdir / "mockup.html").is_file() else None})
     return out
 
@@ -290,6 +290,7 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 
 
 def proposal_prompt(suite: Suite, conf: dict, walk: dict, vdir: Path, seen: list[dict], focus: str) -> str:
+    moderator = next(p["key"] for p in conf["personas"] if p["moderator"])
     return _common(suite, conf, walk, vdir, seen) + f"""
 THE PRODUCT OWNER'S FOCUS for this design: {focus or '(none given: the must-advice of the last round first)'}
 The last round's advice is in {vdir}/inputs/round.json when there was one; earlier designs and the verdicts on them are
@@ -306,10 +307,14 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
      under @media (prefers-color-scheme: dark) and :root[data-theme="dark"]; every colour a token), in the product's own
      language and look, with each change marked by a small numbered badge in the order of "changes". The real state a
      person sees, not a wireframe.
-2. check — the moderator (description "check") holds the design against the advice, the focus and the principles (a
-   must-change missing, something vital behind a scroll, a crowded screen, a feature dropped) and has the designer fix it
-   once.
-3. done — status.json with phase "done" and a one-line note.
+2. check — the moderator ({moderator}, description "check") holds the design against the advice, the focus and the
+   principles (a must-change missing, something vital behind a scroll, a crowded screen, a feature dropped), has the
+   designer fix it once, and then writes what it found, so the product owner reads the moderator's word next to the
+   design:
+   - {vdir}/check.json: {{"moderator": "{moderator}", "verdict": "ready|ready-with-remarks|not-ready", "summary" (two
+     sentences: does the design answer the advice and the focus), "found": [{{"what", "severity": "must|should|could",
+     "fixed": true|false}}], "remaining": [what still stands after the fix, worst first]}}.
+3. done — only once check.json is written: status.json with phase "done" and a one-line note.
 """ + FOREGROUND
 
 

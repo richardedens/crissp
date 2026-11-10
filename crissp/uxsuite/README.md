@@ -42,7 +42,8 @@ instructions to them; no real customer data goes into a walk or a fixture.
 - **A design**: shown **before and after**: the walk's own screenshot (laptop or phone) next to the mockup, the same
   size, with the verdict right under it: approve · approve with a remark… (the remark comes first in the PBI's What,
   so the builder reads it before the changes) · again, with… (the reason is the next design's focus) · reject (with a
-  reason).
+  reason). Under it is **the moderator's check** (`check.json`): its verdict (ready · ready with remarks · not ready),
+  what it found and whether the designer fixed it, and what still stands. A finished design without one says so.
 - **An approved design** becomes one PBI, written by the crissp tool (the project's `crissp/tool/server.py`, else the
   package's own) in the backlog's own
   format: in the epic `backlog.epic` names, or the open epic titled `backlog.epic_title` (default *UX: approved

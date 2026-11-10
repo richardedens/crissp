@@ -64,6 +64,23 @@ def test_a_proposal_reads_the_last_round_the_agreement_and_the_focus(product, mo
     finish(product, "proposal", "first-visit", 1, PROPOSAL)
     v = ux_team.versions(product, "proposal", "first-visit")[0]
     assert v["mockup"] == "/ux/results/proposals/first-visit/v1/mockup.html" and v["result"] == PROPOSAL
+    assert v["check"] is None  # F-11: a design whose moderator wrote nothing says so (the suite shows it as missing)
+
+
+def test_the_moderator_writes_its_check_of_a_design_and_the_design_carries_it(product):
+    add_shots(product)
+    ux_team.start(product, _conf(product), "proposal", "first-visit")
+    prompt = ux_team.popen.started[0].cmd[2]
+    vdir = product.results / "proposals" / "first-visit" / "v1"
+    moderator = next(p for p in _conf(product)["personas"] if p["moderator"])
+    assert f"{vdir}/check.json" in prompt and f'"moderator": "{moderator["key"]}"' in prompt
+    assert '"verdict": "ready|ready-with-remarks|not-ready"' in prompt and '"fixed": true|false' in prompt
+    assert "3. done — only once check.json is written" in prompt
+    check = {"moderator": moderator["key"], "verdict": "ready-with-remarks", "summary": "The must-change is in.",
+             "found": [{"what": "The button sat below the fold", "severity": "must", "fixed": True}], "remaining": []}
+    finish(product, "proposal", "first-visit", 1, PROPOSAL)
+    (vdir / "check.json").write_text(json.dumps(check))
+    assert ux_team.versions(product, "proposal", "first-visit")[0]["check"] == check
 
 
 def test_a_proposal_without_a_round_says_so_in_its_brief(product):
