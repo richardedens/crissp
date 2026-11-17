@@ -46,7 +46,7 @@ Tests      test_timing_plugin: a real pytest run on a tiny project, with and wit
            written.
 Depends    E1-F1-02
 
-### E1-F1-04 · The /workers page                                                         [doing] [M]
+### E1-F1-04 · The /workers page                                                         [review] [M]
 Why        The product owner wants to see the tests divided amongst the processors and memory, while it runs.
 What       On the dashboard server: /workers (and /dashboard/workers.json). The machine (CPUs, memory, available) and
            per running or recent step its worker count and why, progress (done of collected, an estimate of what is
