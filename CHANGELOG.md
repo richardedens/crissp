@@ -2,7 +2,7 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.1 — unreleased
+## 0.1.2 — unreleased
 
 - **Tests run in parallel, sized to the machine.** A step that says `"parallel": true` spreads its tests over as many
   workers as this machine can take. That is the tightest of three limits: the CPUs less one, three quarters of the
@@ -20,6 +20,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
     how much of the step it was busy.
 
   Every test is recorded as it finishes, per worker, in `crissp/testsuite/results/timing/`.
+
+## 0.1.1 — 2026-11-10
 
 - **The product has a default place**: `app/backend/`, `app/frontend/` and `docker-compose.yml` at the root. A new
   project's steps (`backend`, `backend-lint`, `frontend`) appear once their part exists, so `crissp check-all` is green
