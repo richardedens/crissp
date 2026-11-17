@@ -1,6 +1,29 @@
 {
  "changes": [
   {
+   "id": "E1-F1-03-timing-per-worker",
+   "title": "E1-F1-03: every test as it finishes, per worker",
+   "problem": "A run left only its JUnit file at the end: nothing said, while it ran, which worker ran what, since when, or what failed.",
+   "fix": "lib/pytest_plugin/crissp_timing.py, loaded by covered (-p crissp_timing, its own folder on PYTHONPATH), writes results/timing/<step>.jsonl: start (WORKERS and WORKERS_WHY), collected, every test as it finishes (outcome, seconds, worker), finish. Each xdist worker replaces <step>.now.<worker>.json with the test it runs now. A pytest a test starts itself stays quiet; a write that fails is dropped. run.py names the folder and clears the step's timing at the start.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/pytest_plugin/crissp_timing.py",
+     "symbol": "def pytest_runtest_logreport("
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "-p crissp_timing"
+    }
+   ],
+   "tests": [
+    "test_timing::test_one_process_writes_every_test_as_it_finishes",
+    "test_timing::test_xdist_workers_say_their_name_and_what_they_run_now",
+    "test_timing::test_a_place_that_cannot_be_written_never_fails_a_test",
+    "test_run::test_every_step_s_pytest_writes_its_timing_where_the_run_says",
+    "test_run::test_covered_loads_the_timing_plugin_when_the_run_names_it"
+   ]
+  },
+  {
    "id": "E1-F1-02-parallel-steps",
    "title": "E1-F1-02: a step's tests in parallel processes, coverage still whole",
    "problem": "Every step ran its tests one at a time in one process, on one of the machine's CPUs.",

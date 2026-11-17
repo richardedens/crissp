@@ -207,3 +207,31 @@ def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_cov
 
 def test_the_pinned_tools_carry_pytest_xdist():
     assert any(line.startswith("pytest-xdist==") for line in run.TOOLS.read_text().splitlines())
+
+
+def test_every_step_s_pytest_writes_its_timing_where_the_run_says(shop, monkeypatch):  # E1-F1-03
+    monkeypatch.setenv("CRISSP_TIMING_DIR", "/from/the/shell")
+    step = run.project.load(shop)["steps"][0]
+    env = run.env_for(step, shop, results(shop))
+    assert env["CRISSP_TIMING_DIR"] == str(results(shop) / "timing")
+    assert env["CRISSP_PLUGINS"] == str(LIB / "pytest_plugin")
+    timing = results(shop) / "timing"
+    timing.mkdir(parents=True)
+    for name in ("unit.jsonl", "unit.now.gw0.json", "lint.jsonl"):  # the last run's
+        (timing / name).write_text("old")
+    run.clear([step], results(shop))
+    assert sorted(p.name for p in timing.iterdir()) == ["lint.jsonl"]  # only the steps of this run start afresh
+
+
+def test_covered_loads_the_timing_plugin_when_the_run_names_it(tmp_path):  # E1-F1-03
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $* PYTHONPATH=$PYTHONPATH" >> "$RESULTS/calls"\n')
+    (bin_ / "py").chmod(0o755)
+    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
+           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "CRISSP_PLUGINS": "/engine/plugins",
+           "PYTHONPATH": "/theirs"}
+    assert subprocess.run(["bash", "-c", "covered tests"], env=env).returncode == 0
+    first = (tmp_path / "calls").read_text().splitlines()[0]
+    assert "-m pytest -q -p no:cacheprovider -p crissp_timing --junitxml=J.xml tests" in first
+    assert first.endswith("PYTHONPATH=/engine/plugins:/theirs")  # theirs kept, after the plugin's folder

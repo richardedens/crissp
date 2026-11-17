@@ -8,6 +8,7 @@
 #       Coverage is measured one way, on one worker or many (results/coverage-<step>.rc: parallel, patch = subprocess,
 #       then combine): the gate sees the same numbers on every machine. With WORKERS above 1 (a parallel step, lib/run.py:
 #       what this machine gives it) the tests spread over that many pytest-xdist workers, a file on one (--dist loadfile).
+#       With CRISSP_PLUGINS (lib/run.py) it loads crissp_timing: every test as it finishes, per worker, for /workers.
 py() {
   if [ -n "${PY:-}" ]; then "$PY" "$@"; else uv run --quiet --no-project --with-requirements "$TOOLS" python "$@"; fi
 }
@@ -17,6 +18,11 @@ covered() {
     if [ -n "${COVERAGE_SOURCES:-}" ]; then printf 'source = %s\n' "$COVERAGE_SOURCES"; fi
     if [ -n "${COVERAGE_OMIT:-}" ]; then printf 'omit = %s\n' "$COVERAGE_OMIT"; fi; } > "$rc"
   if [ "${WORKERS:-1}" -gt 1 ] 2>/dev/null; then spread=(-n "$WORKERS" --dist loadfile); fi
+  if [ -n "${CRISSP_PLUGINS:-}" ]; then  # every test as it finishes, per worker (lib/pytest_plugin/crissp_timing.py)
+    local PYTHONPATH="$CRISSP_PLUGINS${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH
+    spread=(-p crissp_timing ${spread[@]+"${spread[@]}"})
+  fi
   py -m coverage run --rcfile="$rc" -m pytest -q -p no:cacheprovider ${spread[@]+"${spread[@]}"} --junitxml="$JUNIT" "$@" \
     || status=$?
   py -m coverage combine --rcfile="$rc" -q || status=1

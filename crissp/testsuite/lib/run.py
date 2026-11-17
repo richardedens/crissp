@@ -10,7 +10,8 @@ lib/steps.sh at hand. Each step's output is results/<step>.log; results/steps.js
 this run and results/steps.jsonl has each step's label and duration too. The coverage gate is a step of its own
 (lib/gate.py), for the gated steps this run measured. crissp/testsuite/run.sh runs lib/setup_plan.py first.
 A parallel step (E1-F1) gets WORKERS and WORKERS_WHY: how many workers this machine gives it, and the limit that
-decided it (lib/workers.py); the run prints them and steps.jsonl keeps them.
+decided it (lib/workers.py); the run prints them and steps.jsonl keeps them. Every step's pytest writes each test as
+it finishes into results/timing/ (CRISSP_TIMING_DIR, lib/pytest_plugin/crissp_timing.py): what /workers shows.
 """
 
 import json
@@ -27,6 +28,7 @@ import workers  # noqa: E402
 
 TOOLS = ENGINE.parent / "requirements.txt"  # the pinned test tools (pytest, pytest-xdist, coverage, ruff): one place
 HELPERS = ENGINE / "steps.sh"
+PLUGINS = ENGINE / "pytest_plugin"  # crissp_timing: every test as it finishes, per worker (E1-F1-03)
 
 
 def select(every: list[dict], quick: bool, wanted: list[str]) -> list[dict]:
@@ -48,7 +50,8 @@ def env_for(step: dict, root: Path, results: Path) -> dict:
     key = step["key"]
     env = {**os.environ, "CRISSP_ROOT": str(root), "RESULTS": str(results), "STEP": key, "TOOLS": str(TOOLS),
            "JUNIT": str(results / f"{key}.xml"), "COVERAGE_JSON": str(results / f"coverage-{key}.json"),
-           "COVERAGE_FILE": str(results / f".coverage-{key}"), "BASH_ENV": str(HELPERS)}
+           "COVERAGE_FILE": str(results / f".coverage-{key}"), "BASH_ENV": str(HELPERS),
+           "CRISSP_TIMING_DIR": str(results / "timing"), "CRISSP_PLUGINS": str(PLUGINS)}
     for name, value in (("COVERAGE_SOURCES", ",".join(str(root / s) for s in step["sources"])),
                         ("COVERAGE_OMIT", ",".join(step["omit"])),
                         ("COVERAGE_FAIL_UNDER", "" if step["fail_under"] is None else f"{step['fail_under']:g}")):
@@ -94,6 +97,8 @@ def clear(chosen: list[dict], results: Path) -> None:
             (results / name).unlink(missing_ok=True)
         for part in results.glob(f".coverage-{s['key']}.*"):  # a parallel step's workers' data a stopped run left
             part.unlink()
+        for part in [results / "timing" / f"{s['key']}.jsonl", *(results / "timing").glob(f"{s['key']}.now.*")]:
+            part.unlink(missing_ok=True)
         if s["key"] == project.GATE:
             (results / "gate.json").unlink(missing_ok=True)
     for name in ("steps.jsonl", "steps.json"):
