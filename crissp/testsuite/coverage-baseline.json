@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "2ebc691b4b8358be6c0731d09713a427d33f6185",
+ "commit": "b032a5358fea2040debd9f0c32a0a830a8c4ba4c",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -45,6 +45,10 @@
      "branch": 100.0,
      "line": 100.0
     },
+    "crissp/testsuite/lib/pytest_plugin/crissp_timing.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
     "crissp/testsuite/lib/release.py": {
      "branch": 100.0,
      "line": 100.0
@@ -66,6 +70,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/setup_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/workers.py": {
      "branch": 100.0,
      "line": 100.0
     },
