@@ -1,6 +1,28 @@
 {
  "changes": [
   {
+   "id": "E1-F1-01-machine-capacity",
+   "title": "E1-F1-01: how many workers a step gets on this machine",
+   "problem": "Nothing in crissp knew the machine it ran on: a run used one CPU, and a fixed worker count would be wrong on every machine but one.",
+   "fix": "lib/workers.py reads the usable CPUs (process_cpu_count, a cgroup cpu.max) and the memory and what is available (macOS sysctl and vm_stat, Linux /proc/meminfo and a cgroup memory.max). A step's workers are the tightest of: the CPUs less one, three quarters of the available memory per memory_mb, and its test files; at least 1; CRISSP_WORKERS overrides. What cannot be read is unknown, never an error.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "def count("
+    },
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "def machine("
+    }
+   ],
+   "tests": [
+    "test_workers::test_a_steps_workers_are_the_tightest_limit",
+    "test_workers::test_linux_reads_proc_and_a_cgroup_limits_both",
+    "test_workers::test_a_mac_counts_its_cpus_its_memory_and_what_is_available",
+    "test_workers::test_what_cannot_be_read_is_unknown_never_an_error"
+   ]
+  },
+  {
    "id": "F-11-moderator-check-of-a-design",
    "title": "F-11: a design had no moderator result",
    "problem": "In a design run the moderator checked the design and had the designer fix it once, but wrote nothing down. proposal.json held only the designer's part, so neither the results nor the UX suite showed the moderator's word on a design. A round does have it, in round.json.",
