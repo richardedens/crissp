@@ -21,7 +21,7 @@ Tests      test_workers: every source read from stand-in files and commands (no 
            the override, unreadable sources falling back.
 Depends    —
 
-### E1-F1-02 · A step's tests in parallel processes, coverage still whole                [doing] [M]
+### E1-F1-02 · A step's tests in parallel processes, coverage still whole                [review] [M]
 Why        The steps run their tests one at a time on one CPU.
 What       suites.json: a step may say `parallel: true` (and `memory_mb`). Then `covered` runs pytest with pytest-xdist
            (pinned in requirements.txt) on the worker count of E1-F1-01, --dist loadfile (a test file stays on one

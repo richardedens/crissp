@@ -123,7 +123,8 @@ def main(argv: list[str], root: Path | None = None, runner=subprocess.run, out=N
             step = {**step, "workers": n, "workers_why": why}
         print(f"▸ {step['label']:<54}", end="", file=out, flush=True)
         row = run_step(step, root, results, runner)
-        spread = f", {row['workers']} workers" if row.get("workers") else ""
+        n = row.get("workers")
+        spread = f", {n} worker{'s' if n != 1 else ''}" if n else ""
         print(f"{row['status']} ({row['seconds']}s{spread})", file=out, flush=True)
         rows.append(row)
         with open(results / "steps.jsonl", "a") as f:

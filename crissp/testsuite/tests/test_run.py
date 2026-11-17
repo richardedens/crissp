@@ -100,27 +100,32 @@ def test_a_step_the_product_does_not_have_or_a_broken_configuration_is_refused(s
 
 
 def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
-    """lib/steps.sh: pytest under coverage, lines and branches, of the sources; JUnit and JSON where the gate reads them."""
+    """lib/steps.sh: pytest under coverage, lines and branches, of the sources; JUnit and JSON where the gate reads them.
+    Coverage is measured one way on one worker or many (an rcfile: parallel, patch = subprocess, then combine), so the
+    gate sees the same numbers on a 2-CPU runner as on a 16-CPU laptop (E1-F1-02)."""
     bin_ = tmp_path / "bin"
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $*" >> "$RESULTS/calls"\n[ "$*" != "${FAIL_ON:-}" ]\n')
     (bin_ / "py").chmod(0o755)
     env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
-           "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s", "COVERAGE_OMIT": "*/t/*",
+           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s", "COVERAGE_OMIT": "*/t/*",
            "COVERAGE_FAIL_UNDER": "100"}
+    rc = tmp_path / "coverage-unit.rc"
     assert subprocess.run(["bash", "-c", "covered tests -k x"], env=env).returncode == 0
     assert (tmp_path / "calls").read_text().splitlines() == [
-        "py -m coverage run --branch --source=/s --omit=*/t/* -m pytest -q -p no:cacheprovider --junitxml=J.xml tests -k x",
-        "py -m coverage json -q -o C.json", "py -m coverage report --show-missing --fail-under=100"]
-    below = {**env, "FAIL_ON": "-m coverage report --show-missing --fail-under=100"}
+        f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests -k x",
+        f"py -m coverage combine --rcfile={rc} -q", f"py -m coverage json --rcfile={rc} -q -o C.json",
+        f"py -m coverage report --rcfile={rc} --show-missing --fail-under=100"]
+    assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
+                              "disable_warnings = no-data-collected\nsource = /s\nomit = */t/*\n")
+    below = {**env, "FAIL_ON": f"-m coverage report --rcfile={rc} --show-missing --fail-under=100"}
     assert subprocess.run(["bash", "-c", "covered tests"], env=below).returncode == 1  # under fail_under: red
-    red = {**env, "FAIL_ON": "-m coverage run --branch --source=/s --omit=*/t/* -m pytest -q -p no:cacheprovider --junitxml=J.xml"}
+    red = {**env, "FAIL_ON": f"-m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml"}
     assert subprocess.run(["bash", "-c", "covered"], env=red).returncode == 1  # a red test is red
     plain = {k: v for k, v in env.items() if not k.startswith("COVERAGE_") or k == "COVERAGE_JSON"}
     (tmp_path / "calls").unlink()
     assert subprocess.run(["bash", "-c", "covered"], env=plain).returncode == 0
-    assert (tmp_path / "calls").read_text().splitlines()[0] == \
-        "py -m coverage run --branch -m pytest -q -p no:cacheprovider --junitxml=J.xml"
+    assert rc.read_text() == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
 
 
 def test_without_py_it_runs_the_pinned_tools_with_uv(tmp_path):
@@ -153,6 +158,7 @@ MACHINE = {"cpus": 8, "cpu_from": "os.process_cpu_count", "memory_mb": 16384, "a
 def test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so(shop, capsys, monkeypatch):  # E1-F1-02
     monkeypatch.setattr(run.workers, "machine", lambda: MACHINE)
     monkeypatch.setenv("WORKERS", "99")  # never inherited from the shell
+    monkeypatch.delenv("CRISSP_WORKERS", raising=False)
     conf = {"steps": [{"key": "unit", "label": "Unit tests", "dir": "app", "parallel": True, "tests": ["app/tests"],
                        "run": 'echo "workers=$WORKERS ($WORKERS_WHY)"'},
                       {"key": "lint", "label": "Lint", "run": 'echo "workers=${WORKERS:-none}"'}]}
@@ -172,6 +178,8 @@ def test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so(shop, cap
     assert (r / "unit.log").read_text() == "workers=3 (3 test files)\n" and (r / "lint.log").read_text() == "workers=none\n"
     rows = [json.loads(line) for line in (r / "steps.jsonl").read_text().splitlines()]
     assert rows[0]["workers"] == 3 and rows[0]["workers_why"] == "3 test files" and "workers" not in rows[1]
+    monkeypatch.setenv("CRISSP_WORKERS", "1")
+    assert run.main(["run.py"], shop) == 0 and ", 1 worker)" in capsys.readouterr().out
 
 
 def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_coverage(tmp_path):  # E1-F1-02
@@ -191,10 +199,10 @@ def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_cov
     assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
                               "disable_warnings = no-data-collected\nsource = /s,/t\nomit = */t/*\n")
     (tmp_path / "calls").unlink()
-    one = {**env, "WORKERS": "1"}  # one worker: as before, no xdist
+    one = {**env, "WORKERS": "1"}  # one worker: no xdist, coverage measured the same way
     assert subprocess.run(["bash", "-c", "covered tests"], env=one).returncode == 0
     assert (tmp_path / "calls").read_text().splitlines()[0] == \
-        "py -m coverage run --branch --source=/s,/t --omit=*/t/* -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
+        f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
 
 
 def test_the_pinned_tools_carry_pytest_xdist():
