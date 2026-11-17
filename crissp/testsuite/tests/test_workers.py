@@ -83,6 +83,7 @@ def test_the_os_module_without_process_cpu_count_falls_back_to_cpu_count():
         def cpu_count(self):
             return 6
     assert workers.usable_cpus(Old()) == 6
+    assert workers.machine(Path("/nowhere"), commands({}), "win32", Old())["cpu_from"] == "os.cpu_count"
 
 
 @pytest.mark.parametrize("machine, memory_mb, n_files, env, expect", [

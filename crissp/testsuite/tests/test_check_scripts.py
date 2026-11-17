@@ -49,7 +49,7 @@ def product(tmp_path: Path) -> Path:
     (root / "crissp/testsuite/lib").mkdir(parents=True)
     for name in ("check.sh", "check-all.sh"):
         shutil.copy(ROOT / "crissp" / name, root / "crissp" / name)
-    for name in ("check.py", "impact.py", "release.py", "project.py"):
+    for name in ("check.py", "impact.py", "release.py", "project.py", "workers.py"):
         shutil.copy(LIB / name, root / "crissp/testsuite/lib" / name)
     (root / "crissp/testsuite/run.sh").write_text(STAND_IN)
     (root / "crissp/testsuite/setup.sh").write_text('#!/usr/bin/env bash\n[ -z "${SETUP_FAILS:-}" ] || { echo "setup: uv is missing" >&2; exit 1; }\n')
@@ -340,3 +340,22 @@ def test_the_first_full_run_says_plainly_what_is_left(repo, sh):
     assert r.returncode == 0 and "This was the first full run: it wrote the coverage baseline." in r.stdout
     assert "git add crissp/testsuite/coverage-baseline.json && git commit -m \"Coverage baseline\"" in r.stdout
     assert "went up" not in r.stdout
+
+
+def test_the_plan_says_how_many_workers_a_parallel_step_gets_and_why(repo, sh, monkeypatch):  # E1-F1-02
+    sys.path.insert(0, str(LIB))
+    import workers
+    monkeypatch.setattr(workers, "machine", lambda: {"cpus": 8, "cpu_from": "os.process_cpu_count", "memory_mb": 16384,
+                                                     "available_mb": 8192, "memory_from": "x"})
+    monkeypatch.delenv("CRISSP_WORKERS", raising=False)
+    conf = json.loads((repo / "crissp/testsuite/suites.json").read_text())
+    conf["steps"][0]["parallel"] = True
+    (repo / "crissp/testsuite/suites.json").write_text(json.dumps(conf))
+    for name in ("test_a.py", "test_b.py"):
+        (repo / "app/backend/tests").mkdir(parents=True, exist_ok=True)
+        (repo / "app/backend/tests" / name).write_text("")
+    first_commit(repo)
+    assert sh(repo, "check-all.sh").returncode == 0
+    commit(repo, "app/backend/shop/pricing.py", "PRICE = 1\n")
+    r = sh(repo, "check.sh", "--plan")
+    assert r.returncode == 0 and "  Workers: backend 2 (2 test files)\n" in r.stdout

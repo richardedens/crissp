@@ -27,6 +27,7 @@ sys.path.insert(0, str(ENGINE))
 import impact  # noqa: E402
 import project  # noqa: E402
 import release  # noqa: E402
+import workers  # noqa: E402
 
 GENERATED = ":(exclude)crissp/testsuite/coverage-baseline.json"
 NOT_GIT = ("Not a git checkout: crissp/check.sh tests what changed since the last green commit, and there are no commits "
@@ -89,7 +90,19 @@ def script(name: str) -> str:
     return str(SCRIPTS / name)
 
 
-def say_plan(p: dict, since: str, out) -> None:
+def spread(conf: dict, keys: list[str], root: Path, env: dict) -> list[str]:
+    """E1-F1-02: per parallel step of the plan, how many workers this machine gives it and why (the machine is only
+    asked when there is one)."""
+    steps = [s for s in conf["steps"] if s["key"] in keys and s["parallel"]]
+    found = workers.machine() if steps else None
+    out = []
+    for s in steps:
+        n, why = workers.count(found, s["memory_mb"], workers.test_files(root, s["tests"]), env)
+        out.append(f"{s['key']} {n} ({why})")
+    return out
+
+
+def say_plan(p: dict, since: str, out, spread_over: list[str] = ()) -> None:
     print(f"Since {since[:8]}: {len(p['files'])} changed file(s).", file=out)
     if not p["files"]:
         print("  Nothing changed since the last green state.", file=out)
@@ -104,6 +117,8 @@ def say_plan(p: dict, since: str, out) -> None:
         print("  Light checks: " + ", ".join(p["light"]), file=out)
     if p["suites"]:
         print("  Suites: " + ", ".join(p["suites"]), file=out)
+    if spread_over:
+        print("  Workers: " + ", ".join(spread_over), file=out)
     print(f"  About {p['minutes']} min.", file=out)
 
 
@@ -134,11 +149,12 @@ def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None)
             return 1
         since = json.loads(cert_file.read_text())["commit"]
         try:
-            p = impact.plan(impact.changed_since(since, root), project.load(root), root)
+            conf = project.load(root)
+            p = impact.plan(impact.changed_since(since, root), conf, root)
         except (subprocess.CalledProcessError, project.ConfigError) as e:
             print(f"The plan could not be made: {getattr(e, 'stderr', '') or e}".strip(), file=err)
             return 2
-        say_plan(p, since, out)
+        say_plan(p, since, out, spread(conf, p["suites"], root, dict(os.environ)))
         if p["full"]:
             return 3
         if plan_only:

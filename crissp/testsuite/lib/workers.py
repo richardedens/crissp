@@ -90,7 +90,8 @@ def _mac(run) -> tuple[int | None, int | None]:
 def machine(root: Path = Path("/"), run=_command, platform: str = sys.platform, os_=os) -> dict:
     """This machine: its usable CPUs and its memory in MB (total, available), with where each came from."""
     n = usable_cpus(os_)
-    cpus, cpu_from = (n, "os.process_cpu_count") if n else (1, "unknown: 1 CPU assumed")
+    called = "os.process_cpu_count" if hasattr(os_, "process_cpu_count") else "os.cpu_count"  # Python 3.12: cpu_count
+    cpus, cpu_from = (n, called) if n else (1, "unknown: 1 CPU assumed")
     total = available = None
     sources = []
     if platform == "darwin":

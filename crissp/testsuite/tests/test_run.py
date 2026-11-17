@@ -145,3 +145,57 @@ def test_run_as_a_script_it_runs_main(monkeypatch, tmp_path):
     with pytest.raises(SystemExit) as stopped:
         runpy.run_path(str(LIB / "run.py"), run_name="__main__")
     assert stopped.value.code == 2
+
+
+MACHINE = {"cpus": 8, "cpu_from": "os.process_cpu_count", "memory_mb": 16384, "available_mb": 8192, "memory_from": "x"}
+
+
+def test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so(shop, capsys, monkeypatch):  # E1-F1-02
+    monkeypatch.setattr(run.workers, "machine", lambda: MACHINE)
+    monkeypatch.setenv("WORKERS", "99")  # never inherited from the shell
+    conf = {"steps": [{"key": "unit", "label": "Unit tests", "dir": "app", "parallel": True, "tests": ["app/tests"],
+                       "run": 'echo "workers=$WORKERS ($WORKERS_WHY)"'},
+                      {"key": "lint", "label": "Lint", "run": 'echo "workers=${WORKERS:-none}"'}]}
+    (shop / "crissp/testsuite/suites.json").write_text(json.dumps(conf))
+    for name in ("test_a.py", "test_b.py", "test_c.py"):
+        (shop / "app" / "tests").mkdir(exist_ok=True)
+        (shop / "app" / "tests" / name).write_text("")
+    left = results(shop)
+    left.mkdir(parents=True)
+    for name in (".coverage-unit.host.123.456", "coverage-unit.rc"):  # what a stopped parallel run left behind
+        (left / name).write_text("old")
+    assert run.main(["run.py"], shop) == 0
+    assert not (left / ".coverage-unit.host.123.456").exists() and not (left / "coverage-unit.rc").exists()
+    out = capsys.readouterr().out
+    assert ", 3 workers)" in out and out.count("workers)") == 1  # only the parallel step names its workers
+    r = results(shop)
+    assert (r / "unit.log").read_text() == "workers=3 (3 test files)\n" and (r / "lint.log").read_text() == "workers=none\n"
+    rows = [json.loads(line) for line in (r / "steps.jsonl").read_text().splitlines()]
+    assert rows[0]["workers"] == 3 and rows[0]["workers_why"] == "3 test files" and "workers" not in rows[1]
+
+
+def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_coverage(tmp_path):  # E1-F1-02
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $*" >> "$RESULTS/calls"\n')
+    (bin_ / "py").chmod(0o755)
+    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
+           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s,/t",
+           "COVERAGE_OMIT": "*/t/*", "WORKERS": "3"}
+    assert subprocess.run(["bash", "-c", "covered tests"], env=env).returncode == 0
+    rc = tmp_path / "coverage-unit.rc"
+    assert (tmp_path / "calls").read_text().splitlines() == [
+        f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider -n 3 --dist loadfile --junitxml=J.xml tests",
+        f"py -m coverage combine --rcfile={rc} -q", f"py -m coverage json --rcfile={rc} -q -o C.json",
+        f"py -m coverage report --rcfile={rc} --show-missing"]
+    assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
+                              "disable_warnings = no-data-collected\nsource = /s,/t\nomit = */t/*\n")
+    (tmp_path / "calls").unlink()
+    one = {**env, "WORKERS": "1"}  # one worker: as before, no xdist
+    assert subprocess.run(["bash", "-c", "covered tests"], env=one).returncode == 0
+    assert (tmp_path / "calls").read_text().splitlines()[0] == \
+        "py -m coverage run --branch --source=/s,/t --omit=*/t/* -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
+
+
+def test_the_pinned_tools_carry_pytest_xdist():
+    assert any(line.startswith("pytest-xdist==") for line in run.TOOLS.read_text().splitlines())

@@ -5,7 +5,8 @@ CRISSP_ROOT); never the place of this file, so the engine and a project's data m
 the project's crissp/testsuite/suites.json:
 
     product      the product's name (default: the folder's name); monogram: one or two letters for the top bar
-    steps        [{key, label, dir, run, seconds, coverage, gate, sources, omit, fail_under, tests, full_only, when}]
+    steps        [{key, label, dir, run, seconds, coverage, gate, sources, omit, fail_under, tests, full_only, when,
+                   parallel, memory_mb}]
                  the suites of a run, in the order they run:
                    key        a short name (letters, digits, -): the step's log is results/<key>.log
                    label      what the run prints and the dashboard shows
@@ -22,6 +23,9 @@ the project's crissp/testsuite/suites.json:
                    tests      where its test files are, for the dashboard (default: <dir>/tests)
                    full_only  only in the full run (a build, a browser check); when: the step exists only while this
                               path does (e.g. a script another part delivers)
+                   parallel   its tests spread over the workers this machine has (lib/workers.py: the CPUs, the memory,
+                              its test files): `covered` runs pytest-xdist, a test file stays on one worker, and coverage
+                              measures every worker. memory_mb: what one worker needs (default 256)
                  The coverage gate (lib/gate.py) is a step of its own, `gate`, right after the last gated step.
     paths        [{match, steps}] what crissp/check.sh runs when a file changes (lib/impact.py): an exact path, a folder
                  ("…/") or a file name anywhere ("*/name"); the first rule that matches decides
@@ -45,7 +49,7 @@ KEY = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 GATE = "gate"
 GATE_LABEL = "Coverage gate (may only go up)"
 STEP_KEYS = {"key", "label", "dir", "run", "seconds", "coverage", "gate", "sources", "omit", "fail_under", "tests",
-             "full_only", "when"}
+             "full_only", "when", "parallel", "memory_mb"}
 TOP_KEYS = {"product", "monogram", "steps", "paths", "shared", "notes", "setup", "audit", "texts", "$comment"}
 
 
@@ -120,11 +124,15 @@ def _step(raw, n: int) -> dict:
     if fail_under is not None and (not isinstance(fail_under, (int, float)) or isinstance(fail_under, bool)
                                    or not 0 <= fail_under <= 100):
         raise ConfigError(f"{where}: fail_under must be a percentage from 0 to 100")
-    for flag in ("coverage", "gate", "full_only"):
+    memory_mb = raw.get("memory_mb", 256)
+    if not isinstance(memory_mb, int) or isinstance(memory_mb, bool) or memory_mb < 1:
+        raise ConfigError(f"{where}: memory_mb must be a whole number of at least 1")
+    for flag in ("coverage", "gate", "full_only", "parallel"):
         if not isinstance(raw.get(flag, False), bool):
             raise ConfigError(f"{where}: {flag} must be true or false")
     step = {"key": key, "label": raw["label"].strip(), "dir": str(raw.get("dir") or "."), "run": raw["run"].strip(),
             "seconds": seconds, "gate": raw.get("gate", False), "full_only": raw.get("full_only", False),
+            "parallel": raw.get("parallel", False), "memory_mb": memory_mb,
             "sources": _texts(raw.get("sources", []), f"{where}: sources"),
             "omit": _texts(raw.get("omit", []), f"{where}: omit"), "fail_under": fail_under,
             "when": raw.get("when") if isinstance(raw.get("when"), str) else None}
@@ -213,7 +221,7 @@ def load(project: Path) -> dict:
 
 def gate_step(gated: list[str]) -> dict:
     return {"key": GATE, "label": GATE_LABEL, "dir": ".", "run": "", "seconds": 2, "gate": False, "coverage": False,
-            "full_only": False, "sources": [], "omit": [], "fail_under": None, "tests": [], "when": None,
+            "full_only": False, "parallel": False, "memory_mb": 256, "sources": [], "omit": [], "fail_under": None, "tests": [], "when": None,
             "suites": gated}
 
 

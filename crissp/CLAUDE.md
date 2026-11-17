@@ -40,7 +40,8 @@ instead of reading the backlog files; write findings, decisions, epics, features
 
 This project's steps (`crissp/testsuite/suites.json`):
 
-- `tools`: the testsuite's, uxsuite's and crissp tool's own tests, held at **100% lines and branches**.
+- `tools`: the testsuite's, uxsuite's and crissp tool's own tests, held at **100% lines and branches**, spread over
+  the workers this machine has (`parallel`: on a 16-CPU Mac 15 workers, about 11 s instead of 37 s).
 - `gate`: the coverage gate (coverage only goes up).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.

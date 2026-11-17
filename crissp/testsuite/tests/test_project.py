@@ -45,7 +45,8 @@ def test_a_configuration_with_every_default_filled_in(tmp_path):
     backend, lint, e2e = conf["steps"]
     assert backend == {"key": "backend", "label": "Backend", "dir": "app/backend", "run": "covered -q", "seconds": 10,
                        "gate": True, "coverage": True, "full_only": False, "sources": ["app/backend/shop"],
-                       "omit": ["*/tests/*"], "fail_under": 90, "when": None, "tests": ["app/backend/tests"]}
+                       "omit": ["*/tests/*"], "fail_under": 90, "when": None, "tests": ["app/backend/tests"],
+                       "parallel": False, "memory_mb": 256}
     assert lint["dir"] == "." and lint["tests"] == ["./tests"] and not lint["coverage"] and lint["fail_under"] is None
     assert e2e["tests"] == ["e2e"] and e2e["full_only"] and e2e["when"] == "e2e/run.sh"
     assert conf["product"] == "Shop" and conf["monogram"] == "S" and conf["notes"] == ["design/"]
@@ -82,6 +83,9 @@ def test_the_gate_follows_the_last_gated_step_and_a_step_exists_while_its_path_d
     ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": 101}]}, "fail_under must be a percentage"),
     ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": False}]}, "fail_under must be a percentage"),
     ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": "yes"}]}, "gate must be true or false"),
+    ({"steps": [{"key": "a", "label": "A", "run": "x", "parallel": 1}]}, "parallel must be true or false"),
+    ({"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": 0}]}, "memory_mb must be a whole number of at least 1"),
+    ({"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": True}]}, "memory_mb must be a whole number"),
     ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": True}]}, "names its sources"),
     ({"steps": [{"key": "a", "label": "A", "run": "x", "sources": "src"}]}, "sources must be a list of texts"),
     ({"steps": [{"key": "a", "label": "A", "run": "x"}, {"key": "a", "label": "B", "run": "y"}]}, "step a is named twice"),
@@ -149,3 +153,9 @@ def test_the_guards_speak_the_crissp_command_when_they_run_as_it():
     assert stream.write("Green: crissp/deploy.sh may go.\n") == len("Green: crissp/deploy.sh may go.\n")
     stream.flush()
     assert out.getvalue() == "Green: crissp deploy may go.\n" and stream.getvalue() == out.getvalue()  # the rest passes through
+
+
+def test_a_step_runs_in_one_process_unless_it_says_parallel():  # E1-F1-02
+    one, many = project.parse({"steps": [{"key": "a", "label": "A", "run": "x"},
+                                         {"key": "b", "label": "B", "run": "y", "parallel": True, "memory_mb": 512}]})["steps"]
+    assert (one["parallel"], one["memory_mb"]) == (False, 256) and (many["parallel"], many["memory_mb"]) == (True, 512)

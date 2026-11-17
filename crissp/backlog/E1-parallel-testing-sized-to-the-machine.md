@@ -7,7 +7,7 @@ the system actually has, and a /workers page that shows it while it runs.
 Why        A run uses the CPUs and memory this machine (or CI runner) has, and the product owner sees on /workers which
            worker runs what, how far each step is, and why it got that many workers.
 
-### E1-F1-01 · The machine's capacity and the worker count                               [doing] [S]
+### E1-F1-01 · The machine's capacity and the worker count                               [review] [S]
 Why        A fixed worker count is wrong for every machine but one: too many on a small CI runner, too few on a large
            laptop.
 What       lib/workers.py (stdlib): the usable CPUs (process_cpu_count, a cgroup cpu.max), the memory there is and what
@@ -21,7 +21,7 @@ Tests      test_workers: every source read from stand-in files and commands (no 
            the override, unreadable sources falling back.
 Depends    —
 
-### E1-F1-02 · A step's tests in parallel processes, coverage still whole                [todo] [M]
+### E1-F1-02 · A step's tests in parallel processes, coverage still whole                [doing] [M]
 Why        The steps run their tests one at a time on one CPU.
 What       suites.json: a step may say `parallel: true` (and `memory_mb`). Then `covered` runs pytest with pytest-xdist
            (pinned in requirements.txt) on the worker count of E1-F1-01, --dist loadfile (a test file stays on one

@@ -9,6 +9,8 @@ The steps are the project's (crissp/testsuite/suites.json, lib/project.py), each
 lib/steps.sh at hand. Each step's output is results/<step>.log; results/steps.json is {step: "passed" | "failed"} for
 this run and results/steps.jsonl has each step's label and duration too. The coverage gate is a step of its own
 (lib/gate.py), for the gated steps this run measured. crissp/testsuite/run.sh runs lib/setup_plan.py first.
+A parallel step (E1-F1) gets WORKERS and WORKERS_WHY: how many workers this machine gives it, and the limit that
+decided it (lib/workers.py); the run prints them and steps.jsonl keeps them.
 """
 
 import json
@@ -21,8 +23,9 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
 import project  # noqa: E402
+import workers  # noqa: E402
 
-TOOLS = ENGINE.parent / "requirements.txt"  # the pinned test tools (pytest, coverage, ruff): one place
+TOOLS = ENGINE.parent / "requirements.txt"  # the pinned test tools (pytest, pytest-xdist, coverage, ruff): one place
 HELPERS = ENGINE / "steps.sh"
 
 
@@ -53,6 +56,11 @@ def env_for(step: dict, root: Path, results: Path) -> dict:
             env[name] = value
         else:
             env.pop(name, None)  # never one inherited from the shell that started the run
+    for name, value in (("WORKERS", step.get("workers")), ("WORKERS_WHY", step.get("workers_why"))):
+        if value:
+            env[name] = str(value)
+        else:
+            env.pop(name, None)
     return env
 
 
@@ -74,14 +82,18 @@ def run_step(step: dict, root: Path, results: Path, runner=subprocess.run, clock
             done = runner(command(step), cwd=folder, env=env_for(step, root, results), stdout=log,
                           stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
             status = "passed" if done.returncode == 0 else "failed"
-    return {"key": step["key"], "label": step["label"], "status": status, "seconds": round(clock() - start)}
+    row = {"key": step["key"], "label": step["label"], "status": status, "seconds": round(clock() - start)}
+    return {**row, "workers": step["workers"], "workers_why": step["workers_why"]} if step.get("workers") else row
 
 
 def clear(chosen: list[dict], results: Path) -> None:
     """The results of the previous run of these steps (only files this run writes itself)."""
     for s in chosen:
-        for name in (f"{s['key']}.log", f"{s['key']}.xml", f"coverage-{s['key']}.json", f".coverage-{s['key']}"):
+        for name in (f"{s['key']}.log", f"{s['key']}.xml", f"coverage-{s['key']}.json", f".coverage-{s['key']}",
+                     f"coverage-{s['key']}.rc"):
             (results / name).unlink(missing_ok=True)
+        for part in results.glob(f".coverage-{s['key']}.*"):  # a parallel step's workers' data a stopped run left
+            part.unlink()
         if s["key"] == project.GATE:
             (results / "gate.json").unlink(missing_ok=True)
     for name in ("steps.jsonl", "steps.json"):
@@ -104,10 +116,15 @@ def main(argv: list[str], root: Path | None = None, runner=subprocess.run, out=N
     results.mkdir(parents=True, exist_ok=True)
     clear(chosen, results)
     rows = []
+    found = workers.machine() if any(s["parallel"] for s in chosen) else None
     for step in chosen:
+        if step["parallel"]:
+            n, why = workers.count(found, step["memory_mb"], workers.test_files(root, step["tests"]), dict(os.environ))
+            step = {**step, "workers": n, "workers_why": why}
         print(f"▸ {step['label']:<54}", end="", file=out, flush=True)
         row = run_step(step, root, results, runner)
-        print(f"{row['status']} ({row['seconds']}s)", file=out, flush=True)
+        spread = f", {row['workers']} workers" if row.get("workers") else ""
+        print(f"{row['status']} ({row['seconds']}s{spread})", file=out, flush=True)
         rows.append(row)
         with open(results / "steps.jsonl", "a") as f:
             f.write(json.dumps(row) + "\n")

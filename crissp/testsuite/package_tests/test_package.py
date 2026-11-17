@@ -97,6 +97,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     (backend / "tests" / "conftest.py").write_text('import sys\n\nsys.path.insert(0, ".")\n')
     (backend / "tests" / "test_example.py").write_text(
         "from example import double\n\n\ndef test_double():\n    assert double(2) == 4\n")
+    (backend / "tests" / "test_again.py").write_text(  # E1-F1-02: two files, so a machine with CPUs to spare uses xdist
+        "from example import double\n\n\ndef test_double_zero():\n    assert double(0) == 0\n")
     run(["git", "add", "-A"], project, env)
     run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed and committed
     nothing = run([str(crissp), "deploy"], project, env, check=False)  # F-04: a project's guards speak `crissp …`
@@ -105,6 +107,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     full = run([str(crissp), "check-all"], project, env, check=False)
     said = full.stdout + full.stderr
     assert full.returncode == 0, said
+    if (os.cpu_count() or 1) >= 3:  # E1-F1-02: CPUs to spare, so the backend's two files ran on two workers
+        assert "2 workers)" in said, said
     assert (project / "crissp" / "testsuite" / "results").is_dir()
     assert "Green: crissp deploy may go." in said and "crissp/" + "check" not in said and ".sh" not in said, said
     # F-06: the first full run says plainly what is left: commit the baseline it wrote, then crissp check

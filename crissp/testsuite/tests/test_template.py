@@ -43,6 +43,7 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [("app/backend/", ["backend", "backend-lint"]),
                                                                 ("app/frontend/", ["frontend"])]
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
+    assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
 
 
 def test_the_ux_suite_walks_the_local_stack_the_deploy_template_names():

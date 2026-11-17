@@ -1,6 +1,32 @@
 {
  "changes": [
   {
+   "id": "E1-F1-02-parallel-steps",
+   "title": "E1-F1-02: a step's tests in parallel processes, coverage still whole",
+   "problem": "Every step ran its tests one at a time in one process, on one of the machine's CPUs.",
+   "fix": "A step may say parallel (and memory_mb). run.py gives it WORKERS and WORKERS_WHY from lib/workers.py, prints the count and keeps it in steps.jsonl. With more than one worker, covered runs pytest-xdist with --dist loadfile and measures every worker through an rcfile (parallel, patch = subprocess), then combines. pytest-xdist is pinned. crissp check --plan says each parallel step's workers and why. This project's tools step and the template's backend step are parallel.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "--dist loadfile"
+    },
+    {
+     "file": "crissp/testsuite/lib/run.py",
+     "symbol": "workers.count("
+    },
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def spread("
+    }
+   ],
+   "tests": [
+    "test_run::test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so",
+    "test_run::test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_coverage",
+    "test_project::test_a_step_runs_in_one_process_unless_it_says_parallel",
+    "test_check_scripts::test_the_plan_says_how_many_workers_a_parallel_step_gets_and_why"
+   ]
+  },
+  {
    "id": "E1-F1-01-machine-capacity",
    "title": "E1-F1-01: how many workers a step gets on this machine",
    "problem": "Nothing in crissp knew the machine it ran on: a run used one CPU, and a fixed worker count would be wrong on every machine but one.",

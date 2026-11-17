@@ -12,7 +12,7 @@ pinned test tools.
 | Field | What it says |
 |---|---|
 | `product`, `monogram` | the name in the top bar (default: the folder's name and its first letter) |
-| `steps` | the suites of a run, in order: `key`, `label`, `dir` (where it runs), `run` (a bash command), `seconds`, `coverage`, `gate` (the coverage gate holds it), `sources` / `omit` / `fail_under` (what coverage measures, leaves out, the least it accepts), `tests` (where its test files are, for the dashboard), `full_only` (a build, a browser check), `when` (the step exists while this path does) |
+| `steps` | the suites of a run, in order: `key`, `label`, `dir` (where it runs), `run` (a bash command), `seconds`, `coverage`, `gate` (the coverage gate holds it), `sources` / `omit` / `fail_under` (what coverage measures, leaves out, the least it accepts), `tests` (where its test files are, for the dashboard), `full_only` (a build, a browser check), `when` (the step exists while this path does), `parallel` / `memory_mb` (its tests spread over the workers this machine has, and what one worker needs) |
 | `paths` | what `crissp/check.sh` runs when a file changes: `{match, steps}`, first match wins; a match is a path, a folder `…/` or a name anywhere `*/name` |
 | `shared` | the product's shared ground (`{match, why}`): a change there needs the full run |
 | `notes` | what needs no test, besides Markdown, the backlog and `docs/` |
@@ -25,6 +25,15 @@ helper `covered <pytest arguments>` (`lib/steps.sh`): pytest under coverage, lin
 `sources`, with the JUnit XML and the coverage JSON where the dashboard and the gate read them. `PY=.venv/bin/python
 covered …` runs it in a part's own venv; without `PY` it runs with the pinned tools ([requirements.txt](requirements.txt))
 through `uv`. A product with a frontend writes its own commands (`npm run --silent lint`, …).
+
+**A parallel step** (`"parallel": true`) gets `WORKERS` and `WORKERS_WHY` from `lib/workers.py`: the tightest of the
+CPUs less one, three quarters of the available memory per `memory_mb` (default 256), and the step's test files; at
+least 1, `CRISSP_WORKERS=<n>` to set it. With more than one, `covered` runs pytest-xdist (`-n $WORKERS --dist loadfile`:
+a test file stays on one worker) and coverage measures every worker (`results/coverage-<step>.rc`: `parallel`,
+`patch = subprocess`) and combines them, so the gate sees the whole. A part's own venv (`PY=…`) then needs pytest-xdist
+and coverage 7.10 or newer. The run prints the count (`passed (11s, 15 workers)`), `crissp check --plan` says it and why,
+and `python3 crissp/testsuite/lib/workers.py` shows this machine. Tests in a parallel step must not share a fixed port
+or file with each other.
 
 The coverage gate is a step of its own, `gate`, right after the last gated step. A step a change touches that is gated
 brings the gate along.

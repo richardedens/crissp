@@ -4,6 +4,15 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.1 — unreleased
 
+- **Tests run in parallel, sized to the machine.** A step that says `"parallel": true` spreads its tests over as many
+  workers as this machine can take. That is the tightest of three limits: the CPUs less one, three quarters of the
+  available memory per worker (`memory_mb`, default 256), and the step's test files. It works on a Mac and on Linux,
+  including a CI runner's cgroup limits; `CRISSP_WORKERS=<n>` sets the count yourself.
+  - Coverage still counts every worker, so the gate sees the same numbers.
+  - The run says how many workers it used (`passed (11s, 15 workers)`), and `crissp check --plan` says how many a step
+    will get and why.
+  - The template's backend step is parallel. crissp's own tests run in 11 s instead of 37 s on a 16-CPU Mac.
+
 - **The product has a default place**: `app/backend/`, `app/frontend/` and `docker-compose.yml` at the root. A new
   project's steps (`backend`, `backend-lint`, `frontend`) appear once their part exists, so `crissp check-all` is green
   before there is any code. The UX suite walks the local stack (`http://127.0.0.1:8080`) instead of a dev server. Until

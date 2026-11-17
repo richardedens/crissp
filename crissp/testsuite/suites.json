@@ -22,7 +22,8 @@
    "tests": [
     "crissp/testsuite/tests",
     "crissp/uxsuite/tests"
-   ]
+   ],
+   "parallel": true
   },
   {
    "key": "deploy",
