@@ -76,3 +76,11 @@ def test_the_uxsuite_part_is_there_with_its_own_ignore_and_no_old_ux_team():
     assert team["product"] == "Example" and len(team["personas"]) == 5 and sum(p["moderator"] for p in team["personas"]) == 1
     assert sorted(p.name for p in (ux / "walks").glob("*.json")) == ["first-visit.json"]
     assert not (TEMPLATE / "uxteam").exists()
+
+
+def test_parallel_workers_share_one_postgresql_server_with_a_database_each():
+    # a worker per CPU must not mean a PostgreSQL server per worker: one server for the run, a database per worker
+    for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "testsuite" / "README.md"):
+        text = " ".join(doc.read_text().split())
+        for words in ("one PostgreSQL server", "a database per worker", "PYTEST_XDIST_WORKER"):
+            assert words in text, (doc.name, words)

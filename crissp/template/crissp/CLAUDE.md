@@ -33,6 +33,9 @@ guards as findings. -->
 
 - **Commit first**: the scripts test what is committed. **One run at a time.**
 - Tests never read a developer `.env`, never touch a real database, real AI keys or real identity providers.
+- **Parallel tests share one PostgreSQL server, with a database per worker**: never a server per worker. A session
+  fixture (`conftest.py`) creates the worker's own database on that one server, named after `PYTEST_XDIST_WORKER`
+  (`test_gw0`, `test_gw1`, …, `test_main` without xdist), migrates it, and drops it at the end.
 
 ## Releasing — nothing goes to production untested
 

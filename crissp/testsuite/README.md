@@ -35,6 +35,25 @@ and coverage 7.10 or newer. The run prints the count (`passed (11s, 15 workers)`
 and `python3 crissp/testsuite/lib/workers.py` shows this machine. Tests in a parallel step must not share a fixed port
 or file with each other.
 
+**A database in a parallel step**: one PostgreSQL server for the whole run, never one per worker (a server per worker
+costs its memory and start-up per CPU, and `memory_mb` would have to carry it). A session fixture gives each worker a
+database per worker on that server, named after `PYTEST_XDIST_WORKER`:
+
+```python
+@pytest.fixture(scope="session")
+def database_url():
+    name = f"test_{os.environ.get('PYTEST_XDIST_WORKER', 'main')}"   # test_gw0, test_gw1, … or test_main
+    with admin() as db:                                               # the one server, its maintenance database
+        db.execute(f'DROP DATABASE IF EXISTS "{name}"'); db.execute(f'CREATE DATABASE "{name}"')
+    url = SERVER_URL.rsplit("/", 1)[0] + "/" + name
+    migrate(url)
+    yield url
+    with admin() as db:
+        db.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+```
+
+The server is the Compose `postgres` service or one the step starts before pytest; the workers only make databases.
+
 The coverage gate is a step of its own, `gate`, right after the last gated step. A step a change touches that is gated
 brings the gate along.
 

@@ -199,6 +199,11 @@ page. A new capability is documented by a journey in the same piece of work.
 - **The default layout**: `app/backend/` (an API with `/api/health`), `app/frontend/` (served by nginx, proxying
   `/api`), and `docker-compose.yml` at the root with a service for each (plus PostgreSQL when the product needs a
   database). `crissp deploy` (no flag) rebuilds the Compose services; the Helm chart deploys the same two parts.
+- **Tests that need a database share one PostgreSQL server**: a parallel step's workers never get a server each (a
+  server per worker costs its memory and start-up time per CPU). The run starts one PostgreSQL server, or uses the
+  Compose service, and gives each worker a database of its own, named after `PYTEST_XDIST_WORKER` (`test_gw0`,
+  `test_gw1`, …, `test_main` without xdist): a database per worker, created when the worker starts, dropped or
+  emptied when it ends, so no worker sees another's rows.
 - **The template expects it**: the testsuite's steps (`backend`, `backend-lint`, `frontend`) exist once their part does,
   so a project that was just brought in runs green with no code yet; the UX suite walks the local stack
   (`compose.url`, `http://127.0.0.1:8080`).

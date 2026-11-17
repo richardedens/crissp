@@ -1,6 +1,25 @@
 {
  "changes": [
   {
+   "id": "F-13-one-postgresql-server",
+   "title": "F-13: parallel workers share one PostgreSQL server, a database each",
+   "problem": "Nothing in the framework or the template said how tests that need a database run in a parallel step, so a server per worker (memory and start-up per CPU) was the easy way.",
+   "fix": "CRISSP.md, the template agreement and the testsuite README say: one PostgreSQL server for the run, a database per worker, named after PYTEST_XDIST_WORKER, made and dropped by a session fixture (the README has an example).",
+   "sources": [
+    {
+     "file": "crissp/CRISSP.md",
+     "symbol": "Tests that need a database share one PostgreSQL server"
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "Parallel tests share one PostgreSQL server"
+    }
+   ],
+   "tests": [
+    "test_template::test_parallel_workers_share_one_postgresql_server_with_a_database_each"
+   ]
+  },
+  {
    "id": "E1-F1-04-workers-page",
    "title": "E1-F1-04: the /workers page",
    "problem": "Nothing showed how a run's tests were divided amongst the processors and memory the machine has, nor what each worker was doing.",
