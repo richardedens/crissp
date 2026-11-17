@@ -226,3 +226,24 @@ def test_main_serves_until_stopped_and_starts_the_ux_queue(monkeypatch):
     assert sv.main(["--port", "9123"]) == 0 and seen == {"port": 9123, "closed": True} and ux.started == 1
     Fake.RequestHandlerClass.func.ux = None
     assert sv.main([]) == 0 and seen["port"] == 9123  # no UX suite: nothing to start
+
+
+def test_workers_is_the_page_and_its_data_is_this_machine_and_this_project_s_runs(world, monkeypatch):  # E1-F1-04
+    root, engine, _ = world
+    (engine / "dashboard" / "workers.html").write_text("<title>Workers</title>")
+    found = {"cpus": 4, "cpu_from": "os.process_cpu_count", "memory_mb": 8192, "available_mb": 4096, "memory_from": "x"}
+    monkeypatch.setattr(sv.workers, "machine", lambda: found)
+    monkeypatch.delenv("CRISSP_WORKERS", raising=False)
+    httpd, base, _ = _serve(world, False)
+    try:
+        code, headers, _ = _get(base + "/workers")
+        assert code == 302 and headers["Location"] == "/dashboard/workers.html"
+        assert _get(base + "/dashboard/workers.html")[2] == b"<title>Workers</title>"
+        code, headers, body = _get(base + "/dashboard/workers.json?t=2")
+        state = json.loads(body)
+        assert code == 200 and headers["Content-Type"] == "application/json" and headers["Cache-Control"] == "no-store"
+        assert state["machine"] == found and state["would"]["workers"] == 3 and state["steps"] == []
+        assert state["product"] == "repo"  # no suites.json: the folder's name
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

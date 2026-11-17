@@ -1,6 +1,8 @@
 """E1-F1-01: how many workers a step gets on this machine. Every source (the CPUs, /proc, the cgroup, sysctl, vm_stat)
 is a stand-in: the tests never depend on the machine they run on."""
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -124,3 +126,109 @@ def test_the_real_sources_answer_on_this_machine():
     m = workers.machine()
     assert m["cpus"] >= 1 and isinstance(m["cpu_from"], str)
     assert workers._command(["a-command-that-does-not-exist-anywhere"]) is None
+
+
+# E1-F1-04: the /workers page's data, from what crissp_timing wrote (results/timing), with stand-in processes and clock
+
+import json  # noqa: E402
+
+FOUND = {"cpus": 4, "cpu_from": "os.process_cpu_count", "memory_mb": 8192, "available_mb": 4096, "memory_from": "x"}
+T0 = 1_000_000.0
+
+
+def timing(root: Path, step: str, rows: list[dict], now: dict[str, dict] | None = None) -> None:
+    folder = root / "crissp/testsuite/results/timing"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{step}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows) + "not json\n")
+    for worker, cur in (now or {}).items():
+        (folder / f"{step}.now.{worker}.json").write_text(json.dumps(cur))
+
+
+def ran(id_: str, worker: str | None, outcome: str = "passed", seconds: float = 1.0, at: float = T0 + 5) -> dict:
+    return {"kind": "test", "id": id_, "outcome": outcome, "seconds": seconds, "worker": worker, "at": at}
+
+
+@pytest.fixture
+def project_root(tmp_path) -> Path:
+    files(tmp_path, {"crissp/testsuite/suites.json": json.dumps({"product": "Shop", "steps": [
+        {"key": "unit", "label": "Unit tests", "run": "x", "parallel": True}]})})
+    return tmp_path
+
+
+def test_a_running_step_shows_each_worker_what_it_runs_now_and_what_is_left(project_root):
+    timing(project_root, "unit", [
+        {"kind": "start", "at": T0, "pid": 11, "workers": 2, "why": "3 CPUs, one left for the machine"},
+        {"kind": "collected", "n": 10, "worker": "gw0"}, {"kind": "collected", "n": 10, "worker": "gw1"},
+        ran("tests/test_a.py::test_one", "gw0", seconds=2.0), ran("tests/test_a.py::test_two", "gw0", "failed"),
+        ran("tests/test_b.py::test_one", "gw1", "skipped", 0.0, at=T0 + 8)],
+        now={"gw0": {"id": "tests/test_a.py::test_three", "at": T0 + 6},
+             "gw1": {"id": "tests/test_b.py::test_one", "at": T0 + 7},  # finished since (T0 + 8): not running now
+             "gw2": {"id": "tests/test_c.py::test_old", "at": T0 - 100}})  # from before this run started
+    s = workers.state(project_root, now=T0 + 10, alive=lambda pid: pid == 11, found=FOUND, env={})
+    assert s["product"] == "Shop" and s["machine"] == FOUND
+    assert s["would"] == {"workers": 3, "why": "4 CPUs, one left for the machine"}
+    (step,) = s["steps"]
+    assert {k: step[k] for k in ("key", "label", "status", "workers", "why", "collected", "done", "elapsed", "left")} == {
+        "key": "unit", "label": "Unit tests", "status": "running", "workers": 2, "why": "3 CPUs, one left for the machine",
+        "collected": 10, "done": 3, "elapsed": 10, "left": 23}  # 10 s for 3 tests: about 23 s for the other 7
+    assert step["outcomes"] == {"passed": 1, "failed": 1, "skipped": 1} and step["failed"] == ["tests/test_a.py::test_two"]
+    gw0, gw1 = step["lanes"]  # gw2's file is from before this run
+    assert (gw0["worker"], gw0["done"], gw0["passed"], gw0["failed"], gw0["busy"]) == ("gw0", 2, 1, 1, 3.0)
+    assert (gw0["now"], gw0["since"], gw0["quiet"]) == ("tests/test_a.py::test_three", 4, False)
+    assert gw1["now"] is None and gw1["last"] == "tests/test_b.py::test_one" and gw1["skipped"] == 1
+
+
+def test_a_worker_quiet_for_a_minute_is_marked_and_lanes_sort_by_number(project_root):
+    rows = [{"kind": "start", "at": T0, "pid": 11, "workers": 11}] + [ran(f"t{i}.py::x", f"gw{i}") for i in (10, 2)]
+    timing(project_root, "unit", rows, now={"gw2": {"id": "t2.py::slow", "at": T0 + 6}})
+    (step,) = workers.state(project_root, now=T0 + 90, alive=lambda pid: True, found=FOUND, env={})["steps"]
+    assert [lane["worker"] for lane in step["lanes"]] == ["gw2", "gw10"]
+    assert step["lanes"][0]["quiet"] and step["lanes"][0]["since"] == 84
+
+
+def test_finished_and_stopped_steps_keep_their_lanes_but_run_nothing_now(project_root):
+    timing(project_root, "unit", [{"kind": "start", "at": T0, "pid": 11, "workers": 1}, {"kind": "collected", "n": 2},
+                                  ran("t.py::a", None), {"kind": "finish", "status": 1, "at": T0 + 20}],
+           now={"gw0": {"id": "t.py::b", "at": T0 + 6}})
+    timing(project_root, "lint", [{"kind": "start", "at": T0 + 30, "pid": 12},
+                                  ran("u.py::a", None, at=T0 + 40)])
+    timing(project_root, "empty", [{"kind": "collected", "n": 1}])  # no start line: not shown
+    s = workers.state(project_root, now=T0 + 100, alive=lambda pid: False, found=FOUND, env={})
+    lint, unit = s["steps"]  # the newest first
+    assert (unit["status"], unit["elapsed"], unit["left"], unit["label"]) == ("failed", 20, None, "Unit tests")
+    assert [lane["worker"] for lane in unit["lanes"]] == ["main", "gw0"] and unit["lanes"][1]["now"] is None
+    assert (lint["status"], lint["elapsed"], lint["label"], lint["workers"], lint["why"]) == ("stopped", 10, "lint", 1, "")
+    assert lint["lanes"][0]["since"] is None
+    timing(project_root, "unit", [{"kind": "start", "at": T0 + 50, "pid": 11}, {"kind": "finish", "status": 0, "at": T0 + 51}])
+    unit = next(st for st in workers.state(project_root, now=T0 + 100, alive=lambda pid: False, found=FOUND, env={})["steps"]
+                if st["key"] == "unit")
+    assert unit["status"] == "passed" and unit["lanes"] == []
+
+
+def test_no_run_yet_and_no_configuration_still_show_the_machine(tmp_path, monkeypatch):
+    monkeypatch.setattr(workers, "machine", lambda: FOUND)
+    s = workers.state(tmp_path, now=T0, env={"CRISSP_WORKERS": "2"})
+    assert s["steps"] == [] and s["product"] == tmp_path.name and s["would"] == {"workers": 2, "why": "CRISSP_WORKERS=2"}
+
+
+def test_a_process_is_alive_only_while_it_runs():
+    assert workers.alive(os.getpid())
+    done = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True)
+    assert not workers.alive(int(done.stdout))
+    assert not workers.alive(None) and not workers.alive("12")
+
+
+def test_a_process_of_another_user_still_runs(monkeypatch):
+    def refused(pid, signal):
+        raise PermissionError
+    monkeypatch.setattr(workers.os, "kill", refused)
+    assert workers.alive(1)
+
+
+def test_a_worker_file_being_written_or_broken_runs_nothing(project_root):
+    timing(project_root, "unit", [{"kind": "start", "at": T0, "pid": 11, "workers": 2}])
+    folder = project_root / "crissp/testsuite/results/timing"
+    (folder / "unit.now.gw0.json").write_text("{half")
+    (folder / "unit.now.gw1.json").write_text("[1]")
+    (step,) = workers.state(project_root, now=T0 + 5, alive=lambda pid: True, found=FOUND, env={})["steps"]
+    assert step["lanes"] == []  # no time in either: from before the run, so no lane

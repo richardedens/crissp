@@ -34,7 +34,7 @@ Tests      test_run (the command and the rcfile per step), test_project (paralle
            test's full run with a parallel backend step.
 Depends    E1-F1-01
 
-### E1-F1-03 · Every test as it finishes, per worker                                     [doing] [S]
+### E1-F1-03 · Every test as it finishes, per worker                                     [review] [S]
 Why        Without a trace per test there is nothing to show live: which worker runs what, since when, and what failed.
 What       A pytest plugin (loaded by `covered`) writes results/timing/<step>.jsonl: start (with the worker count and
            why), collected, every test as it finishes (outcome, seconds, worker), finish. Each xdist worker replaces
@@ -46,7 +46,7 @@ Tests      test_timing_plugin: a real pytest run on a tiny project, with and wit
            written.
 Depends    E1-F1-02
 
-### E1-F1-04 · The /workers page                                                         [todo] [M]
+### E1-F1-04 · The /workers page                                                         [doing] [M]
 Why        The product owner wants to see the tests divided amongst the processors and memory, while it runs.
 What       On the dashboard server: /workers (and /dashboard/workers.json). The machine (CPUs, memory, available) and
            per running or recent step its worker count and why, progress (done of collected, an estimate of what is

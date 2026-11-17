@@ -12,6 +12,14 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   - The run says how many workers it used (`passed (11s, 15 workers)`), and `crissp check --plan` says how many a step
     will get and why.
   - The template's backend step is parallel. crissp's own tests run in 11 s instead of 37 s on a 16-CPU Mac.
+- **A `/workers` page** on the dashboard server (`crissp dashboard`, linked from Tests and UX) shows the run spread over
+  the machine, live:
+  - the CPUs, the memory and what is available, and how many workers a parallel step gets here and why;
+  - per step, how far it is, about how long is left, and what passed or failed;
+  - one lane per worker: the test it runs now and for how long (marked quiet after a minute), what it finished, and
+    how much of the step it was busy.
+
+  Every test is recorded as it finishes, per worker, in `crissp/testsuite/results/timing/`.
 
 - **The product has a default place**: `app/backend/`, `app/frontend/` and `docker-compose.yml` at the root. A new
   project's steps (`backend`, `backend-lint`, `frontend`) appear once their part exists, so `crissp check-all` is green

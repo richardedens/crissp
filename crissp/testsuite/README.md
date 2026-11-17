@@ -101,6 +101,12 @@ tokens, the Figtree font, the theme, the water), `/results/` the run output. Not
 asks for a stamp every few seconds and reloads when the backlog, `changes.json` or a run's results changed. It never
 runs a test. Dark by default, light when chosen (remembered per viewer).
 
+**/workers** (`dashboard/workers.html`, its data `/dashboard/workers.json` from `lib/workers.py`): this machine's CPUs,
+memory and what is available, how many workers a parallel step gets here and why, and per step that runs or ran (from
+`results/timing/`, written by `lib/pytest_plugin/crissp_timing.py`) its workers, how far it is and about how long is
+left, its outcomes, and one lane per worker: what it runs now and since when (quiet after a minute), what it finished,
+how much of the step it was busy, what failed. It asks every two seconds while it is open.
+
 Tabs: Overview, Backlog (epic → feature → PBI, read by the crissp tool; a PBI an approved UX design became links back
 to it), Changes (`changes.json`: what was wrong, the fix, the code, the proof), Tests, Coverage (with the gate), Runs &
 logs, Known gaps; and Capabilities, Journeys, Threat model and E2E once the product has them (`results/capabilities.json`,

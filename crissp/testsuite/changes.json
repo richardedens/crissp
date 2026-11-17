@@ -1,6 +1,32 @@
 {
  "changes": [
   {
+   "id": "E1-F1-04-workers-page",
+   "title": "E1-F1-04: the /workers page",
+   "problem": "Nothing showed how a run's tests were divided amongst the processors and memory the machine has, nor what each worker was doing.",
+   "fix": "lib/workers.py state() reads results/timing (start, collected, tests, finish, the workers' now files of this run only) into the machine, what a parallel step would get, and per step its status (running, passed, failed, or stopped when its process is gone), progress, an estimate of what is left, outcomes and one lane per worker (now and since when, quiet after a minute, done, busy). serve.py answers /workers (to dashboard/workers.html) and /dashboard/workers.json; the page asks every two seconds, in the shared look, linked from Tests and UX.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "/dashboard/workers.json"
+    },
+    {
+     "file": "crissp/testsuite/dashboard/workers.js",
+     "symbol": "function lane("
+    }
+   ],
+   "tests": [
+    "test_workers::test_a_running_step_shows_each_worker_what_it_runs_now_and_what_is_left",
+    "test_workers::test_finished_and_stopped_steps_keep_their_lanes_but_run_nothing_now",
+    "test_workers::test_a_worker_quiet_for_a_minute_is_marked_and_lanes_sort_by_number",
+    "test_serve::test_workers_is_the_page_and_its_data_is_this_machine_and_this_project_s_runs"
+   ]
+  },
+  {
    "id": "E1-F1-03-timing-per-worker",
    "title": "E1-F1-03: every test as it finishes, per worker",
    "problem": "A run left only its JUnit file at the end: nothing said, while it ran, which worker ran what, since when, or what failed.",

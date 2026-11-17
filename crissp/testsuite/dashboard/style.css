@@ -57,3 +57,12 @@ pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--
 .kpis.five { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 #be { max-width: 100%; min-width: 0; } .kcard, .kt { overflow-wrap: anywhere; }
 .kcard .ux { margin-left: 6px; }
+
+/* the workers page (workers.html, E1-F1-04) */
+.step { display: grid; gap: 12px; }
+.step-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .step-head h2 { margin: 0; font-size: 18px; }
+.step-progress { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .step-progress .bar { flex: 1 1 200px; }
+.lanes td { vertical-align: middle; } .lanes td:first-child { width: 70px; }
+.lane-busy { display: flex; gap: 8px; align-items: center; min-width: 140px; } .lane-busy .bar { flex: 1; }
+.lane-now { word-break: break-word; }
+.lane-busy span { width: 3.2em; text-align: right; flex: none; }
