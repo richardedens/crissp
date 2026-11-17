@@ -2,7 +2,13 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.2 — unreleased
+## 0.1.3 — unreleased
+
+- Tests that need a database share **one PostgreSQL server, with a database per worker** (named after
+  `PYTEST_XDIST_WORKER`), never a server per worker. The framework and the template agreement say so, and the
+  testsuite README has the session fixture.
+
+## 0.1.2 — 2026-11-17
 
 - **Tests run in parallel, sized to the machine.** A step that says `"parallel": true` spreads its tests over as many
   workers as this machine can take. That is the tightest of three limits: the CPUs less one, three quarters of the
@@ -12,9 +18,6 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   - The run says how many workers it used (`passed (11s, 15 workers)`), and `crissp check --plan` says how many a step
     will get and why.
   - The template's backend step is parallel. crissp's own tests run in 11 s instead of 37 s on a 16-CPU Mac.
-  - Tests that need a database share **one PostgreSQL server, with a database per worker** (named after
-    `PYTEST_XDIST_WORKER`), never a server per worker. The framework and the template agreement say so, and the
-    testsuite README has the session fixture.
 - **A `/workers` page** on the dashboard server (`crissp dashboard`, linked from Tests and UX) shows the run spread over
   the machine, live:
   - the CPUs, the memory and what is available, and how many workers a parallel step gets here and why;
