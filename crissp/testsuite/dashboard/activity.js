@@ -34,7 +34,9 @@
       <header class="session-head"><h2>${esc(s.title || "Session " + s.id.slice(0, 8))}</h2>
         ${s.busy ? badge("area", "busy") : badge("missing", "quiet")}
         <span class="muted small">${s.agents.length ? `${running} of ${s.agents.length} agent${s.agents.length === 1 ? "" : "s"} running` : "no agents"}</span>
+        ${s.history ? `<span class="small ${s.long ? "st-review" : "muted"}" title="what the last request carried: every step resends it">history ${Math.round(s.history / 1000)}k tokens</span>` : ""}
         <a class="small" href="/results/sessions/${encodeURIComponent(s.id)}.html">the whole session</a></header>
+      ${s.long ? `<p class="long-history">${badge("missing", "long history")} Every step now resends more than 300k tokens. <b>/clear</b> between items, <b>/compact</b> in the middle of one; <code>brief</code>, <code>backlog</code> and git bring back what is needed.</p>` : ""}
       ${s.prompt ? `<p class="session-prompt"><span class="muted">Asked:</span> ${esc(s.prompt)}</p>` : ""}
       <div class="orchestrator"><div class="label">Orchestrator · main thread</div><div class="act">${step(s.main, s.busy)}</div></div>
       ${s.agents.length ? `<ul class="agents">${s.agents.map(agent).join("")}</ul>` : ""}

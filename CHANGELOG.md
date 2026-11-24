@@ -8,6 +8,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   with every step. The framework and a new project's agreement now say how to keep sessions short: a fresh session per
   item (`/clear`), `/compact` in the middle of a long one, browser checks and screenshots in a subagent, the checks
   through `run` and `status`, searches in an Explore agent, narrow questions, and the lighter model for routine work.
+- **The Activity page shows each session's history**: what its last request carried, measured as the sessions report
+  does. Past 300k tokens the session gets a *long history* mark with what to do: `/clear` between items, `/compact` in
+  the middle of one.
 
 ## 0.1.6 — 2026-11-24
 

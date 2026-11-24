@@ -87,3 +87,4 @@ pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--
 .agent { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
 .agent.finished { opacity: .75; }
 .agent-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.long-history { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--amber) 10%, transparent); }

@@ -1,6 +1,26 @@
 {
  "changes": [
   {
+   "id": "E4-F1-02-history-in-sight",
+   "title": "E4-F1-02: the Activity page shows each session's history and when to start fresh",
+   "problem": "The sessions report said afterwards that a request started on a long history; while it happened nobody saw it.",
+   "fix": "activity.py gives each session the history its last request carried (measure.history: input + cache read + cache write) and whether it is past measure.LONG (300k); activity.js shows the size, and past the line a 'long history' mark with /clear and /compact.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "history = measure.history("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/activity.js",
+     "symbol": "long-history"
+    }
+   ],
+   "tests": [
+    "test_activity::test_the_busy_session_its_orchestrator_and_its_agents_now",
+    "test_activity::test_a_session_whose_last_step_started_an_agent"
+   ]
+  },
+  {
    "id": "E4-F1-01-sessions-that-stay-small",
    "title": "E4-F1-01: the agreement says how a session stays small",
    "problem": "42% of requests started on more than 300k tokens of history and used 37% of all tokens (F-18); nothing told Claude or the product owner how to keep a session short.",

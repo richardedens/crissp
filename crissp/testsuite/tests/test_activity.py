@@ -17,9 +17,11 @@ T = "2026-11-24T10:{:02d}:00Z"
 NOW = datetime.fromisoformat("2026-11-24T10:10:00+00:00").timestamp()
 
 
-def use(name: str, given: dict, id_: str, minute: int, sidechain: bool = False) -> dict:
+def use(name: str, given: dict, id_: str, minute: int, sidechain: bool = False, history: int = 0) -> dict:
+    usage = {"input_tokens": 1000, "cache_read_input_tokens": history - 3000, "cache_creation_input_tokens": 2000}
     return {"type": "assistant", "timestamp": T.format(minute), "isSidechain": sidechain,
-            "message": {"id": f"m{id_}", "content": [{"type": "tool_use", "id": id_, "name": name, "input": given}]}}
+            "message": {"id": f"m{id_}", "content": [{"type": "tool_use", "id": id_, "name": name, "input": given}],
+                        **({"usage": usage} if history else {})}}
 
 
 def lines(path: Path, records: list[dict], mtime: float) -> None:
@@ -36,14 +38,14 @@ def world(tmp_path: Path) -> tuple[Path, Path]:
     lines(busy, [
         {"type": "user", "timestamp": T.format(1), "cwd": str(repo), "message": {"content": "Build the board"}},
         {"type": "ai-title", "aiTitle": "The board moves"},
-        use("Agent", {"description": "Write tests", "subagent_type": "general-purpose"}, "t1", 2),
+        use("Agent", {"description": "Write tests", "subagent_type": "general-purpose"}, "t1", 2, history=90_000),
         use("Agent", {"description": "Read docs", "subagent_type": "Explore"}, "t2", 3),
         use("Agent", {"description": "Just started", "subagent_type": "Plan"}, "t3", 7),
         {**use("Agent", {"description": "Last week", "subagent_type": "Explore"}, "t5", 0),
          "timestamp": "2026-11-17T10:00:00Z"},
         {"type": "user", "timestamp": T.format(4), "message": {"content": [{"type": "tool_result", "tool_use_id": "t5"}]}},
         {"type": "user", "timestamp": T.format(4), "message": {"content": [{"type": "tool_result", "tool_use_id": "t2"}]}},
-        use("Bash", {"command": "make TOKEN=abc123secret", "description": ""}, "t4", 8),
+        use("Bash", {"command": "make TOKEN=abc123secret", "description": ""}, "t4", 8, history=343_000),
     ], NOW - 30)
     agents = busy.with_suffix("") / "subagents"
     (agents / "agent-x.meta.json").parent.mkdir(parents=True)
@@ -72,6 +74,7 @@ def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
                       ("Read docs", "Explore", False, "b.md")]  # running first, then finished
     assert s["agents"][0]["since"] == T.format(9) and s["agents"][2]["since"] == T.format(3)
     assert s["earlier"] == 1  # a finished agent's last step more than an hour ago: counted, not listed
+    assert (s["history"], s["long"]) == (343_000, True)  # E4-F1-02: the last request's history, past 300k
 
 
 def test_a_quiet_session_and_no_sessions_at_all(tmp_path):
@@ -89,7 +92,8 @@ def test_a_session_whose_last_step_started_an_agent(tmp_path):
     repo, projects = tmp_path / "repo", tmp_path / "projects"
     repo.mkdir()
     lines(sv.project_dir(repo, projects) / "s2.jsonl",
-          [use("Agent", {"description": "Review", "subagent_type": "general-purpose"}, "a1", 5)], NOW)
+          [use("Agent", {"description": "Review", "subagent_type": "general-purpose"}, "a1", 5, history=12_000)], NOW)
     s = activity.state(repo, projects, now=NOW)["sessions"][0]
     assert s["main"] == {"tool": "Agent", "kind": "agent", "text": "started an agent: Review", "since": T.format(5)}
     assert s["title"] == "" and s["prompt"] == ""
+    assert (s["history"], s["long"]) == (12_000, False)

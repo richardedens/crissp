@@ -6,6 +6,8 @@ read them, lib/sessionview.py), the sessions written in the last half hour, newe
 - its title and the last prompt;
 - the orchestrator (the main thread): its latest step (the tool, and the path, the command's description or the command
   itself, masked) and since when; busy while the session wrote something in the last two minutes;
+- the history its last request carried (as the sessions report measures it, measure.history) and whether it is past
+  300k tokens (measure.LONG): then it is time for a fresh session (E4-F1-02);
 - every subagent it started: its type and description, running or finished (the subagent's own record says so; without
   one, a result means finished), and its own latest step and since when. Running agents first; agents that finished
   more than an hour ago are only counted ("earlier").
@@ -18,6 +20,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import measure
 import project
 import sessionview as sv
 
@@ -83,7 +86,10 @@ def session(path: Path, root: Path, now: float) -> dict:
     old = [a for a in agents if not a["running"] and a["since"]
            and now - datetime.fromisoformat(a["since"].replace("Z", "+00:00")).timestamp() > FINISHED_S]
     agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
-    return {"id": path.stem, "title": sv.mask(titles[-1]) if titles else "",
+    sized = [r for r in main if r.get("type") == "assistant" and (r.get("message") or {}).get("usage")]
+    history = measure.history(sized[-1]) if sized else 0
+    return {"id": path.stem, "title": sv.mask(titles[-1]) if titles else "", "history": history,
+            "long": history > measure.LONG,
             "prompt": sv.mask(prompts[-1][:300]) if prompts else "", "busy": now - updated < QUIET_S,
             "updated": updated, "main": _latest(main, repo), "agents": agents, "earlier": len(old)}
 
