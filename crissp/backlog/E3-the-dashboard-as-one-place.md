@@ -8,7 +8,7 @@ are doing right now. One server, one top bar, and the work in motion visible whi
 Why        Every page of the dashboard server (Tests, Backlog, UX, Workers, Activity, Sessions) shows the same brand and
            the same sections in the same order, the open one marked, so moving between them never surprises.
 
-### E3-F1-01 · The sections come from one list in the shared look                        [todo] [S]
+### E3-F1-01 · The sections come from one list in the shared look                        [review] [S]
 Why        Each page wrote its own menu (Tests · UX · Workers · Sessions on one, Tests · UX · Workers on two, Tests · UX
            · Sessions on the sessions pages), so they drifted.
 What       look.js holds the one list of sections (Tests, Backlog, UX, Workers, Activity, Sessions) with their addresses
@@ -27,7 +27,7 @@ Depends    —
 Why        The product owner sees what moved on the board, from where to where and when (committed or not yet), and how
            long a PBI has stood in its column.
 
-### E3-F2-01 · Every PBI's moves, from git and the working tree, on the board            [todo] [M]
+### E3-F2-01 · Every PBI's moves, from git and the working tree, on the board            [review] [M]
 Why        The board is a snapshot: a PBI that went to review an hour ago looks the same as one that stands there for a
            week.
 What       lib/movement.py replays the backlog's epic files through every commit that changed them, with the crissp
@@ -46,7 +46,7 @@ Depends    —
 Why        While Claude works, the product owner sees live which session is busy, what its main thread (the
            orchestrator) is doing and since when, which subagents run, what each does now, and which finished.
 
-### E3-F3-01 · An Activity page: the live sessions, their orchestrator and agents        [todo] [M]
+### E3-F3-01 · An Activity page: the live sessions, their orchestrator and agents        [review] [M]
 Why        The sessions pages are written afterwards; while Claude works, nothing shows what the main thread and its
            subagents are doing.
 What       lib/activity.py reads this repository's Claude Code transcripts that changed in the last 30 minutes: per
