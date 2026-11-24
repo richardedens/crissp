@@ -5,11 +5,15 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 ## 0.1.4 — unreleased
 
 - **One top bar on every page.** The Tests dashboard, the backlog board, the UX suite, the workers page and the Claude
-  sessions pages now show the same sections in the same order (Tests · Backlog · UX · Workers · Sessions), with the
+  sessions pages now show the same sections in the same order (Tests · Backlog · UX · Workers · Activity · Sessions), with the
   open one marked. Backlog is a section of its own, and opens the board.
 - **The board shows how the backlog moves.** "Moved recently" above the lanes lists the newest moves (from → to, how long
   ago, and the commit, or "not committed" for a move in the working tree). Each card says how long it has stood in its
   column, and its details list every move. A commit shows on the board within seconds.
+- **An Activity page** (`/activity`) shows live what Claude is doing in this repository: per session the last prompt,
+  what the orchestrator (the main thread) is doing now and for how long, and every agent it started, running ones first,
+  each with its own current step. It reads Claude Code's own transcripts on this machine and shows only what Claude
+  sent to its tools.
 
 ## 0.1.3 — 2026-11-24
 

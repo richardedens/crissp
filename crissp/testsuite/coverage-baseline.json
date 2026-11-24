@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "b032a5358fea2040debd9f0c32a0a830a8c4ba4c",
+ "commit": "c6b8e9a89de8736a062e6a84783079bb3813e83f",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -34,6 +34,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/measure.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/movement.py": {
      "branch": 100.0,
      "line": 100.0
     },

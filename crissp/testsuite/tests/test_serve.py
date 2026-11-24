@@ -250,3 +250,21 @@ def test_workers_is_the_page_and_its_data_is_this_machine_and_this_project_s_run
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_activity_is_the_page_and_its_data_is_this_project_s_live_sessions(world, monkeypatch):  # E3-F3-01
+    root, engine, _ = world
+    (engine / "dashboard" / "activity.html").write_text("<title>Activity</title>")
+    asked = []
+    monkeypatch.setattr(sv.activity, "state", lambda r: asked.append(r) or {"sessions": [], "now": 1.0})
+    httpd, base, _ = _serve(world, False)
+    try:
+        code, headers, _ = _get(base + "/activity")
+        assert code == 302 and headers["Location"] == "/dashboard/activity.html"
+        assert _get(base + "/dashboard/activity.html")[2] == b"<title>Activity</title>"
+        code, headers, body = _get(base + "/dashboard/activity.json")
+        assert code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body) == {"sessions": [], "now": 1.0}
+        assert asked == [root]
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

@@ -1,6 +1,29 @@
 {
  "changes": [
   {
+   "id": "E3-F3-01-activity",
+   "title": "E3-F3-01: an Activity page, what the orchestrator and its agents do now",
+   "problem": "The session pages are written afterwards; while Claude worked, the dashboard did not show what the main thread and its subagents were doing.",
+   "fix": "lib/activity.py reads this repository's transcripts written in the last half hour (with sessionview's own parsing and masking): per session the title, last prompt, the orchestrator's latest step and since when, busy or quiet, and each subagent, running or finished (its own record says so), with its own latest step. /activity serves dashboard/activity.html, which asks /dashboard/activity.json every two seconds; Activity is a section of the one top bar.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "/dashboard/activity.json"
+    }
+   ],
+   "tests": [
+    "test_activity::test_the_busy_session_its_orchestrator_and_its_agents_now",
+    "test_activity::test_a_quiet_session_and_no_sessions_at_all",
+    "test_activity::test_a_session_whose_last_step_started_an_agent",
+    "test_serve::test_activity_is_the_page_and_its_data_is_this_project_s_live_sessions",
+    "test_look::test_look_js_holds_the_sections_once_and_fills_and_marks_them"
+   ]
+  },
+  {
    "id": "E3-F2-01-backlog-movement",
    "title": "E3-F2-01: the board shows how the backlog moved",
    "problem": "The board was a snapshot: a PBI that went to review an hour ago looked the same as one that had stood there for a week, and nothing said what moved.",

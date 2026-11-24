@@ -16,7 +16,8 @@
      <nav class="sections" aria-label="Sections" data-current="<key>"></nav> and nothing in it; this fills and marks it.
      The board is the Tests page on its Backlog tab (#board), so there Backlog is the open section. */
   const SECTIONS = [["tests", "Tests", "/dashboard/"], ["backlog", "Backlog", "/dashboard/#board"], ["ux", "UX", "/ux/"],
-    ["workers", "Workers", "/dashboard/workers.html"], ["sessions", "Sessions", "/results/sessions/index.html"]];
+    ["workers", "Workers", "/dashboard/workers.html"], ["activity", "Activity", "/dashboard/activity.html"],
+    ["sessions", "Sessions", "/results/sessions/index.html"]];
   const sections = () => document.querySelectorAll("nav.sections[data-current]").forEach(nav => {
     const open = nav.dataset.current === "tests" && /^#board/.test(location.hash) ? "backlog" : nav.dataset.current;
     nav.innerHTML = SECTIONS.map(([key, label, href]) =>

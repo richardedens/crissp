@@ -120,6 +120,19 @@ tokens, the Figtree font, the theme, the water), `/results/` the run output. Not
 asks for a stamp every few seconds and reloads when the backlog, `changes.json` or a run's results changed. It never
 runs a test. Dark by default, light when chosen (remembered per viewer).
 
+**/activity** (`dashboard/activity.html`, its data `/dashboard/activity.json` from `lib/activity.py`): what this
+repository's Claude Code sessions do now, read from their transcripts (the ones written in the last half hour): per
+session its title, the last prompt, the orchestrator's latest step and since when (busy while it wrote in the last two
+minutes), and every agent it started, running first, each with its own latest step. Only what Claude sent to its tools,
+masked like the session pages. The page asks every two seconds while it is open.
+
+**The board's movement** (`lib/movement.py`): every PBI's moves, replayed from the commits that changed the epic files
+(with the crissp tool's own parser) plus what the working tree holds beyond the last commit. The board shows "Moved
+recently" and, per card, how long it has stood in its column.
+
+**One top bar**: the sections (Tests · Backlog · UX · Workers · Activity · Sessions) are one list in `crissp/look/look.js`;
+every page has an empty `<nav class="sections" data-current="…">` that it fills.
+
 **/workers** (`dashboard/workers.html`, its data `/dashboard/workers.json` from `lib/workers.py`): this machine's CPUs,
 memory and what is available, how many workers a parallel step gets here and why, and per step that runs or ran (from
 `results/timing/`, written by `lib/pytest_plugin/crissp_timing.py`) its workers, how far it is and about how long is

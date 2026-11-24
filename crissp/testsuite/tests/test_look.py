@@ -1,4 +1,4 @@
-"""E3-F1-01: one top bar on every page. The sections (Tests · Backlog · UX · Workers · Sessions) come from one list in
+"""E3-F1-01: one top bar on every page. The sections (Tests · Backlog · UX · Workers · Activity · Sessions) come from one list in
 the shared look (crissp/look/look.js); every page has the same empty sections nav, which look.js fills and marks."""
 
 import json
@@ -15,9 +15,10 @@ LOOK_JS = ENGINE / "look" / "look.js"
 sys.path.insert(0, str(ENGINE / "testsuite" / "lib"))
 import sessionview as sv  # noqa: E402
 
-SECTIONS = ["tests", "backlog", "ux", "workers", "sessions"]
+SECTIONS = ["tests", "backlog", "ux", "workers", "activity", "sessions"]
 PAGES = {ENGINE / "testsuite" / "dashboard" / "index.html": "tests",
          ENGINE / "testsuite" / "dashboard" / "workers.html": "workers",
+         ENGINE / "testsuite" / "dashboard" / "activity.html": "activity",
          ENGINE / "uxsuite" / "web" / "index.html": "ux"}
 NAV = re.compile(r'<nav class="?sections"?[^>]*>(.*?)</nav>', re.S)
 
@@ -66,7 +67,8 @@ console.log(JSON.stringify({first, sections: window.Look.SECTIONS.map(s => s[0])
     assert out["sections"] == SECTIONS
     links = re.findall(r'<a href="([^"]+)"( aria-current="page")?>([^<]+)</a>', out["first"])
     assert [(h, t) for h, _, t in links] == [("/dashboard/", "Tests"), ("/dashboard/#board", "Backlog"), ("/ux/", "UX"),
-                                             ("/dashboard/workers.html", "Workers"), ("/results/sessions/index.html", "Sessions")]
+                                             ("/dashboard/workers.html", "Workers"), ("/dashboard/activity.html", "Activity"),
+                                             ("/results/sessions/index.html", "Sessions")]
     assert [t for _, cur, t in links if cur] == ["Workers"]
     board = run("tests", "#board")  # the board is the Tests page opened on its Backlog tab: Backlog is the open section
     assert 'aria-current="page">Backlog' in board["first"] and 'aria-current="page">Tests' in board["after"]

@@ -11,6 +11,9 @@ What it serves, only on 127.0.0.1:
 - /workers      the workers page (dashboard/workers.html, E1-F1-04): this machine's CPUs and memory, and per step
                 that runs (or ran) how its tests are spread over the workers; its data is /dashboard/workers.json
                 (lib/workers.py state(), from results/timing), asked for every two seconds while the page is open.
+- /activity     the Activity page (dashboard/activity.html, E3-F3-01): what this repository's Claude sessions, their
+                orchestrator and their agents do now; its data is /dashboard/activity.json (lib/activity.py state(),
+                from Claude Code's transcripts), asked for every two seconds while the page is open.
 - /results/     the project's run output: the dashboard's data (results/data.js, lib/collect.py), the Claude session
                 pages (results/sessions/) and what the dashboard links to (screenshots).
 - /look/        the shared look (crissp/look: the tokens, the font, the theme, the water).
@@ -30,6 +33,7 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
+import activity  # noqa: E402
 import project  # noqa: E402
 import workers  # noqa: E402
 
@@ -112,14 +116,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802  (the name http.server calls)
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/workers"):
+        if path in ("/", "/workers", "/activity"):
             self.send_response(302)
-            self.send_header("Location", "/dashboard/" if path == "/" else "/dashboard/workers.html")
+            self.send_header("Location", "/dashboard/" if path == "/" else f"/dashboard{path}.html")
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
         if path == "/dashboard/workers.json":
             return self._json(200, workers.state(self.live.root))
+        if path == "/dashboard/activity.json":
+            return self._json(200, activity.state(self.live.root))
         if path == "/dashboard/stamp":
             return self._json(200, {"stamp": self.live.stamp(), "root": str(self.live.root.resolve())})  # whose (F-09)
         if path.startswith("/look/"):
