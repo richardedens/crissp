@@ -48,13 +48,13 @@
       <div class="dots" aria-hidden="true"><i></i><i></i><i></i><span>shop</span></div>
 <pre><span class="p">$</span> uvx crissp init --product Shop
 git init: ~/shop
-C.R.I.S.S.P. 0.1.0 for Shop: 47 made, 0 kept as they were.
+C.R.I.S.S.P. {{VERSION}} for Shop: 47 made, 0 kept as they were.
 <span class="muted">Nothing was committed: review the diff first.</span>
 
 <span class="p">$</span> crissp check-all
-<span class="ok">▸</span> The product's own tests        <span class="ok">passed</span>
+<span class="ok">▸</span> The backend's tests            <span class="ok">passed</span> <span class="muted">(1s, 3 workers)</span>
 <span class="ok">▸</span> Coverage gate (may only go up) <span class="ok">passed</span>
-<span class="ok">▸</span> The product's lint             <span class="ok">passed</span>
+<span class="ok">▸</span> The backend's lint             <span class="ok">passed</span>
 Release certificate: <span class="ok">green</span> on 3f2a9c1
 
 <span class="p">$</span> crissp deploy
@@ -152,8 +152,9 @@ crissp dashboard</pre><p class="muted">The full run, then what it proved, on you
           <tr><td><code>crissp check [--plan]</code></td><td>Runs only what the changes since the last green state can affect</td></tr>
           <tr><td><code>crissp check-all</code></td><td>The full run, with the coverage gate</td></tr>
           <tr><td><code>crissp deploy [--cluster]</code></td><td>Deploys behind the release gate; <code>--cluster-plan</code> only shows what it would do</td></tr>
-          <tr><td><code>crissp dashboard</code></td><td>The Tests dashboard, the backlog board and the UX suite on 127.0.0.1</td></tr>
+          <tr><td><code>crissp dashboard</code></td><td>The Tests dashboard, the backlog board, the UX suite, the workers and what Claude is doing now (<code>/activity</code>) on 127.0.0.1</td></tr>
           <tr><td><code>crissp ux</code></td><td>The UX suite: walks, rounds, designs</td></tr>
+          <tr><td><code>crissp repair [--yes]</code></td><td>Says what a project brought in earlier has out of place, and after an update what the new version needs (the crissp pin in <code>.mcp.json</code>, the sources in <code>changes.json</code>); <code>--yes</code> puts it in place, never deleting or committing</td></tr>
           <tr><td><code>crissp mcp</code></td><td>The MCP server Claude Code starts from <code>.mcp.json</code></td></tr>
         </tbody>
       </table>

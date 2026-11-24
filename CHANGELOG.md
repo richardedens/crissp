@@ -9,6 +9,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   now says the format: `{file, symbol}`, where the symbol is the line of the fix to show.
 - **`crissp repair` puts two more things in place**: plain-path sources in `changes.json` become `{file, symbol}`, and
   the crissp pin in `.mcp.json` moves to the crissp you run repair with, so the MCP tools follow the new version.
+- **The website names the current version.** It used to show 0.1.0 in its example; the build now takes the version
+  from `VERSION`. Its command table now also lists `crissp repair` and the new dashboard pages.
 
 ## 0.1.4 — 2026-11-24
 
