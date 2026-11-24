@@ -4,6 +4,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.3 — unreleased
 
+- **The dashboard opens in every project, whatever its history holds.** An old commit with a backlog file saved in
+  another encoding (Windows' cp1252) stopped it before it served anything; now that file is read as it was meant, with
+  its items' statuses. The dashboard also reads and writes its pages as UTF-8 under any locale (a Latin-1 locale
+  failed before).
 - Tests that need a database share **one PostgreSQL server, with a database per worker** (named after
   `PYTEST_XDIST_WORKER`), never a server per worker. The framework and the template agreement say so, and the
   testsuite README has the session fixture.

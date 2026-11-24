@@ -72,7 +72,7 @@ def mask(text: str) -> str:
 
 
 def records(path: Path):
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace", encoding="utf-8").splitlines():
         try:
             yield json.loads(line)
         except json.JSONDecodeError:
@@ -195,7 +195,7 @@ def subagents(path: Path, repo: Repo) -> dict[str, dict]:
     out = {}
     for meta in sorted((path.with_suffix("") / "subagents").glob("*.meta.json")):
         try:
-            info = json.loads(meta.read_text())
+            info = json.loads(meta.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             info = {}
         transcript = meta.with_name(meta.name.removesuffix(".meta.json") + ".jsonl")
@@ -391,7 +391,7 @@ WATER_JS = LOOK / "water.js"
 
 
 def water() -> str:
-    return WATER_JS.read_text() if WATER_JS.is_file() else ""
+    return WATER_JS.read_text(encoding="utf-8") if WATER_JS.is_file() else ""
 
 
 # The shared look's type, Figtree (OFL-1.1, crissp/look/LICENSE-figtree.txt), inside the page: it loads nothing.
@@ -408,7 +408,7 @@ TABS = (("overview", "Overview"), ("changes", "Changes"), ("tests", "Tests"), ("
 def product() -> tuple[str, str]:
     """The product's name and monogram, as the dashboard has them (crissp/testsuite/suites.json)."""
     try:
-        conf = json.loads((ROOT / "crissp" / "testsuite" / "suites.json").read_text())
+        conf = json.loads((ROOT / "crissp" / "testsuite" / "suites.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         conf = {}
     name = conf.get("product", ROOT.name)
@@ -582,10 +582,10 @@ def build(repo: Path, projects: Path, out: Path, found: list[dict] | None = None
     out.mkdir(parents=True, exist_ok=True)
     found = sessions(repo, projects) if found is None else found
     for s in found:
-        (out / f"{s['id']}.html").write_text(render(s, repo))
+        (out / f"{s['id']}.html").write_text(render(s, repo), encoding="utf-8")
     index = out / "index.html"
-    index.write_text(render_index(found, repo))
-    (out / "summary.json").write_text(json.dumps({"sessions": len(found), "tokens": amount(sum(s["total"] for s in found))}))
+    index.write_text(render_index(found, repo), encoding="utf-8")
+    (out / "summary.json").write_text(json.dumps({"sessions": len(found), "tokens": amount(sum(s["total"] for s in found))}), encoding="utf-8")
     return index
 
 

@@ -43,7 +43,7 @@ def configure(root: Path) -> None:
 def _docs(test_file: Path) -> dict[str, tuple[str, int]]:
     """Docstring and line of every test function in a file (what the test proves, where it is)."""
     try:
-        tree = ast.parse(test_file.read_text())
+        tree = ast.parse(test_file.read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
         return {}
     out = {"__module__": ((ast.get_docstring(tree) or "").strip(), 1)}
@@ -99,7 +99,7 @@ def coverage(key: str) -> dict | None:
     path = RESULTS / f"coverage-{key}.json"
     if not path.exists():
         return None
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     base = SUITES[key][2]
     files = []
     for name, f in data["files"].items():
@@ -126,7 +126,7 @@ def locate(file: str, symbol: str) -> dict:
     """The line of a symbol in a source file, with the code around it (so the dashboard shows the fix itself)."""
     path = ROOT / file
     try:
-        lines = path.read_text().splitlines()
+        lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
         return {"file": file, "symbol": symbol, "line": 0, "found": False, "code": "", "abs": str(path)}
     at = next((i for i, line in enumerate(lines) if symbol in line), None)
@@ -147,7 +147,7 @@ def _journeys() -> list[dict]:
     steps and screenshots (paths as the dashboard reaches them) and, after a failure, the screen at that moment."""
     out = []
     for path in sorted((RESULTS / "journeys").glob("*/*/journey.json")):
-        doc = json.loads(path.read_text())
+        doc = json.loads(path.read_text(encoding="utf-8"))
         base = f"../results/journeys/{doc['id']}/{doc['lang']}/"
         failure = RESULTS / "journeys-run" / doc["id"] / doc["lang"] / "failure.png"
         doc.update(base=base, failure=f"../results/journeys-run/{doc['id']}/{doc['lang']}/failure.png" if doc["status"] != "verified" and failure.exists() else None)
@@ -168,7 +168,7 @@ def _capabilities(by_ref: dict[str, list[dict]], threats: dict, journeys: list[d
         for cap_id in j.get("capabilities", []):
             documenting.setdefault(cap_id, {}).setdefault(j["id"], set()).add(j["status"])
     out = []
-    for cap in json.loads(path.read_text()):
+    for cap in json.loads(path.read_text(encoding="utf-8")):
         tests = [t for ref in cap["tests"] for t in by_ref.get(ref, [])]
         docs = documenting.get(cap["id"], {})
         statuses = set().union(*docs.values()) if docs else set()
@@ -184,14 +184,14 @@ def _capabilities(by_ref: dict[str, list[dict]], threats: dict, journeys: list[d
 
 def _steps() -> list[dict]:
     """The steps of the last run with their logs: steps.json as a list, or steps.jsonl plus each step's log."""
-    listed = json.loads((RESULTS / "steps.json").read_text()) if (RESULTS / "steps.json").exists() else []
+    listed = json.loads((RESULTS / "steps.json").read_text(encoding="utf-8")) if (RESULTS / "steps.json").exists() else []
     if isinstance(listed, list):
         return listed
-    lines = (RESULTS / "steps.jsonl").read_text().splitlines() if (RESULTS / "steps.jsonl").exists() else []
+    lines = (RESULTS / "steps.jsonl").read_text(encoding="utf-8").splitlines() if (RESULTS / "steps.jsonl").exists() else []
     steps = [json.loads(line) for line in lines if line.strip()]
     for s in steps:
         log = RESULTS / f"{s['key']}.log"
-        s.setdefault("log", log.read_text(errors="replace")[-20000:] if log.exists() else "")
+        s.setdefault("log", log.read_text(errors="replace", encoding="utf-8")[-20000:] if log.exists() else "")
     return steps
 
 
@@ -201,7 +201,7 @@ def _product() -> dict:
     out.update(coverageKeys=COVERAGE, unitSuites=[k for k in SUITES if k not in SPECIAL])
     summary = RESULTS / "sessions" / "summary.json"
     if summary.exists():
-        out["sessions"] = {"href": "../results/sessions/index.html", **json.loads(summary.read_text())}
+        out["sessions"] = {"href": "../results/sessions/index.html", **json.loads(summary.read_text(encoding="utf-8"))}
     return out
 
 
@@ -260,7 +260,7 @@ def main(root: Path | None = None) -> int:
             if "[" in t["id"]:  # a parametrised test also answers to its base name
                 by_ref.setdefault(t["id"].split("[", 1)[0], []).append(t)
     suite = ROOT / "crissp" / "testsuite"
-    manifest = json.loads((suite / "changes.json").read_text()) if (suite / "changes.json").exists() else {"changes": []}
+    manifest = json.loads((suite / "changes.json").read_text(encoding="utf-8")) if (suite / "changes.json").exists() else {"changes": []}
     shot_dir = RESULTS / "e2e" / "shots"
     shots = sorted(p.name for p in shot_dir.glob("*.png")) if shot_dir.exists() else []
     changes = []
@@ -274,8 +274,8 @@ def main(root: Path | None = None) -> int:
         changes.append({**c, "sources": [locate(s["file"], s["symbol"]) for s in c["sources"]], "proof": proof, "verdict": verdict,
                         "screenshots": [s + ".png" for s in c.get("screenshots", []) if s + ".png" in shots]})
     steps = _steps()
-    gate = json.loads((RESULTS / "gate.json").read_text()) if (RESULTS / "gate.json").exists() else None
-    threats = json.loads((suite / "threats.json").read_text()) if (suite / "threats.json").exists() else {"boundaries": []}
+    gate = json.loads((RESULTS / "gate.json").read_text(encoding="utf-8")) if (RESULTS / "gate.json").exists() else None
+    threats = json.loads((suite / "threats.json").read_text(encoding="utf-8")) if (suite / "threats.json").exists() else {"boundaries": []}
     for boundary in threats["boundaries"]:
         for threat in boundary["threats"]:
             proof = [{"ref": ref, "tests": [x["id"] for x in by_ref.get(ref, [])], "status": _status(by_ref.get(ref, []))} for ref in threat["tests"]]
@@ -295,7 +295,7 @@ def main(root: Path | None = None) -> int:
             "tests": tests, "coverage": {k: coverage(k) for k in COVERAGE}, "changes": changes, "gaps": manifest.get("gaps", []), "gate": gate, "threats": threats, "capabilities": capabilities,
             "journeys": journeys, "screenshots": shots, "backlog": _backlog(), **_product()}
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "data.js").write_text("window.SUITE = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n")
+    (RESULTS / "data.js").write_text("window.SUITE = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n", encoding="utf-8")
     failed = sum(t["status"] == "failed" for t in tests) + sum(s.get("status") == "failed" for s in steps)
     unresolved = [f"{c['id']}: {s['file']} · {s['symbol']}" for c in changes for s in c["sources"] if not s["found"]]
     print(f"dashboard data: {len(tests)} tests, {len(changes)} changes, {failed} failures")

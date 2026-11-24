@@ -1,6 +1,23 @@
 {
  "changes": [
   {
+   "id": "E2-F1-01-any-encoding-in-history",
+   "title": "E2-F1-01: the dashboard opens whatever encoding an old commit holds",
+   "problem": "F-16: measure.py's git() decoded `git show` strictly in the locale's encoding, so one old backlog file saved on Windows (cp1252, a middle dot 0xb7) stopped the dashboard with a UnicodeDecodeError; under a Latin-1 locale the pages then failed to be written (◐).",
+   "fix": "git() reads bytes and decodes UTF-8, else cp1252 (so a Windows file keeps its · and its items their statuses), a byte that fits neither becoming U+FFFD; every read_text and write_text of measure.py, sessionview.py and collect.py names encoding=\"utf-8\", and a test keeps it that way.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def git("
+    }
+   ],
+   "tests": [
+    "test_measure::test_a_backlog_file_saved_in_another_encoding_in_history_is_still_read",
+    "test_measure::test_the_dashboard_names_utf_8_wherever_it_reads_or_writes_text",
+    "test_measure::test_the_pages_build_under_a_latin_1_locale"
+   ]
+  },
+  {
    "id": "F-13-one-postgresql-server",
    "title": "F-13: parallel workers share one PostgreSQL server, a database each",
    "problem": "Nothing in the framework or the template said how tests that need a database run in a parallel step, so a server per worker (memory and start-up per CPU) was the easy way.",

@@ -3,6 +3,7 @@ right from the backlog's history in git, and every recommendation names the meas
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -212,3 +213,52 @@ def test_main_builds_it_and_runs_as_a_script(tmp_path, monkeypatch, capsys):
         runpy.run_path(str(LIB / "measure.py"), run_name="__main__")
     assert stop.value.code == 2
 
+
+
+def test_a_backlog_file_saved_in_another_encoding_in_history_is_still_read(tmp_path):
+    """E2-F1-01 (F-16): one old commit with a cp1252 backlog file (a middle dot, 0xb7, saved on Windows) must not stop
+    the dashboard; its items keep their statuses, and a byte that fits nowhere becomes U+FFFD."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "backlog").mkdir()
+    (repo / "backlog" / "E1-x.md").write_bytes("### E1-01 · Thing [review] [S]\nCaf\xe9 \x81\n".encode("latin-1"))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "saved on Windows")
+    (repo / "backlog" / "E1-x.md").write_text("### E1-01 · Thing [done] [S]\n", encoding="utf-8")
+    _git(repo, "commit", "-qam", "accepted")
+    assert ms.item_history(repo) == {"E1-01": ["review", "done"]}
+    sha = ms.git(repo, "rev-list", "--max-parents=0", "HEAD").strip()
+    assert ms.git(repo, "show", f"{sha}:backlog/E1-x.md").splitlines()[1] == "Café �"
+
+
+DASHBOARD = ("measure.py", "serve.py", "sessionview.py", "collect.py")
+
+
+def test_the_dashboard_names_utf_8_wherever_it_reads_or_writes_text():
+    """E2-F1-01 (F-16): the locale never decides how the dashboard reads or writes a file (a Latin-1 locale failed on ◐)."""
+    import ast
+    loose = []
+    for name in DASHBOARD:
+        for node in ast.walk(ast.parse((LIB / name).read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("read_text", "write_text"):
+                if not any(k.arg == "encoding" for k in node.keywords):
+                    loose.append(f"{name}:{node.lineno} {node.func.attr}")
+    assert loose == []
+
+
+def test_the_pages_build_under_a_latin_1_locale(tmp_path):
+    """E2-F1-01: the sessions page under LC_ALL=en_US.ISO8859-1 (where the machine has that locale)."""
+    env = {"PATH": os.environ["PATH"], "LC_ALL": "en_US.ISO8859-1", "PYTHONUTF8": "0", "HOME": str(tmp_path)}
+    probe = subprocess.run([sys.executable, "-c", "import locale; print(locale.getencoding())"], env=env,
+                           capture_output=True, text=True)
+    if "8859" not in probe.stdout:
+        pytest.skip("this machine has no Latin-1 locale")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _session(repo, tmp_path / "p")
+    done = subprocess.run([sys.executable, str(LIB / "measure.py"), "--projects", str(tmp_path / "p"), "--out",
+                           str(tmp_path / "o")], cwd=repo, env={**env, "CRISSP_ROOT": str(repo)}, capture_output=True,
+                          text=True)
+    assert done.returncode == 0, done.stderr
+    assert "◐" in (tmp_path / "o" / "index.html").read_text(encoding="utf-8")

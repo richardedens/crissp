@@ -97,8 +97,15 @@ def requests_of(path: Path, repo: Path) -> list[dict]:
 
 
 def git(root: Path, *args: str) -> str:
-    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-    return done.stdout if done.returncode == 0 else ""
+    """git's output as text, whatever an old commit holds (F-16): UTF-8, else Windows' cp1252 (a file saved there keeps its
+    · and é), and a byte that is neither becomes U+FFFD. Never the locale's encoding, never an error."""
+    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True)
+    if done.returncode:
+        return ""
+    try:
+        return done.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return done.stdout.decode("cp1252", errors="replace")
 
 
 def commits(root: Path) -> list[dict]:
@@ -143,7 +150,7 @@ def item_costs(root: Path, requests: list[dict]) -> dict[str, int]:
 def ways(root: Path) -> list[dict]:
     """The ways of working, oldest first; without the file there is one: how we worked so far."""
     try:
-        listed = json.loads((root / "crissp" / "testsuite" / "ways-of-working.json").read_text())
+        listed = json.loads((root / "crissp" / "testsuite" / "ways-of-working.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         listed = []
     return sorted(listed, key=lambda w: w["since"]) or [{"name": "How we worked so far", "since": "", "what": ""}]
@@ -449,11 +456,11 @@ def build(root: Path, projects: Path, out: Path) -> Path:
     requests = [q for s in sessions for q in per[s["id"]]]
     items, listed = item_history(root), ways(root)
     for s in sessions:
-        (out / f"{s['id']}.html").write_text(details(s, per[s["id"]], paths[s["id"]], items, listed, root))
+        (out / f"{s['id']}.html").write_text(details(s, per[s["id"]], paths[s["id"]], items, listed, root), encoding="utf-8")
     (out / "summary.json").write_text(json.dumps({"sessions": len(sessions),
-                                                  "tokens": sv.amount(sum(s["total"] for s in sessions))}))
+                                                  "tokens": sv.amount(sum(s["total"] for s in sessions))}), encoding="utf-8")
     index = out / "index.html"
-    index.write_text(report(requests, items, item_costs(root, requests), listed, sessions, paths))
+    index.write_text(report(requests, items, item_costs(root, requests), listed, sessions, paths), encoding="utf-8")
     return index
 
 
