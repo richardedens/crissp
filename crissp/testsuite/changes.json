@@ -1,6 +1,22 @@
 {
  "changes": [
   {
+   "id": "long-dash-options",
+   "title": "crissp refused an option whose -- a chat or word processor had made a long dash",
+   "problem": "A command copied from Teams, Outlook or Word arrives as 'crissp repair —yes' (an em dash); argparse answered 'unrecognized arguments: —yes'.",
+   "fix": "The crissp command reads a leading em or en dash in an argument as -- before it parses, for its own options and a guard's; a dash inside an argument stays.",
+   "sources": [
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def dashes("
+    }
+   ],
+   "tests": [
+    "test_cli::test_a_dash_a_chat_or_word_processor_made_long_still_is_an_option",
+    "test_cli::test_repair_runs_the_engines_repair_for_the_project"
+   ]
+  },
+  {
    "id": "repair-sessions-section",
    "title": "crissp repair left an existing project's agreement without the sessions section",
    "problem": "0.1.7 added 'Sessions that stay small' to the template's crissp/CLAUDE.md; crissp repair replaced CRISSP.md but never brought the section into a project's own agreement, so only new projects had it.",

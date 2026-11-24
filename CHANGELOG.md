@@ -2,6 +2,11 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.1.9 — 2026-11-24
+
+- **An option with a long dash works.** Teams, Outlook and Word turn `--` into `—`, so a copied
+  `crissp repair —yes` stopped with "unrecognized arguments: —yes". crissp now reads a leading `—` or `–` as `--`.
+
 ## 0.1.8 — 2026-11-24
 
 - **`crissp repair` brings the agreement's sessions section up to date.** A project brought in before 0.1.7 did not

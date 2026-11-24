@@ -53,7 +53,8 @@ def test_the_engine_is_told_it_runs_as_the_crissp_command(tmp_path):
     assert env["CRISSP_VERSION"] == cli.__version__  # F-20: repair moves the .mcp.json pin to this crissp
 
 
-@pytest.mark.parametrize("argv, passed", [(["repair"], []), (["repair", "--yes"], ["--yes"])])
+@pytest.mark.parametrize("argv, passed", [(["repair"], []), (["repair", "--yes"], ["--yes"]),
+                                         (["repair", "\u2014yes"], ["--yes"]), (["repair", "\u2013yes"], ["--yes"])])
 def test_repair_runs_the_engines_repair_for_the_project(monkeypatch, tmp_path, argv, passed):
     calls = []
     monkeypatch.setattr(cli.subprocess, "run", lambda cmd, cwd, env: calls.append((cmd, cwd, env["CRISSP_ROOT"]))
@@ -62,3 +63,10 @@ def test_repair_runs_the_engines_repair_for_the_project(monkeypatch, tmp_path, a
     assert cli.main(argv, env={}) == 1
     (cmd, cwd, root), = calls
     assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "repair.py"), *passed] and str(cwd) == root == str(tmp_path.resolve())
+
+
+def test_a_dash_a_chat_or_word_processor_made_long_still_is_an_option(ran, tmp_path):
+    """F-22: Teams, Outlook and Word turn -- into an em or en dash; crissp reads a leading one as --."""
+    assert cli.main(["check", "—plan"], env={}) == 0
+    assert cli.main(["ux", "–shoot", "first—visit"], env={}) == 0
+    assert ran == [(tmp_path.resolve(), "check.sh", ["--plan"]), (tmp_path.resolve(), "ux.sh", ["--shoot", "first—visit"])]

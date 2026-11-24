@@ -160,6 +160,11 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
+def dashes(argv: list[str]) -> list[str]:
+    """F-22: Teams, Outlook and Word turn -- into an em or en dash; a leading one is read as -- (only at the start)."""
+    return ["--" + a[1:] if a[:1] in ("\u2014", "\u2013") and len(a) > 1 else a for a in argv]
+
+
 def split(argv: list[str]) -> tuple[list[str], list[str]]:
     """crissp's own part of the command line (up to a guard's name) and the guard's part (after it, untouched)."""
     i = 0
@@ -175,7 +180,7 @@ def split(argv: list[str]) -> tuple[list[str], list[str]]:
 
 def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     env = dict(os.environ if env is None else env)
-    own, passed = split(sys.argv[1:] if argv is None else argv)
+    own, passed = split(dashes(sys.argv[1:] if argv is None else argv))
     args = parser().parse_args(own)
     if args.command == "init":
         return init(Path(args.root or os.getcwd()).resolve(), args)
