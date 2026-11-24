@@ -121,6 +121,24 @@ def test_the_code_of_a_fix_is_shown_from_its_symbol(collect):
     assert collect.locate("shop/end.py", "def last")["code"] == "def last():\n    pass"  # the file ends inside the block
 
 
+def test_a_source_may_be_a_plain_path_or_a_folder(collect):
+    """F-19: a source written as a plain path is that file from the top, and a folder is found (its files listed)."""
+    _write(collect.ROOT / "shop" / "cart.py", "def total():\n    return 1\n")
+    _write(collect.ROOT / "shop" / "parts" / "a.py", "x = 1\n")
+    _write(collect.ROOT / "shop" / "parts" / "b" / "c.py", "y = 2\n")
+    assert collect.source("shop/cart.py") == {"file": "shop/cart.py", "symbol": ""}
+    assert collect.source({"file": "shop/cart.py"}) == {"file": "shop/cart.py", "symbol": ""}
+    top = collect.locate(**collect.source("shop/cart.py"))
+    assert top["found"] and top["line"] == 1 and top["code"].startswith("def total():")
+    folder = collect.locate("shop/parts/", "")
+    assert folder["found"] and folder["folder"] and folder["code"] == "a.py\nb/c.py" and folder["line"] == 0
+    _write(collect.SUITE / "changes.json", json.dumps({"changes": [
+        {"id": "x", "title": "t", "problem": "p", "fix": "f", "tests": [], "sources": ["shop/cart.py", "shop/parts/"]}]}))
+    collect.main(collect.ROOT)
+    data = (collect.RESULTS / "data.js").read_text()
+    assert '"file": "shop/cart.py", "symbol": "", "line": 1' in data and '"folder": true' in data
+
+
 def _journey(collect, jid, lang, level, order, status, caps=()):
     _write(collect.RESULTS / "journeys" / jid / lang / "journey.json",
            json.dumps({"id": jid, "lang": lang, "level": level, "order": order, "status": status, "capabilities": list(caps)}))

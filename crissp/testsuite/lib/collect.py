@@ -123,9 +123,21 @@ def _p(a: int, b: int) -> float:
     return round(100 * a / b, 1) if b else 100.0
 
 
+def source(given) -> dict:
+    """A change's source as {file, symbol} (F-19): a plain path is that file from the top (an empty symbol)."""
+    if isinstance(given, str):
+        return {"file": given, "symbol": ""}
+    return {"file": given.get("file", ""), "symbol": given.get("symbol", "")}
+
+
 def locate(file: str, symbol: str) -> dict:
-    """The line of a symbol in a source file, with the code around it (so the dashboard shows the fix itself)."""
+    """The line of a symbol in a source file, with the code around it (so the dashboard shows the fix itself); a folder
+    is found too, with its files (F-19)."""
     path = ROOT / file
+    if path.is_dir():
+        files = sorted(p.relative_to(path).as_posix() for p in path.rglob("*") if p.is_file())
+        return {"file": file, "symbol": symbol, "line": 0, "found": True, "folder": True, "code": "\n".join(files[:40]),
+                "abs": str(path)}
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -277,7 +289,7 @@ def main(root: Path | None = None) -> int:
                   for ref in c.get("e2e", [])]
         statuses = {p["status"] for p in proof}
         verdict = "failed" if "failed" in statuses else "missing" if ("missing" in statuses or not proof) else "passed"
-        changes.append({**c, "sources": [locate(s["file"], s["symbol"]) for s in c["sources"]], "proof": proof, "verdict": verdict,
+        changes.append({**c, "sources": [locate(**source(s)) for s in c.get("sources", [])], "proof": proof, "verdict": verdict,
                         "screenshots": [s + ".png" for s in c.get("screenshots", []) if s + ".png" in shots]})
     steps = _steps()
     gate = json.loads((RESULTS / "gate.json").read_text(encoding="utf-8")) if (RESULTS / "gate.json").exists() else None

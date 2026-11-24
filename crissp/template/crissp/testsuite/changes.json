@@ -1,4 +1,5 @@
 {
+  "about": "Every change with its proof, one entry each: {id, title, problem, fix, sources: [{file, symbol}], tests: [test refs]}. A source's symbol is a line of the fix to show (\"def total(\"); a file without one is shown from the top, a folder by its files. The dashboard shows each change with its code and whether its tests pass.",
   "changes": [],
   "gaps": [
     "CRISSP: what the tests of {{PRODUCT}} do not prove yet, one sentence each (an honest list is never empty)."
