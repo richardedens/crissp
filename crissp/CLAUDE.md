@@ -53,7 +53,7 @@ What `crissp/check.sh` runs per change:
 
 - notes and backlog → nothing;
 - `CHANGELOG.md`/`VERSION` → a file check;
-- `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/` → tools;
+- `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools;
 - `crissp/deploy*` → deploy;
 - `src/`, `pyproject.toml` → package;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks

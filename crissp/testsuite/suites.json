@@ -99,6 +99,12 @@
    ]
   },
   {
+   "match": "site/",
+   "steps": [
+    "tools"
+   ]
+  },
+  {
    "match": "crissp/deploy/",
    "steps": [
     "deploy"
