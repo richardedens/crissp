@@ -8,7 +8,7 @@ fixed context is small; keeping sessions short saves the most. The product owner
 Why        Every Claude session in a crissp project knows how to keep itself small, and the product owner sees live when
            a session's history passes 300k tokens, with what to do.
 
-### E4-F1-01 · The agreement says how a session stays small                              [todo] [S]
+### E4-F1-01 · The agreement says how a session stays small                              [review] [S]
 Why        Nothing told Claude or the product owner how to keep a session small; the habits lived in one session's
            advice.
 What       CRISSP.md gets a section "Sessions that stay small" and the template's crissp/CLAUDE.md (and this
@@ -22,7 +22,7 @@ Tests      test_template: the framework and the template's agreement name /clear
            checks and run/status.
 Depends    —
 
-### E4-F1-02 · The Activity page shows each session's history and when to start fresh    [todo] [S]
+### E4-F1-02 · The Activity page shows each session's history and when to start fresh    [review] [S]
 Why        The sessions report says afterwards that a request started on a long history; while it happens nobody sees
            it.
 What       activity.py gives each session the history its last request carried (input + cache read + cache write,
