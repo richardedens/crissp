@@ -8,7 +8,7 @@ to get past that: new commit ids, a broken release certificate, a force-push.
 Why        The product owner sees what the runs proved and the backlog board in every project, on macOS, Linux and WSL,
            under any locale.
 
-### E2-F1-01 · git's output read leniently, as UTF-8                                     [todo] [S]
+### E2-F1-01 · git's output read leniently, as UTF-8                                     [review] [S]
 Why        F-16: git() in lib/measure.py decodes `git show <sha>:<file>` strictly in the locale's encoding; one byte
            that is not UTF-8 in any old backlog version ends the dashboard with a UnicodeDecodeError.
 What       git() passes encoding="utf-8", errors="replace" to subprocess.run, so an undecodable byte becomes U+FFFD and
