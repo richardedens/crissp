@@ -2,7 +2,14 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.6 — unreleased
+## 0.1.7 — unreleased
+
+- **Sessions that stay small.** Every step Claude takes resends the whole conversation, so a long session costs more
+  with every step. The framework and a new project's agreement now say how to keep sessions short: a fresh session per
+  item (`/clear`), `/compact` in the middle of a long one, browser checks and screenshots in a subagent, the checks
+  through `run` and `status`, searches in an Explore agent, narrow questions, and the lighter model for routine work.
+
+## 0.1.6 — 2026-11-24
 
 - **The PyPI page is up to date.** It shows this README: `crissp repair` with its two new repairs (and to run it after
   an update), and the dashboard with the workers and the Activity page.

@@ -84,3 +84,12 @@ def test_parallel_workers_share_one_postgresql_server_with_a_database_each():
         text = " ".join(doc.read_text().split())
         for words in ("one PostgreSQL server", "a database per worker", "PYTEST_XDIST_WORKER"):
             assert words in text, (doc.name, words)
+
+
+def test_the_framework_and_the_agreement_say_how_a_session_stays_small():
+    """E4-F1-01: every step resends the whole conversation; the habits that keep it short are part of the agreement."""
+    for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "CLAUDE.md"):
+        text = " ".join(doc.read_text().split())
+        for words in ("Sessions that stay small", "/clear", "/compact", "in a subagent", "start with `run` and are read with `status`",
+                      "Explore agent"):
+            assert words in text, (doc.name, words)

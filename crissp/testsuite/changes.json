@@ -1,6 +1,25 @@
 {
  "changes": [
   {
+   "id": "E4-F1-01-sessions-that-stay-small",
+   "title": "E4-F1-01: the agreement says how a session stays small",
+   "problem": "42% of requests started on more than 300k tokens of history and used 37% of all tokens (F-18); nothing told Claude or the product owner how to keep a session short.",
+   "fix": "CRISSP.md, the template's crissp/CLAUDE.md and this repository's have a section 'Sessions that stay small': a fresh session per item, /compact mid-item, heavy output (browser checks, screenshots, logs, searches) in subagents or through run/status, narrow questions, agents on separate parts, the lighter model for routine work.",
+   "sources": [
+    {
+     "file": "crissp/CRISSP.md",
+     "symbol": "## Sessions that stay small"
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "## Sessions that stay small"
+    }
+   ],
+   "tests": [
+    "test_template::test_the_framework_and_the_agreement_say_how_a_session_stays_small"
+   ]
+  },
+  {
    "id": "F-19-plain-and-folder-sources",
    "title": "F-19: a change's source may be a plain path or a folder",
    "problem": "The dashboard read every changes.json source as {file, symbol}: a project with plain paths got no dashboard at all, and a folder was reported as \"source not found\". The template did not say the format.",

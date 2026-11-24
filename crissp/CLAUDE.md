@@ -122,6 +122,23 @@ What `crissp/check.sh` runs per change:
   accepted work moves to `crissp/backlog/done/`.
 - New observations go to FINDINGS.md right away (`F-next | where seen | what | goes to`).
 
+## Sessions that stay small
+
+Every step Claude takes resends the whole conversation so far, so a long session costs more with every step; the fixed
+context (this agreement, the tools) is small. Keeping sessions short saves the most:
+
+- **A fresh session per item**: `/clear` when one item is done and the next starts; `brief`, `backlog` and git bring
+  back what is needed. `/compact` in the middle of a long item, steered (`/compact keep E6-F1-02 and the failing test`).
+- **Heavy output stays out of the conversation**: a browser check and its screenshots run in a subagent that reports
+  what is wrong; the checks start with `run` and are read with `status`, only the failures; searching the code is an
+  Explore agent's job, so the files it reads stay in its context.
+- **Narrow questions**: name the file or the function, one screen or flow at a time. Every file read stays in the
+  history for the rest of the session.
+- **Agents on separate parts**, each briefed narrowly, so they do not each rediscover the same files.
+- **The lighter model and effort for routine work** (release notes, small fixes), the strongest for design and hard bugs.
+- The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
+  fresh.
+
 ## Working with the product owner
 
 - Act when the intent is clear; ask only for real choices that are expensive to undo, with a recommendation.
