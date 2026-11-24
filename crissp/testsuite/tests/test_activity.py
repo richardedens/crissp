@@ -39,6 +39,9 @@ def world(tmp_path: Path) -> tuple[Path, Path]:
         use("Agent", {"description": "Write tests", "subagent_type": "general-purpose"}, "t1", 2),
         use("Agent", {"description": "Read docs", "subagent_type": "Explore"}, "t2", 3),
         use("Agent", {"description": "Just started", "subagent_type": "Plan"}, "t3", 7),
+        {**use("Agent", {"description": "Last week", "subagent_type": "Explore"}, "t5", 0),
+         "timestamp": "2026-11-17T10:00:00Z"},
+        {"type": "user", "timestamp": T.format(4), "message": {"content": [{"type": "tool_result", "tool_use_id": "t5"}]}},
         {"type": "user", "timestamp": T.format(4), "message": {"content": [{"type": "tool_result", "tool_use_id": "t2"}]}},
         use("Bash", {"command": "make TOKEN=abc123secret", "description": ""}, "t4", 8),
     ], NOW - 30)
@@ -68,6 +71,7 @@ def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
     assert agents == [("Write tests", "general-purpose", True, "a.py"), ("Just started", "Plan", True, ""),
                       ("Read docs", "Explore", False, "b.md")]  # running first, then finished
     assert s["agents"][0]["since"] == T.format(9) and s["agents"][2]["since"] == T.format(3)
+    assert s["earlier"] == 1  # a finished agent's last step more than an hour ago: counted, not listed
 
 
 def test_a_quiet_session_and_no_sessions_at_all(tmp_path):

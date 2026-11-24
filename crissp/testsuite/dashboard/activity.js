@@ -38,6 +38,7 @@
       ${s.prompt ? `<p class="session-prompt"><span class="muted">Asked:</span> ${esc(s.prompt)}</p>` : ""}
       <div class="orchestrator"><div class="label">Orchestrator · main thread</div><div class="act">${step(s.main, s.busy)}</div></div>
       ${s.agents.length ? `<ul class="agents">${s.agents.map(agent).join("")}</ul>` : ""}
+      ${s.earlier ? `<p class="muted small">and ${s.earlier} earlier agent${s.earlier === 1 ? "" : "s"}, finished more than an hour ago: <a href="/results/sessions/${encodeURIComponent(s.id)}.html">in the whole session</a></p>` : ""}
     </article>`;
   }
 

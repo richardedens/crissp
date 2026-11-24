@@ -1,10 +1,14 @@
 {
  "accepted": [],
- "commit": "c6b8e9a89de8736a062e6a84783079bb3813e83f",
+ "commit": "f3d8ee631c8fa664db256de4c870bbfccdd7c47d",
  "suites": {
   "tools": {
    "branch": 100.0,
    "files": {
+    "crissp/testsuite/lib/activity.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
     "crissp/testsuite/lib/audit.py": {
      "branch": 100.0,
      "line": 100.0

@@ -7,13 +7,15 @@ read them, lib/sessionview.py), the sessions written in the last half hour, newe
 - the orchestrator (the main thread): its latest step (the tool, and the path, the command's description or the command
   itself, masked) and since when; busy while the session wrote something in the last two minutes;
 - every subagent it started: its type and description, running or finished (the subagent's own record says so; without
-  one, a result means finished), and its own latest step and since when. Running agents first.
+  one, a result means finished), and its own latest step and since when. Running agents first; agents that finished
+  more than an hour ago are only counted ("earlier").
 
 Only what Claude sent to its tools is shown, never what came back.
 """
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 
 import project
@@ -21,6 +23,7 @@ import sessionview as sv
 
 WINDOW_S = 30 * 60  # a session written longer ago than this is not activity any more
 QUIET_S = 120  # nothing written for this long: listed, no longer busy
+FINISHED_S = 60 * 60  # a finished agent whose last step is older than this is counted, not listed
 
 
 def _step(record: dict, block: dict, repo: sv.Repo) -> dict:
@@ -77,10 +80,12 @@ def session(path: Path, root: Path, now: float) -> dict:
             agents.append({"name": info.get("description") or given.get("description", "agent"),
                            "type": info.get("agentType") or given.get("subagent_type", "agent"), "running": running,
                            **step})
-    agents.sort(key=lambda a: not a["running"])
+    old = [a for a in agents if not a["running"] and a["since"]
+           and now - datetime.fromisoformat(a["since"].replace("Z", "+00:00")).timestamp() > FINISHED_S]
+    agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
     return {"id": path.stem, "title": sv.mask(titles[-1]) if titles else "",
             "prompt": sv.mask(prompts[-1][:300]) if prompts else "", "busy": now - updated < QUIET_S,
-            "updated": updated, "main": _latest(main, repo), "agents": agents}
+            "updated": updated, "main": _latest(main, repo), "agents": agents, "earlier": len(old)}
 
 
 def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None) -> dict:
