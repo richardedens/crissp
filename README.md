@@ -48,15 +48,26 @@ Guards are plain scripts, with no AI in them. They decide what is green.
 
 ## See it
 
-One local server (`crissp dashboard`, on 127.0.0.1) shows the tests, the backlog board and the UX team, in one dark
-look (a light theme is one click away). It never runs a test and loads nothing from the internet.
+One local server (`crissp dashboard`, on 127.0.0.1) shows the tests, the backlog board, the UX team, the workers and
+what Claude is doing now, under one top bar (Tests · Backlog · UX · Workers · Activity · Sessions) in one dark look (a
+light theme is one click away). It never runs a test and loads nothing from the internet.
 
 **What the last run proved**: tests, line and branch coverage, the coverage gate, every step.
 ![The Tests dashboard](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/dashboard.jpg)
 
-**The backlog board**: epics, features and items, as Claude writes them through the crissp tool. Only you move work to
-done. The *UX: approved designs* epic fills itself when you approve a design.
+**What Claude is doing now** (Activity): per session the question asked, what the orchestrator does at this moment and
+for how long, and every agent it started, running ones first, each with its own current step. Read live from Claude
+Code's own records on your machine; only what Claude sent to its tools.
+![The Activity page](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/activity.jpg)
+
+**The backlog board and how it moved**: epics, features and items, as Claude writes them through the crissp tool, and
+above them every move: from where to where, when, and in which commit, or *not committed* yet. Each card says how long
+it has stood in its column. Only you move work to done. The *UX: approved designs* epic fills itself when you approve a
+design.
 ![The backlog board](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/board.jpg)
+
+**The workers**: a parallel step's tests spread over what this machine has (CPUs, memory), worker by worker, live.
+![The workers page](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/workers.jpg)
 
 **The UX team's advice**: scores per persona, what they agreed on, where they disagree, and advice you answer with
 *Agree · Disagree · Later*.
@@ -70,8 +81,9 @@ item, and your remark is the first thing the builder reads in it.
 **The team**: who they are, which device they use and what they look for, configured per product.
 ![The UX team](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-team.jpg)
 
-<sub>The pictures show a demo project made with `crissp init`. Its backlog, test run and screenshots are real; the UX
-round's and the design's text is a sample, because a real round runs on your own Claude login and costs tokens.</sub>
+<sub>The pictures show a demo project made with `crissp init` (0.1.4). Its backlog and its moves, test run, workers and
+screenshots are real; the UX round's and the design's text and the Claude session on the Activity page are samples,
+because a real round runs on your own Claude login and costs tokens.</sub>
 
 ## Start a project
 
@@ -103,7 +115,7 @@ diff first.
 | `crissp check [--plan]` | Runs only what the changes since the last green state can affect, then moves the certificate to this commit |
 | `crissp check-all` | The full run, with the coverage gate |
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
-| `crissp dashboard` | The Tests dashboard, the backlog board and the UX team on 127.0.0.1 |
+| `crissp dashboard` | The Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
 | `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files); `--yes` puts it in place, never deleting or committing |
 | `crissp mcp` | The crissp MCP server that Claude Code starts from `.mcp.json` |
