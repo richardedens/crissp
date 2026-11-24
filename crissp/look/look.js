@@ -18,10 +18,18 @@
   const SECTIONS = [["tests", "Tests", "/dashboard/"], ["backlog", "Backlog", "/dashboard/#board"], ["ux", "UX", "/ux/"],
     ["workers", "Workers", "/dashboard/workers.html"], ["activity", "Activity", "/dashboard/activity.html"],
     ["sessions", "Sessions", "/results/sessions/index.html"]];
+  let named = null;  // the product, once a page named it: the title follows the open section ("Shop · Backlog")
+  const title = (product, label) => {
+    document.title = `${product} · ${label}`;
+    const h1 = document.querySelector(".top h1");
+    if (h1) h1.textContent = `${product} · ${label}`;
+  };
   const sections = () => document.querySelectorAll("nav.sections[data-current]").forEach(nav => {
     const open = nav.dataset.current === "tests" && /^#board/.test(location.hash) ? "backlog" : nav.dataset.current;
     nav.innerHTML = SECTIONS.map(([key, label, href]) =>
       `<a href="${href}"${key === open ? ' aria-current="page"' : ""}>${label}</a>`).join("");
+    const label = (SECTIONS.find(([key]) => key === open) || [])[1];
+    if (named && label) title(named, label);
   });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sections); else sections();
   window.addEventListener("hashchange", sections);
@@ -31,13 +39,15 @@
     theme: () => root.dataset.theme,
     setTheme: set,
     badge: (status, text) => `<span class="badge ${esc(status)}">${esc(text ?? status)}</span>`,
-    /* the product's name in the top bar and the tab title: "<product> · <section>" */
+    /* the product's name in the top bar and the tab title: "<product> · <the open section>" (the page's own section
+       when it has no sections nav) */
     brand(product, monogram, section) {
       if (!product) return;
-      document.title = `${product} · ${section}`;
-      const h1 = document.querySelector(".top h1"), logo = document.querySelector(".top .logo");
-      if (h1) h1.textContent = `${product} · ${section}`;
+      named = product;
+      title(product, section);
+      const logo = document.querySelector(".top .logo");
       if (logo) logo.textContent = monogram || product[0];
+      sections();
     },
   };
 })();

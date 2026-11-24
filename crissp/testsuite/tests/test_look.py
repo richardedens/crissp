@@ -45,17 +45,21 @@ def test_look_js_holds_the_sections_once_and_fills_and_marks_them():
         pytest.skip("no node on this machine")
     stand_in = """
 const navs = [{dataset: {current: "%s"}, innerHTML: ""}];
+const h1 = {textContent: ""};
 const handlers = {};
 global.localStorage = {getItem: () => null, setItem: () => {}};
 global.window = {addEventListener: (k, f) => { handlers[k] = f; }, dispatchEvent: () => {}};
 global.CustomEvent = function () {};
 global.location = {hash: "%s"};
 global.document = {documentElement: {dataset: {}}, readyState: "complete", addEventListener: () => {},
-  querySelectorAll: s => (s === "nav.sections[data-current]" ? navs : []), querySelector: () => null};
+  querySelectorAll: s => (s === "nav.sections[data-current]" ? navs : []), querySelector: s => (s === ".top h1" ? h1 : null)};
 require(%s);
 const first = navs[0].innerHTML;
+window.Look.brand("Shop", "S", "Tests");
+const titled = h1.textContent;
 location.hash = "#tests"; handlers.hashchange && handlers.hashchange();
-console.log(JSON.stringify({first, sections: window.Look.SECTIONS.map(s => s[0]), after: navs[0].innerHTML}));
+console.log(JSON.stringify({first, titled, sections: window.Look.SECTIONS.map(s => s[0]), after: navs[0].innerHTML,
+                            retitled: h1.textContent}));
 """
     def run(current: str, hash_: str) -> dict:
         done = subprocess.run(["node", "-e", stand_in % (current, hash_, json.dumps(str(LOOK_JS)))],
@@ -73,3 +77,5 @@ console.log(JSON.stringify({first, sections: window.Look.SECTIONS.map(s => s[0])
     board = run("tests", "#board")  # the board is the Tests page opened on its Backlog tab: Backlog is the open section
     assert 'aria-current="page">Backlog' in board["first"] and 'aria-current="page">Tests' in board["after"]
     assert len(re.findall(r"aria-current", board["after"])) == 1
+    assert board["titled"] == "Shop · Backlog" and board["retitled"] == "Shop · Tests"  # the title follows the open section
+    assert out["titled"] == "Shop · Workers"
