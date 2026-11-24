@@ -276,8 +276,8 @@ def test_amounts_read_at_a_glance():
 def test_the_look_is_the_shared_one_dark_by_default_with_its_own_font(monkeypatch, tmp_path):
     page = sv.page("t", "body")
     assert "prefers-color-scheme:light" not in page and "[data-theme=light]:root{" in page  # light only when chosen
-    assert "localStorage.getItem('crissp.theme')" in page and "id=theme" in page  # the shared theme and switch
-    assert "<header class=top>" in page and '<a href="../../dashboard/#changes">Changes</a>' in page
+    assert "<script src=../../look/look.js></script>" in page and "id=theme" in page  # the shared theme and switch
+    assert "<header class=top>" in page
     assert "MutationObserver" in page and "uRip" in page  # the water, from crissp/look/water.js
     assert sv.WATER_JS == Path(sv.__file__).resolve().parents[2] / "look" / "water.js" and sv.FONT.is_file()
     assert 'font-family:"Figtree"' in page and "data:font/woff2;base64," in page and "fonts.googleapis" not in page
@@ -291,7 +291,7 @@ def test_the_top_bar_names_the_product_and_the_water_is_optional(monkeypatch, tm
     (tmp_path / "shield" / "crissp" / "testsuite").mkdir(parents=True)
     (tmp_path / "shield" / "crissp" / "testsuite" / "suites.json").write_text('{"product": "Shop", "monogram": "S"}')
     assert sv.product() == ("Shop", "S") and "<span class=logo>S</span>" in sv.top_bar("x")
-    assert '<a href="../../dashboard/">Tests</a><a href="../../ux/">UX</a>' in sv.top_bar("x")  # the shared sections
+    assert 'data-current="sessions"></nav>' in sv.top_bar("x")  # the shared sections, filled by look.js (E3-F1-01)
     monkeypatch.setattr(sv, "WATER_JS", tmp_path / "none.js")
     assert sv.water() == "" and "<header class=top>" in sv.page("t", "b")
 

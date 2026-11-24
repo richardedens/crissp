@@ -396,13 +396,6 @@ def water() -> str:
 
 # The shared look's type, Figtree (OFL-1.1, crissp/look/LICENSE-figtree.txt), inside the page: it loads nothing.
 FONT = LOOK / "figtree-latin-variable.woff2"
-# The shared theme (crissp/look/look.js): dark by default, light when chosen, remembered under the same key.
-THEME = "try{const t=localStorage.getItem('crissp.theme');if(t)document.documentElement.dataset.theme=t}catch(e){}"
-TOGGLE = ("document.getElementById('theme').onclick=()=>{const r=document.documentElement;"
-          "r.dataset.theme=r.dataset.theme==='light'?'dark':'light';try{localStorage.setItem('crissp.theme',r.dataset.theme)}"
-          "catch(e){}};")
-TABS = (("overview", "Overview"), ("changes", "Changes"), ("tests", "Tests"), ("coverage", "Coverage"),
-        ("journeys", "Journeys"), ("e2e", "E2E"), ("steps", "Runs & logs"), ("gaps", "Known gaps"))
 
 
 def product() -> tuple[str, str]:
@@ -416,14 +409,12 @@ def product() -> tuple[str, str]:
 
 
 def top_bar(title: str) -> str:
-    """The shared top bar: the brand, the sections (Tests · UX · Sessions, this one open) and the dashboard's tabs."""
+    """The shared top bar (E3-F1-01): the brand, and the sections nav that the shared look fills (Sessions open)."""
     name, mono = product()
-    tabs = "".join(f'<a href="../../dashboard/#{k}">{t}</a>' for k, t in TABS)
     return (f'<header class=top><div class=brand><span class=logo>{html.escape(mono)}</span><div><h1>{html.escape(name)} '
-            f'· Sessions</h1><p>{html.escape(title)}</p></div></div><nav class=sections aria-label=Sections>'
-            f'<a href="../../dashboard/">Tests</a><a href="../../ux/">UX</a><a class=on aria-current=page href="index.html">'
-            f'Sessions</a></nav><nav class=tabs>{tabs}</nav><button id=theme class=ghost title="Light / dark" '
-            f'aria-label="Light or dark">◐</button></header>')
+            f'· Sessions</h1><p>{html.escape(title)}</p></div></div>'
+            f'<nav class="sections" aria-label="Sections" data-current="sessions"></nav><button id=theme class=ghost '
+            f'title="Light / dark" aria-label="Light or dark">◐</button></header>')
 
 
 def font_face() -> str:
@@ -435,9 +426,9 @@ def font_face() -> str:
 def page(title: str, body: str) -> str:
     """A page in the shared look under its top bar: dark by default (light when chosen, remembered), water underneath."""
     return (f"<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content=\"width=device-width,"
-            f"initial-scale=1\"><title>{html.escape(title)}</title><script>{THEME}</script><style>{font_face()}{STYLE}"
+            f"initial-scale=1\"><title>{html.escape(title)}</title><script src=../../look/look.js></script><style>{font_face()}{STYLE}"
             f"</style><div class=water aria-hidden=true><canvas></canvas><i></i></div>{top_bar(title)}<main>{body}</main>"
-            f"<script>{TOGGLE}{water()}</script></html>")
+            f"<script>{water()}</script></html>")
 
 
 def way_of_working(s: dict, repo: Path) -> str:

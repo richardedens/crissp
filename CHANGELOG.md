@@ -2,7 +2,13 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.3 — unreleased
+## 0.1.4 — unreleased
+
+- **One top bar on every page.** The Tests dashboard, the backlog board, the UX suite, the workers page and the Claude
+  sessions pages now show the same sections in the same order (Tests · Backlog · UX · Workers · Sessions), with the
+  open one marked. Backlog is a section of its own, and opens the board.
+
+## 0.1.3 — 2026-11-24
 
 - **The dashboard opens in every project, whatever its history holds.** An old commit with a backlog file saved in
   another encoding (Windows' cp1252) stopped it before it served anything; now that file is read as it was meant, with

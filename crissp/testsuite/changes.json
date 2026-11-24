@@ -1,6 +1,26 @@
 {
  "changes": [
   {
+   "id": "E3-F1-01-one-top-bar",
+   "title": "E3-F1-01: one top bar on every page",
+   "problem": "Each page wrote its own sections: Tests · UX · Workers · Sessions on the Tests dashboard, Tests · UX · Workers on the workers page and the UX suite, Tests · UX · Sessions plus the dashboard's tabs on the session pages; the backlog was only a tab.",
+   "fix": "look.js holds the one list (Tests, Backlog, UX, Workers, Sessions) and fills every page's empty sections nav, marking the open one (Backlog when the Tests page shows #board). The session and report pages load look.js too, so they no longer carry a second theme switch.",
+   "sources": [
+    {
+     "file": "crissp/look/look.js",
+     "symbol": "const SECTIONS"
+    },
+    {
+     "file": "crissp/testsuite/lib/sessionview.py",
+     "symbol": "def top_bar("
+    }
+   ],
+   "tests": [
+    "test_look::test_every_page_has_the_same_empty_sections_nav_with_its_own_section",
+    "test_look::test_look_js_holds_the_sections_once_and_fills_and_marks_them"
+   ]
+  },
+  {
    "id": "E2-F1-01-any-encoding-in-history",
    "title": "E2-F1-01: the dashboard opens whatever encoding an old commit holds",
    "problem": "F-16: measure.py's git() decoded `git show` strictly in the locale's encoding, so one old backlog file saved on Windows (cp1252, a middle dot 0xb7) stopped the dashboard with a UnicodeDecodeError; under a Latin-1 locale the pages then failed to be written (◐).",

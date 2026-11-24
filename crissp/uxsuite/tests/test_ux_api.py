@@ -71,7 +71,7 @@ def test_the_page_is_served_in_the_shared_look(site):
     page = body.decode()
     assert code == 200 and headers["Content-Type"].startswith("text/html") and "Content-Security-Policy" not in headers
     assert '../../look/look.css' in page and '../../look/look.js' in page and '../../look/water.js' in page
-    assert 'href="../dashboard/">Tests</a>' in page and 'id="theme"' in page and "http" not in page.replace("http-equiv", "")
+    assert 'data-current="ux"></nav>' in page and 'id="theme"' in page and "http" not in page.replace("http-equiv", "")
     for name, kind in (("ux.js", "text/javascript"), ("ux.css", "text/css")):
         code, headers, body = get(base + "/ux/" + name)
         assert code == 200 and headers["Content-Type"].startswith(kind) and b"http" not in body

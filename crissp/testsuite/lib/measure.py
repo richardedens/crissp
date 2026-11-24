@@ -213,10 +213,10 @@ addEventListener('hashchange',show);show();})();"""
 def shell(title: str, sub: str, body: str, script: str = "") -> str:
     """A page of the test suite: the dashboard's stylesheet and water, its top bar, the Claude sessions tab open."""
     return (f'<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content="width=device-width,'
-            f'initial-scale=1"><title>{html.escape(title)}</title><script>{sv.THEME}</script>'
+            f'initial-scale=1"><title>{html.escape(title)}</title><script src="../../look/look.js"></script>'
             f'<link rel=stylesheet href="../../look/look.css"><link rel=stylesheet href="../../dashboard/style.css">'
             f'<style>{EXTRA}</style><body>{sv.top_bar(sub)}<main>{body}</main>'
-            f'<script src="../../look/water.js"></script><script>{sv.TOGGLE}{script}</script></body></html>')
+            f'<script src="../../look/water.js"></script><script>{script}</script></body></html>')
 
 
 def recommendations(qs: list[dict], items: dict[str, list[str]], listed: list[dict]) -> list[tuple[str, str]]:

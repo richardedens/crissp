@@ -172,7 +172,7 @@ def test_the_report_and_the_details_read_in_plain_english(tmp_path, monkeypatch)
     page = ms.build(repo, tmp_path / "p", tmp_path / "out").read_text()
     assert '<link rel=stylesheet href="../../look/look.css">' in page and 'src="../../look/water.js"' in page
     assert '<link rel=stylesheet href="../../dashboard/style.css">' in page and "<h1>Shop · Sessions</h1>" in page
-    assert 'aria-current=page href="index.html">Sessions</a>' in page and '<a href="../../ux/">UX</a>' in page
+    assert 'data-current="sessions"></nav>' in page and '<script src="../../look/look.js"></script>' in page  # E3-F1-01
     assert "You asked Claude <b>2</b> things in 1 session(s)" in page and 'class="card kpi row"' in page
     assert "Requests on a long history" in page and "--p:50" in page  # 1 of the 2 requests: half the ring
     assert "Start a new session for each feature or question." in page and "<b>Because:</b>" in page

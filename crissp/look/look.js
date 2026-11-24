@@ -12,8 +12,21 @@
   };
   document.addEventListener("click", e => { if (e.target.closest("#theme")) set(root.dataset.theme === "light" ? "dark" : "light"); });
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  /* E3-F1-01: the one list of sections, in this order on every page of the dashboard server. A page has
+     <nav class="sections" aria-label="Sections" data-current="<key>"></nav> and nothing in it; this fills and marks it.
+     The board is the Tests page on its Backlog tab (#board), so there Backlog is the open section. */
+  const SECTIONS = [["tests", "Tests", "/dashboard/"], ["backlog", "Backlog", "/dashboard/#board"], ["ux", "UX", "/ux/"],
+    ["workers", "Workers", "/dashboard/workers.html"], ["sessions", "Sessions", "/results/sessions/index.html"]];
+  const sections = () => document.querySelectorAll("nav.sections[data-current]").forEach(nav => {
+    const open = nav.dataset.current === "tests" && /^#board/.test(location.hash) ? "backlog" : nav.dataset.current;
+    nav.innerHTML = SECTIONS.map(([key, label, href]) =>
+      `<a href="${href}"${key === open ? ' aria-current="page"' : ""}>${label}</a>`).join("");
+  });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sections); else sections();
+  window.addEventListener("hashchange", sections);
   window.Look = {
     esc,
+    SECTIONS,
     theme: () => root.dataset.theme,
     setTheme: set,
     badge: (status, text) => `<span class="badge ${esc(status)}">${esc(text ?? status)}</span>`,

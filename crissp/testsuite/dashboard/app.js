@@ -37,7 +37,6 @@
   };
   poll(); setInterval(poll, 3000);
   if (window.Look) Look.brand(S.product, S.monogram, "Tests");
-  if (S.sessions) { const a = $("#sessions"); a.href = S.sessions.href; a.textContent = "Sessions"; a.title = `Claude sessions · ${S.sessions.tokens} tokens`; a.hidden = false; }
 
   const tests = S.tests, unit = tests.filter(t => t.suite !== "e2e" && t.suite !== "journeys"), e2e = tests.filter(t => t.suite === "e2e");
   const journeys = S.journeys || [];
