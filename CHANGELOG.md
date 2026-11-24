@@ -2,7 +2,7 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.5 — unreleased
+## 0.1.5 — 2026-11-24
 
 - **The dashboard reads a change's source as you wrote it.** A plain path in `changes.json` is shown as that file from
   the top (it used to stop the dashboard), and a folder is found and shown by its files. The template's `changes.json`
