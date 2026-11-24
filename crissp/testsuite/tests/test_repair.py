@@ -227,3 +227,39 @@ def test_a_gitignore_without_a_last_newline_gets_one_before_the_rules(tmp_path):
 
 def test_a_folder_never_brought_in_is_told_to_run_init(tmp_path):
     assert repair.needs(tmp_path)[0] == "not brought in: no crissp/ here; crissp init brings it in"
+
+
+def test_plain_path_sources_in_changes_json_become_file_and_symbol(tmp_path, capsys):
+    """F-20: the dashboard reads a source as {file, symbol}; a plain path becomes the file from the top."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    changes = {"changes": [{"id": "a", "sources": ["app/x.py", {"file": "app/y.py", "symbol": "def y"}]},
+                           {"id": "b", "sources": ["app/z/"]}, "not an entry"], "gaps": ["kept"]}
+    write(root / "crissp/testsuite/changes.json", json.dumps(changes))
+    assert "changes" in keys(root)
+    repair.main([], {"CRISSP_ROOT": str(root)})
+    assert "2 sources are plain paths" in capsys.readouterr().out
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
+    fixed = json.loads((root / "crissp/testsuite/changes.json").read_text())
+    assert fixed["changes"][0]["sources"] == [{"file": "app/x.py", "symbol": ""}, {"file": "app/y.py", "symbol": "def y"}]
+    assert fixed["changes"][1]["sources"] == [{"file": "app/z/", "symbol": ""}] and fixed["gaps"] == ["kept"]
+    assert fixed["changes"][2] == "not an entry"  # what it does not understand, it leaves as it is
+    assert "changes" not in keys(root)
+
+
+def test_the_mcp_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
+    """F-20: .mcp.json pins crissp; a newer crissp's repair moves the pin to itself, never anything else in the file."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    mcp = {"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp==0.1.2", "mcp"], "env": {"PYTHONUTF8": "1"}},
+                          "other": {"command": "x", "args": ["crissp==0.1.2"]}}}
+    write(root / ".mcp.json", json.dumps(mcp))
+    assert "mcp-pin" not in [r.key for r in repair.find(root)]  # no version known (not run as the crissp command)
+    assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.2")]
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5"})
+    assert "crissp==0.1.2 → crissp==0.1.5" in capsys.readouterr().out
+    fixed = json.loads((root / ".mcp.json").read_text())
+    assert fixed["mcpServers"]["crissp"] == {"command": "uvx", "args": ["crissp==0.1.5", "mcp"], "env": {"PYTHONUTF8": "1"}}
+    assert fixed["mcpServers"]["other"] == mcp["mcpServers"]["other"]
+    write(root / ".mcp.json", json.dumps({"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp", "mcp"]}}}))
+    assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.5")]  # not pinned: left as it is

@@ -50,6 +50,7 @@ def test_the_engine_is_told_it_runs_as_the_crissp_command(tmp_path):
     """So the guards say `crissp check-all`, not a script path the project does not have (F-04)."""
     env = cli.engine_env(tmp_path, {"PATH": "/usr/bin"})
     assert env["CRISSP_COMMAND"] == "crissp" and env["CRISSP_ROOT"] == str(tmp_path)
+    assert env["CRISSP_VERSION"] == cli.__version__  # F-20: repair moves the .mcp.json pin to this crissp
 
 
 @pytest.mark.parametrize("argv, passed", [(["repair"], []), (["repair", "--yes"], ["--yes"])])

@@ -40,6 +40,7 @@ ENGINE = Path(__file__).resolve().parents[2]  # the engine: crissp/ in the frame
 TEMPLATE = ENGINE / "template"
 SUITES = Path("crissp/testsuite/suites.json")
 TEAM = Path("crissp/uxsuite/team.json")
+CHANGES = Path("crissp/testsuite/changes.json")
 OLD_URL = "http://127.0.0.1:5173"
 OLD_KEYS = {"unit", "lint"}
 RENAMED = {"unit": "backend", "lint": "backend-lint"}  # a project's own path rule follows its step to the new name
@@ -211,10 +212,47 @@ def fix_gitignore(root: Path) -> Repair | None:
                                f"{' …' if len(missing) > 3 else ''}) → added", do)
 
 
-def find(root: Path) -> list[Repair]:
+def fix_changes(root: Path) -> Repair | None:
+    """F-20: the dashboard reads a change's source as {file, symbol}; a plain path becomes the file from the top."""
+    path = root / CHANGES
+    data = read(path)
+    entries = data.get("changes") if data else None
+    if not isinstance(entries, list):
+        return None
+    plain = sum(isinstance(src, str) for c in entries if isinstance(c, dict) for src in c.get("sources", []))
+    if not plain:
+        return None
+
+    def do() -> None:
+        for c in entries:
+            if isinstance(c, dict):
+                c["sources"] = [{"file": src, "symbol": ""} if isinstance(src, str) else src for src in c.get("sources", [])]
+        write(path, data)
+    return Repair("changes", f"{CHANGES}: {plain} sources are plain paths → {{file, symbol}} (the file from the top; "
+                             "name a symbol to show the fix itself)", do)
+
+
+def fix_pin(root: Path, version: str | None) -> Repair | None:
+    """F-20: .mcp.json pins crissp for its MCP tools; the crissp that repairs moves the pin to itself."""
+    path = root / ".mcp.json"
+    data = read(path)
+    server = ((data or {}).get("mcpServers") or {}).get("crissp")
+    args = server.get("args") if isinstance(server, dict) else None
+    pins = [i for i, a in enumerate(args or []) if isinstance(a, str) and a.startswith("crissp==")]
+    if not version or not pins or args[pins[0]] == f"crissp=={version}":
+        return None
+    old = args[pins[0]]
+
+    def do() -> None:
+        args[pins[0]] = f"crissp=={version}"
+        write(path, data)
+    return Repair("mcp-pin", f".mcp.json: {old} → crissp=={version}, the crissp that repairs (its MCP tools)", do)
+
+
+def find(root: Path, version: str | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
     return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_missing(root),
-                        fix_crissp_md(root), fix_gitignore(root)) if r]
+                        fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version)) if r]
 
 
 def committed(root: Path) -> bool:
@@ -244,7 +282,7 @@ def main(argv: list[str], env: dict) -> int:
         print("usage: crissp repair [--yes]")
         return 2
     root = Path(env.get("CRISSP_ROOT") or os.getcwd()).resolve()
-    fixes, yes = find(root), argv == ["--yes"]
+    fixes, yes = find(root, env.get("CRISSP_VERSION")), argv == ["--yes"]
     print(f"crissp repair: {len(fixes)} out of place." if fixes else "crissp repair: nothing out of place.")
     for r in fixes:
         print(f"  {r.key:<10} {r.what}")

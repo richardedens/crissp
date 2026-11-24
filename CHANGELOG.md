@@ -2,6 +2,14 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.1.5 — unreleased
+
+- **The dashboard reads a change's source as you wrote it.** A plain path in `changes.json` is shown as that file from
+  the top (it used to stop the dashboard), and a folder is found and shown by its files. The template's `changes.json`
+  now says the format: `{file, symbol}`, where the symbol is the line of the fix to show.
+- **`crissp repair` puts two more things in place**: plain-path sources in `changes.json` become `{file, symbol}`, and
+  the crissp pin in `.mcp.json` moves to the crissp you run repair with, so the MCP tools follow the new version.
+
 ## 0.1.4 — 2026-11-24
 
 - **One top bar on every page.** The Tests dashboard, the backlog board, the UX suite, the workers page and the Claude

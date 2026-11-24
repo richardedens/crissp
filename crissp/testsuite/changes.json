@@ -1,6 +1,50 @@
 {
  "changes": [
   {
+   "id": "F-19-plain-and-folder-sources",
+   "title": "F-19: a change's source may be a plain path or a folder",
+   "problem": "The dashboard read every changes.json source as {file, symbol}: a project with plain paths got no dashboard at all, and a folder was reported as \"source not found\". The template did not say the format.",
+   "fix": "collect.py source() reads a plain path as that file from the top; locate() finds a folder and lists its files; the template's changes.json says the format in its \"about\".",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def source("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "if path.is_dir():"
+    }
+   ],
+   "tests": [
+    "test_collect::test_a_source_may_be_a_plain_path_or_a_folder"
+   ]
+  },
+  {
+   "id": "F-20-repair-sources-and-pin",
+   "title": "F-20: crissp repair puts changes.json's sources and the .mcp.json pin in place",
+   "problem": "A project that wrote plain paths as changes.json sources, or still pinned an older crissp in .mcp.json, kept them: crissp repair did not look at either.",
+   "fix": "repair.py fix_changes turns a plain path into {file, symbol: \"\"}; fix_pin moves the crissp==X pin of the crissp MCP server to the crissp that repairs (CRISSP_VERSION, which the crissp command now passes its engine). Nothing else in either file changes.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_changes("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_pin("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "CRISSP_VERSION"
+    }
+   ],
+   "tests": [
+    "test_repair::test_plain_path_sources_in_changes_json_become_file_and_symbol",
+    "test_repair::test_the_mcp_pin_follows_the_crissp_that_repairs",
+    "test_cli::test_the_engine_is_told_it_runs_as_the_crissp_command"
+   ]
+  },
+  {
    "id": "E3-F3-01-activity",
    "title": "E3-F3-01: an Activity page, what the orchestrator and its agents do now",
    "problem": "The session pages are written afterwards; while Claude worked, the dashboard did not show what the main thread and its subagents were doing.",
