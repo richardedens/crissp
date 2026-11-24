@@ -2,6 +2,12 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.1.6 — unreleased
+
+- **The PyPI page is up to date.** It shows this README: `crissp repair` with its two new repairs (and to run it after
+  an update), and the dashboard with the workers and the Activity page.
+- **The website takes its version from `VERSION`** (it said 0.1.0 in its example) and lists `crissp repair`.
+
 ## 0.1.5 — 2026-11-24
 
 - **The dashboard reads a change's source as you wrote it.** A plain path in `changes.json` is shown as that file from
@@ -9,8 +15,6 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   now says the format: `{file, symbol}`, where the symbol is the line of the fix to show.
 - **`crissp repair` puts two more things in place**: plain-path sources in `changes.json` become `{file, symbol}`, and
   the crissp pin in `.mcp.json` moves to the crissp you run repair with, so the MCP tools follow the new version.
-- **The website names the current version.** It used to show 0.1.0 in its example; the build now takes the version
-  from `VERSION`. Its command table now also lists `crissp repair` and the new dashboard pages.
 
 ## 0.1.4 — 2026-11-24
 
