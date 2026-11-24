@@ -1,6 +1,22 @@
 {
  "changes": [
   {
+   "id": "repair-sessions-section",
+   "title": "crissp repair left an existing project's agreement without the sessions section",
+   "problem": "0.1.7 added 'Sessions that stay small' to the template's crissp/CLAUDE.md; crissp repair replaced CRISSP.md but never brought the section into a project's own agreement, so only new projects had it.",
+   "fix": "The section is crissp's own: repair (key sessions) puts the template's text in place, replacing an old one or adding it before 'Working with the product owner' (else at the end); nothing else of the agreement is touched.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_sessions("
+    }
+   ],
+   "tests": [
+    "test_repair::test_the_agreement_gets_this_crissps_sessions_section",
+    "test_repair::test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote"
+   ]
+  },
+  {
    "id": "E4-F1-02-history-in-sight",
    "title": "E4-F1-02: the Activity page shows each session's history and when to start fresh",
    "problem": "The sessions report said afterwards that a request started on a long history; while it happened nobody saw it.",

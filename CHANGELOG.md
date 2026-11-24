@@ -2,6 +2,13 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.1.8 — 2026-11-24
+
+- **`crissp repair` brings the agreement's sessions section up to date.** A project brought in before 0.1.7 did not
+  get "Sessions that stay small" in its `crissp/CLAUDE.md`. The section is crissp's own, so repair now puts this
+  version's text in place: it replaces an older one, or adds it before "Working with the product owner" (else at the
+  end). The rest of the agreement stays as the project wrote it.
+
 ## 0.1.7 — 2026-11-24
 
 - **Sessions that stay small.** Every step Claude takes resends the whole conversation, so a long session costs more

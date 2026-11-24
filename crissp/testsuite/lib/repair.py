@@ -18,6 +18,8 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
                only while the project has no walks of its own
     crissp-md  crissp/CRISSP.md is not this crissp's: replaced by it (it is the framework's text, never a project's own)
     gitignore  .gitignore lacks some of the framework's rules (secrets, dumps, results): added, nothing removed
+    sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
+               so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
 
 And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no docker-compose.yml (nothing runs for the UX suite to walk);
 a move whose place is taken. It never deletes, never overwrites what a project wrote (only the spots named above),
@@ -48,6 +50,8 @@ OLD_PATHS = {"src/", "tests/"}
 UX_CONFIG = {"team.json", "walks", "PRINCIPLES.md", "README.md", ".gitignore", "results", ".DS_Store", "__pycache__"}
 SKIP = {"__pycache__", ".DS_Store", "results"}
 FIRST_WALK = Path("uxsuite/walks/first-visit.json")
+SESSIONS = "## Sessions that stay small"
+BEFORE = "## Working with the product owner"
 OLD_TOOL = re.compile(r"`crissp/tool`,(\s+)registered(\s+)in `\.mcp\.json`")
 
 
@@ -193,6 +197,45 @@ def fix_crissp_md(root: Path) -> Repair | None:
                   lambda: target.write_text(framework))
 
 
+def span(text: str, heading: str) -> tuple[int, int] | None:
+    """Where the section under heading lies: from its heading up to the next one (or the end); None when absent."""
+    m = re.search(rf"^{re.escape(heading)}$", text, re.M)
+    if not m:
+        return None
+    nxt = re.search(r"^## ", text[m.end():], re.M)
+    return m.start(), m.end() + nxt.start() if nxt else len(text)
+
+
+def section(text: str, heading: str) -> str:
+    """The section under heading, ending in one blank line; '' when it is not there."""
+    where = span(text, heading)
+    return text[where[0]:where[1]].rstrip("\n") + "\n\n" if where else ""
+
+
+def fix_sessions(root: Path) -> Repair | None:
+    """F-21: the agreement's sessions section is crissp's: this crissp's text, in place of an old one or added."""
+    path = root / "crissp/CLAUDE.md"
+    if not brought_in(root) or not path.is_file():
+        return None
+    ours = section((TEMPLATE / "crissp/CLAUDE.md").read_text(), SESSIONS)
+    have = section(path.read_text(), SESSIONS)
+    if have == ours:
+        return None
+
+    def do() -> None:
+        text = path.read_text()  # read again: the agreement repair may have changed it first
+        where = span(text, SESSIONS) or span(text, BEFORE)
+        if where:
+            end = where[1] if text[where[0]:].startswith(SESSIONS) else where[0]
+            text = text[:where[0]] + ours + text[end:]
+        else:
+            text = text.rstrip("\n") + "\n\n" + ours
+        path.write_text(text)
+
+    return Repair("sessions", f'crissp/CLAUDE.md: "{SESSIONS[3:]}" is {"old" if have else "missing"} → this crissp\'s',
+                  do)
+
+
 def fix_gitignore(root: Path) -> Repair | None:
     if not brought_in(root):
         return None
@@ -251,7 +294,7 @@ def fix_pin(root: Path, version: str | None) -> Repair | None:
 
 def find(root: Path, version: str | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
-    return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_missing(root),
+    return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
                         fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version)) if r]
 
 

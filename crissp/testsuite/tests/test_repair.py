@@ -79,7 +79,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 7" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 8" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
@@ -93,6 +93,7 @@ def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, caps
     assert (old / "crissp/uxsuite/walks/first-visit.json").is_file()  # its configuration stays
     agreement = (old / "crissp/CLAUDE.md").read_text()
     assert "`crissp/tool`" not in agreement and "the crissp MCP server, registered\nin `.mcp.json`" in agreement
+    assert repair.SESSIONS in agreement  # F-21: both repairs of the agreement land, the tool's first
     assert (old / "crissp/backlog/FINDINGS.md").read_text() == "| F-01 | here | kept as it is | E1 |\n"
     # the crissp/ folder: what the template has and it lacked is made, filled in; the framework's text is this crissp's
     assert (old / "crissp/uxsuite/.gitignore").read_text() == (repair.TEMPLATE / "crissp/uxsuite/.gitignore").read_text()
@@ -263,3 +264,35 @@ def test_the_mcp_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
     assert fixed["mcpServers"]["other"] == mcp["mcpServers"]["other"]
     write(root / ".mcp.json", json.dumps({"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp", "mcp"]}}}))
     assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.5")]  # not pinned: left as it is
+
+
+def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
+    """F-21: crissp/CLAUDE.md's 'Sessions that stay small' is crissp's: added when missing, replaced when it differs."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    agreement = root / "crissp/CLAUDE.md"
+    section = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.SESSIONS)
+    assert section.startswith(repair.SESSIONS) and "/clear" in section and "## Working" not in section
+    assert "sessions" not in keys(root)  # as init made it: in place
+
+    write(agreement, "# shop\n\n## Own rules\n\nkept\n\n## Working with the product owner\n\n- ask\n")
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
+    assert "sessions" in capsys.readouterr().out
+    assert agreement.read_text() == ("# shop\n\n## Own rules\n\nkept\n\n" + section
+                                     + "## Working with the product owner\n\n- ask\n")
+    assert "sessions" not in keys(root)
+
+    write(agreement, f"# shop\n\n{repair.SESSIONS}\n\nan old text\n\n## After\n\nkept\n")
+    [r.do() for r in repair.find(root) if r.key == "sessions"]
+    assert agreement.read_text() == f"# shop\n\n{section}## After\n\nkept\n"
+
+    write(agreement, f"# shop\n\n{repair.SESSIONS}\n\nold, at the end")
+    [r.do() for r in repair.find(root) if r.key == "sessions"]
+    assert agreement.read_text() == f"# shop\n\n{section}"
+
+    write(agreement, "# shop\n\nno sections, no newline")
+    [r.do() for r in repair.find(root) if r.key == "sessions"]
+    assert agreement.read_text() == f"# shop\n\nno sections, no newline\n\n{section}"
+
+    agreement.unlink()
+    assert "sessions" not in keys(root)  # no agreement: `missing` makes it from the template
