@@ -288,6 +288,10 @@ def test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool
     assert e8["items"] == [] and e8["features"][0]["pbis"][0]["status"] == "review"
     assert e8["features"][0]["pbis"][0]["ux"] == "home#v2" and "ux" not in e1["items"][0]  # from an approved UX design
     assert [i["id"] for i in e0["items"]] == ["E0-01"]
+    pbi = e8["features"][0]["pbis"][0]  # E3-F2-01: not in git here, so every PBI's one move is not committed yet
+    assert [(m["from"], m["to"], m["commit"]) for m in pbi["moves"]] == [(None, "review", None)]
+    assert pbi["since"] == pbi["moves"][-1]["at"] and {r["id"] for r in board["recent"]} == {"E1-01", "E8-F1-01", "E0-01"}
+    assert next(r for r in board["recent"] if r["id"] == "E8-F1-01")["title"] == "Layout"
     _write(collect.SUITE / "changes.json", '{"changes": []}')
     collect.main(root)
     assert '"backlog": {"epics": [{"id": "E1"' in (collect.RESULTS / "data.js").read_text()

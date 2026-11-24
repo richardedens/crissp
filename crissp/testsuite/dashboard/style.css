@@ -66,3 +66,12 @@ pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--
 .lane-busy { display: flex; gap: 8px; align-items: center; min-width: 140px; } .lane-busy .bar { flex: 1; }
 .lane-now { word-break: break-word; }
 .lane-busy span { width: 3.2em; text-align: right; flex: none; }
+/* E3-F2-01: how the board moved */
+.moved { margin: 0 0 14px; } .moved summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.moves { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.moves li { display: grid; grid-template-columns: 5.5em auto 1fr auto auto; gap: 4px 10px; align-items: baseline; min-width: 0; }
+.moves code { color: var(--accent); } .mtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mwhen { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ksince { color: var(--muted); margin-top: 2px; }
+.kmoves { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 3px; font-size: 12px; }
+@media (max-width: 700px) { .moves li { grid-template-columns: auto 1fr; } .mwhen { grid-column: 1 / -1; } }

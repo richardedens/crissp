@@ -67,6 +67,9 @@ def test_what_the_dashboard_shows_is_watched(world):
     assert "crissp/testsuite/results/gate.json" in names and "crissp/backlog/done/FINDINGS.md" in names
     assert not any("sessions" in n for n in names)
     assert sv.newest([]) == 0.0 and sv.newest([root / "missing"]) == 0.0
+    (root / ".git" / "logs").mkdir(parents=True)
+    (root / ".git" / "logs" / "HEAD").write_text("")  # E3-F2-01: a commit moves "not committed" on the board to its commit
+    assert ".git/logs/HEAD" in [str(p.relative_to(root)) for p in sv.watched(root)]
 
 
 def test_the_data_is_rebuilt_only_when_what_it_shows_changed(world):

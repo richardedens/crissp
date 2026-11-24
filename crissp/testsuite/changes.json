@@ -1,6 +1,33 @@
 {
  "changes": [
   {
+   "id": "E3-F2-01-backlog-movement",
+   "title": "E3-F2-01: the board shows how the backlog moved",
+   "problem": "The board was a snapshot: a PBI that went to review an hour ago looked the same as one that had stood there for a week, and nothing said what moved.",
+   "fix": "lib/movement.py replays the epic files through every commit that changed them with the crissp tool's own parser (three-level ids too, any encoding in history) and adds the working tree's uncommitted state; collect.py gives every PBI its moves and since-when, and the board the newest moves. The board shows 'Moved recently' (from → to, when, commit or not committed) and on each card how long it has stood in its column. The server also watches .git/logs/HEAD, so a commit shows at once.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/movement.py",
+     "symbol": "def moves("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "moved = movement.moves("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def watched("
+    }
+   ],
+   "tests": [
+    "test_movement::test_every_move_from_where_to_where_when_and_in_which_commit",
+    "test_movement::test_a_pbi_that_moves_to_the_done_folder_is_one_move_not_a_new_pbi",
+    "test_movement::test_recent_moves_newest_first_with_the_pbi_s_title",
+    "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
+    "test_serve::test_what_the_dashboard_shows_is_watched"
+   ]
+  },
+  {
    "id": "E3-F1-01-one-top-bar",
    "title": "E3-F1-01: one top bar on every page",
    "problem": "Each page wrote its own sections: Tests · UX · Workers · Sessions on the Tests dashboard, Tests · UX · Workers on the workers page and the UX suite, Tests · UX · Sessions plus the dashboard's tabs on the session pages; the backlog was only a tab.",

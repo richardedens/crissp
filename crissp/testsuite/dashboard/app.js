@@ -320,6 +320,21 @@
 
   // the backlog as a board: a lane per epic (its features as chips), a column per status, a card per PBI
   const COLUMNS = [["todo", "To do"], ["doing", "Doing"], ["review", "In review"], ["done", "Done"], ["parked", "Parked"]];
+  // E3-F2-01: how the board moved (lib/movement.py): since when a PBI stands where it stands, and the newest moves
+  const ago = iso => {
+    if (!iso) return "";
+    const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return m < 1 ? "just now" : m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
+  };
+  const when = iso => (iso ? new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "");
+  const moveWhere = m => (m.commit ? `<code title="${esc(m.subject)}">${esc(m.commit)}</code>` : `<b class="st-review">not committed</b>`);
+  const step = m => `<span class="st-${esc(m.from || "todo")}">${esc(m.from || "new")}</span> → <span class="st-${esc(m.to)}">${esc(m.to)}</span>`;
+  function movedView() {
+    const rows = (B.recent || []).map(m => `<li><span class="mwhen" title="${esc(when(m.at))}">${ago(m.at)}${ago(m.at) === "just now" ? "" : " ago"}</span>
+      <code>${esc(m.id)}</code> <span class="mtitle">${esc(m.title)}</span> <span class="mstep">${step(m)}</span> ${moveWhere(m)}</li>`).join("");
+    return rows ? `<details class="card moved" open><summary><b>Moved recently</b> <span class="muted small">newest first, from git and what is not committed yet</span></summary>
+      <ul class="moves">${rows}</ul></details>` : "";
+  }
   function boardView(query) {
     const p = new URLSearchParams(query), count = s => allPbis.filter(x => x.status === s).length;
     return `<div class="grid kpis five" style="margin-bottom:14px">${COLUMNS.map(([s, l]) => `<div class="card kpi"><div class="l">${l}</div>
@@ -327,6 +342,7 @@
       <div class="toolbar"><select id="be"><option value="">Every open epic</option>${B.epics.map(e => `<option value="${esc(e.id)}"${p.get("epic") === e.id ? " selected" : ""}>${esc(e.id)} · ${esc(e.title)}${e.done ? " (done)" : ""}</option>`).join("")}</select>
         <input type="search" id="bq" placeholder="Search PBIs…" value="${esc(p.get("q") || "")}"></div>
       <p class="muted small">Epic → feature → PBI, read from crissp/backlog/ by the crissp tool. Only the product owner moves work to done.</p>
+      ${movedView()}
       <div class="board-head">${COLUMNS.map(([s, l]) => `<div class="st-${s}">${l}</div>`).join("")}</div><div id="lanes"></div>`;
   }
   function fillBoard() {
@@ -334,7 +350,8 @@
     const ux = x => x.ux ? `<a class="badge area ux" href="../ux/#proposal=${encodeURIComponent(x.ux)}" title="The approved UX design this PBI came from">UX design</a>` : "";
     const card = x => `<div class="kcard"><div class="kid"><code>${esc(x.id)}</code><span>${ux(x)}${x.size ? `<span class="size">${esc(x.size)}</span>` : ""}</span></div>
       <div class="kt">${esc(x.title)}</div>${x.feature ? `<div class="small muted">${esc(x.feature.id)} · ${esc(x.feature.title)}</div>` : ""}
-      <details><summary class="small">details</summary><pre class="kblock">${esc(x.block)}</pre></details></div>`;
+      ${x.since ? `<div class="small ksince" title="${esc(when(x.since))}">here for ${ago(x.since).replace(" ago", "")}${(x.moves || []).at(-1)?.commit ? "" : ' · <b class="st-review">not committed</b>'}</div>` : ""}
+      <details><summary class="small">details</summary>${(x.moves || []).length ? `<ul class="kmoves">${x.moves.map(m => `<li>${step(m)} <span class="muted">${esc(when(m.at))}</span> ${moveWhere(m)}</li>`).join("")}</ul>` : ""}<pre class="kblock">${esc(x.block)}</pre></details></div>`;
     const chip = f => { const n = f.pbis.length, d = f.pbis.filter(x => x.status === "done").length;
       return `<span class="chip st-${f.status}" title="${esc(f.status)}"><b>${esc(f.id)}</b> ${esc(f.title)} <span class="muted">${d}/${n}</span></span>`; };
     const lanes = B.epics.filter(e => (which ? e.id === which : !e.done)).map(e => {

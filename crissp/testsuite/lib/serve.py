@@ -43,7 +43,8 @@ def watched(root: Path) -> list[Path]:
     out += [root / "crissp" / "testsuite" / name for name in ("changes.json", "threats.json", "suites.json")]
     results = project.results(root)
     out += sorted(p for p in results.iterdir() if p.is_file()) if results.is_dir() else []
-    return out
+    head = root / ".git" / "logs" / "HEAD"  # every commit writes it: the board's moves get their commit (E3-F2-01)
+    return out + ([head] if head.is_file() else [])
 
 
 def newest(paths: list[Path]) -> float:

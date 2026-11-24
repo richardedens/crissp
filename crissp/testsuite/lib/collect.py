@@ -18,6 +18,7 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
+import movement  # noqa: E402
 import project  # noqa: E402
 
 TOOL = ENGINE.parents[1] / "tool" / "server.py"  # the crissp tool, beside this engine: the one backlog parser
@@ -214,6 +215,10 @@ def _backlog() -> dict | None:
     crissp = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(crissp)
     features, items = crissp.features(ROOT), crissp.items(ROOT)
+    moved = movement.moves(ROOT, crissp)  # E3-F2-01: how the board moved, from git and the working tree
+    for i in items:
+        i["moves"] = moved.get(i["id"], [])
+        i["since"] = i["moves"][-1]["at"] if i["moves"] else None
     for i in items:  # a PBI an approved UX design became links back to it
         mark = UX_MARK.search(i["block"])
         if mark:
@@ -228,7 +233,8 @@ def _backlog() -> dict | None:
                       "features": [{**ft, "pbis": [i for i in items if i["id"].startswith(ft["id"] + "-")]}
                                    for ft in features if ft["id"].startswith(epic + "-F")],
                       "items": [i for i in items if re.fullmatch(rf"{epic}-\d+", i["id"])]})
-    return {"epics": epics, "statuses": list(crissp.STATUSES)}
+    return {"epics": epics, "statuses": list(crissp.STATUSES),
+            "recent": movement.recent(moved, {i["id"]: i["title"] for i in items})}
 
 
 def _ref(ref: str) -> str:
