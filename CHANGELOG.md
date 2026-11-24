@@ -2,7 +2,7 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.7 — unreleased
+## 0.1.7 — 2026-11-24
 
 - **Sessions that stay small.** Every step Claude takes resends the whole conversation, so a long session costs more
   with every step. The framework and a new project's agreement now say how to keep sessions short: a fresh session per
