@@ -2,7 +2,7 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.4 — unreleased
+## 0.1.4 — 2026-11-24
 
 - **One top bar on every page.** The Tests dashboard, the backlog board, the UX suite, the workers page and the Claude
   sessions pages now show the same sections in the same order (Tests · Backlog · UX · Workers · Activity · Sessions), with the
