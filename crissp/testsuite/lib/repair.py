@@ -20,6 +20,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     gitignore  .gitignore lacks some of the framework's rules (secrets, dumps, results): added, nothing removed
     sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
                so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
+    vibe       .vibe/config.toml is not there, or the project is not trusted in Vibe's trusted_folders.toml
+               (F-24; VIBE_HOME, else ~/.vibe): the config is made from the template with this crissp's pin, and the
+               folder is added to the trusted list (never removed); with no Vibe home only the config is made
 
 And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no docker-compose.yml (nothing runs for the UX suite to walk);
 a move whose place is taken. It never deletes, never overwrites what a project wrote (only the spots named above),
@@ -292,10 +295,63 @@ def fix_pin(root: Path, version: str | None) -> Repair | None:
     return Repair("mcp-pin", f".mcp.json: {old} → crissp=={version}, the crissp that repairs (its MCP tools)", do)
 
 
-def find(root: Path, version: str | None = None) -> list[Repair]:
+def vibe_home(env: dict) -> Path:
+    """Where Vibe keeps its configuration: VIBE_HOME, else ~/.vibe."""
+    return Path(env.get("VIBE_HOME") or Path.home() / ".vibe")
+
+
+def trust(home: Path, root: Path) -> str:
+    """F-24: add root to Vibe's trusted folders (home/trusted_folders.toml), never removing an entry."""
+    db = home / "trusted_folders.toml"
+    path = f'"{root}"'
+    lines = db.read_text().splitlines() if db.is_file() else []
+    if any(line.strip().rstrip(",") == path for line in lines):
+        return f"{db} already trusts {root}"
+    at = next((n for n, line in enumerate(lines) if line.strip().startswith("trusted")), len(lines))
+    if at < len(lines) and lines[at].rstrip().endswith("[]"):
+        lines[at:at + 1] = ["trusted = [", f"    {path},", "]"]
+    elif at < len(lines):
+        lines.insert(at + 1, f"    {path},")
+    else:
+        lines += ["trusted = [", f"    {path},", "]", "untrusted = []"]
+    tmp = db.with_name(db.name + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n")
+    os.replace(tmp, db)
+    return f"trusted {root} in {db}"
+
+
+def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | None:
+    """F-24: Vibe onboarding for a project brought in before it: .vibe/config.toml with the MCP pin, and the folder
+    trusted when Vibe is installed (home None or not a folder: only the config)."""
+    if not brought_in(root) or not version:
+        return None
+    config = root / ".vibe" / "config.toml"
+    db = home / "trusted_folders.toml" if home is not None and home.is_dir() else None
+    trusted = db is not None and db.is_file() and f'"{root}"' in db.read_text()
+    if config.is_file() and (trusted or db is None):
+        return None
+    parts = []
+    if not config.is_file():
+        parts.append(".vibe/config.toml is not there → from the template, uvx "
+                     f"crissp=={version} mcp (the server .mcp.json registers for Claude Code)")
+    if db is not None and not trusted:
+        parts.append(f"not trusted in {db} → added (never removed)")
+
+    def do() -> None:
+        if not config.is_file():
+            config.parent.mkdir(parents=True, exist_ok=True)
+            config.write_text((TEMPLATE / "vibe" / "config.toml").read_text().replace("{{CRISSP_VERSION}}", version))
+        if db is not None and not trusted:
+            trust(home, root)
+
+    return Repair("vibe", "; ".join(parts), do)
+
+
+def find(root: Path, version: str | None = None, home: Path | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
     return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
-                        fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version)) if r]
+                        fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
+                        fix_vibe(root, version, home)) if r]
 
 
 def committed(root: Path) -> bool:
@@ -325,7 +381,7 @@ def main(argv: list[str], env: dict) -> int:
         print("usage: crissp repair [--yes]")
         return 2
     root = Path(env.get("CRISSP_ROOT") or os.getcwd()).resolve()
-    fixes, yes = find(root, env.get("CRISSP_VERSION")), argv == ["--yes"]
+    fixes, yes = find(root, env.get("CRISSP_VERSION"), vibe_home(env)), argv == ["--yes"]
     print(f"crissp repair: {len(fixes)} out of place." if fixes else "crissp repair: nothing out of place.")
     for r in fixes:
         print(f"  {r.key:<10} {r.what}")

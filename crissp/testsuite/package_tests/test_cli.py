@@ -65,6 +65,39 @@ def test_repair_runs_the_engines_repair_for_the_project(monkeypatch, tmp_path, a
     assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "repair.py"), *passed] and str(cwd) == root == str(tmp_path.resolve())
 
 
+def test_init_onboards_vibe_when_a_vibe_home_exists(tmp_path, monkeypatch):
+    """F-24 / E5-F1-01: init writes .vibe/config.toml (pinning this crissp) and trusts the folder in VIBE_HOME."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    vibe = tmp_path / "vibe-home"
+    vibe.mkdir()
+    monkeypatch.chdir(project)
+    env = {"VIBE_HOME": str(vibe)}
+    assert cli.main(["init", "--yes", "--no-git", "--product", "Example"], env=env) == 0
+    config = (project / ".vibe" / "config.toml").read_text()
+    assert 'name = "crissp"' in config and "uvx" in config and f"crissp=={cli.__version__}" in config
+    db = (vibe / "trusted_folders.toml").read_text()
+    assert "trusted = [" in db and f'"{project.resolve()}"' in db
+    assert ".vibe/" in (project / ".gitignore").read_text().splitlines()
+    # a second init keeps the project's own config and never duplicates the trust entry
+    (project / ".vibe" / "config.toml").write_text("# ours\n")
+    assert cli.main(["init", "--yes", "--no-git"], env=env) == 0
+    assert (project / ".vibe" / "config.toml").read_text() == "# ours\n"
+    assert (vibe / "trusted_folders.toml").read_text().count(f'"{project.resolve()}"') == 1
+
+
+def test_init_writes_the_vibe_config_and_says_so_when_vibe_is_not_installed(tmp_path, monkeypatch, capsys):
+    """F-24: no Vibe home (VIBE_HOME or ~/.vibe missing): the config is still written, the skip is said."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    missing = tmp_path / "no-vibe-home"
+    assert cli.main(["init", "--yes", "--no-git"], env={"VIBE_HOME": str(missing)}) == 0
+    assert (project / ".vibe" / "config.toml").is_file()
+    assert not missing.exists()
+    assert "Vibe" in capsys.readouterr().out
+
+
 def test_a_dash_a_chat_or_word_processor_made_long_still_is_an_option(ran, tmp_path):
     """F-22: Teams, Outlook and Word turn -- into an em or en dash; crissp reads a leading one as --."""
     assert cli.main(["check", "—plan"], env={}) == 0

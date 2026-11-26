@@ -2,7 +2,10 @@
 
     crissp init [--product NAME] [--owner NAME] [--yes] [--no-git] [--no-deploy]
                               bring this folder in: git init when it is no repository yet, then the agreement, the
-                              backlog, the configuration and the deploy template; never overwrites, never commits
+                              backlog, the configuration and the deploy template; never overwrites, never commits.
+                              Also writes .vibe/config.toml (the crissp MCP server for Mistral Vibe, pinned like
+                              .mcp.json) and, when Vibe is installed (VIBE_HOME or ~/.vibe), adds this folder to
+                              its trusted_folders.toml (F-24)
     crissp check [--plan]     test what changed since the last green state (crissp/check.sh)
     crissp check-all          the full run (crissp/check-all.sh)
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
@@ -65,6 +68,7 @@ def plan_init(root: Path, values: dict, deploy: bool) -> list[tuple[Path, Path, 
     for name in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION"):
         files.append((TEMPLATE / name, root / name, True))
     files.append((TEMPLATE / "mcp.json", root / ".mcp.json", True))
+    files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24: Vibe's MCP pin
     tree(TEMPLATE / "crissp", root / "crissp")
     files.append((ENGINE / "CRISSP.md", root / "crissp" / "CRISSP.md", False))
     if deploy:
@@ -89,7 +93,38 @@ def merge_ignore(target: Path, rules: str) -> bool:
     return True
 
 
-def init(root: Path, args, out=sys.stdout, ask=input) -> int:
+def vibe_home(env: dict) -> Path:
+    """Where Vibe keeps its configuration: VIBE_HOME, else ~/.vibe."""
+    return Path(env.get("VIBE_HOME") or Path.home() / ".vibe")
+
+
+def trust_vibe(root: Path, env: dict) -> str:
+    """F-24: add the project to Vibe's trusted folders (VIBE_HOME/trusted_folders.toml), never removing an entry.
+
+    Returns what it did, or '' when there is no Vibe home on this machine."""
+    home = vibe_home(env)
+    if not home.is_dir():
+        return ""
+    db = home / "trusted_folders.toml"
+    path = f'"{root}"'
+    lines = db.read_text().splitlines() if db.is_file() else []
+    if any(line.strip().rstrip(",") == path for line in lines):
+        return f"{db} already trusts {root}"
+    at = next((n for n, line in enumerate(lines) if line.strip().startswith("trusted")), len(lines))
+    if at < len(lines) and lines[at].rstrip().endswith("[]"):
+        lines[at:at + 1] = ["trusted = [", f"    {path},", "]"]
+    elif at < len(lines):
+        lines.insert(at + 1, f"    {path},")
+    else:
+        lines += ["trusted = [", f"    {path},", "]", "untrusted = []"]
+    tmp = db.with_name(db.name + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n")
+    os.replace(tmp, db)
+    return f"trusted {root} in {db}"
+
+
+def init(root: Path, args, env: dict, out=None, ask=input) -> int:
+    out = sys.stdout if out is None else out
     values = {"PRODUCT": args.product or root.name, "OWNER": args.owner or "the product owner",
               "REPOSITORY": root.name, "DATE": datetime.date.today().isoformat(), "VERSION": "0.1.0",
               "CRISSP_VERSION": __version__}
@@ -117,6 +152,12 @@ def init(root: Path, args, out=sys.stdout, ask=input) -> int:
         made.append(str(rel))
     if merge_ignore(root / ".gitignore", (TEMPLATE / "gitignore.crissp").read_text()):
         made.append(".gitignore (rules added)")
+    note = trust_vibe(root, env)  # F-24: Vibe loads project-local config only in trusted folders
+    if note:
+        print(note, file=out)
+    elif not vibe_home(env).is_dir():
+        print(f"Vibe: no Vibe home at {vibe_home(env)}: .vibe/config.toml is written; install Vibe and run "
+              "'crissp repair' to trust this folder.", file=out)
     print(f"C.R.I.S.S.P. {__version__} for {values['PRODUCT']}: {len(made)} made, {len(kept)} kept as they were.", file=out)
     for rel in made:
         print(f"  made  {rel}", file=out)
@@ -183,7 +224,7 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     own, passed = split(dashes(sys.argv[1:] if argv is None else argv))
     args = parser().parse_args(own)
     if args.command == "init":
-        return init(Path(args.root or os.getcwd()).resolve(), args)
+        return init(Path(args.root or os.getcwd()).resolve(), args, env)
     root = Path(args.root).resolve() if args.root else find_root(Path(os.getcwd()).resolve(), env)
     if args.command == "dashboard":
         return run_script(root, "test.sh", ["--dashboard"], env)

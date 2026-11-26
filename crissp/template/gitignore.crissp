@@ -25,6 +25,8 @@ crissp/testsuite/results/
 .claude/worktrees/
 .DS_Store
 crissp/uxsuite/results/
+# Vibe config: project-local, machine-specific
+.vibe/
 # Terraform: state and real variables hold secrets
 .terraform/
 *.tfstate

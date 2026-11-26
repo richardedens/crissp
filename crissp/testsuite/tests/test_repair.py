@@ -257,7 +257,8 @@ def test_the_mcp_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
     write(root / ".mcp.json", json.dumps(mcp))
     assert "mcp-pin" not in [r.key for r in repair.find(root)]  # no version known (not run as the crissp command)
     assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.2")]
-    repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5"})
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5",
+                            "VIBE_HOME": str(tmp_path / "vibe-home")})  # F-24: keep the trust file out of a real ~/.vibe
     assert "crissp==0.1.2 → crissp==0.1.5" in capsys.readouterr().out
     fixed = json.loads((root / ".mcp.json").read_text())
     assert fixed["mcpServers"]["crissp"] == {"command": "uvx", "args": ["crissp==0.1.5", "mcp"], "env": {"PYTHONUTF8": "1"}}
@@ -296,3 +297,69 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
 
     agreement.unlink()
     assert "sessions" not in keys(root)  # no agreement: `missing` makes it from the template
+
+
+def test_vibe_config_and_trust_are_put_in_place(tmp_path):
+    """F-24 / E5-F1-01: a project brought in before Vibe onboarding gets .vibe/config.toml and a trust entry."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    home = tmp_path / "vibe"
+    home.mkdir()
+    write(home / "trusted_folders.toml", 'trusted = [\n    "/elsewhere",\n]\nuntrusted = []\n')
+    fix = next(r for r in repair.find(root, "9.9.9", home) if r.key == "vibe")
+    assert "crissp==9.9.9" in fix.what and "trusted" in fix.what
+    fix.do()
+    assert 'crissp==9.9.9' in (root / ".vibe" / "config.toml").read_text()
+    db = (home / "trusted_folders.toml").read_text()
+    assert f'"{root}"' in db and '"/elsewhere"' in db
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home)]  # in place now
+
+
+def test_vibe_repair_needs_a_version_and_a_brought_in_project(tmp_path):
+    root = tmp_path / "x"
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", tmp_path)]  # not brought in
+    bring_in(root)
+    assert "vibe" not in [r.key for r in repair.find(root)]  # no version known: not run as the crissp command
+    home = tmp_path / "no-vibe-home"  # no Vibe installed: the config is still made, no trust file appears
+    fix = next(r for r in repair.find(root, "9.9.9", home) if r.key == "vibe")
+    fix.do()
+    assert (root / ".vibe" / "config.toml").is_file() and not home.exists()
+    write(root / ".vibe/config.toml", "# ours\n")
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home)]  # config there, no Vibe home: nothing to do
+    home2 = tmp_path / "vibe2"
+    home2.mkdir()
+    write(home2 / "trusted_folders.toml", f'trusted = [\n    "{root}",\n]\n')
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home2)]  # config there and trusted: nothing to do
+
+
+def test_vibe_trust_never_removes_and_handles_any_shape_of_the_file(tmp_path):
+    home = tmp_path / "vibe"
+    home.mkdir()
+    write(home / "trusted_folders.toml", 'trusted = []\nuntrusted = ["/bad"]\n')
+    assert "trusted" in repair.trust(home, tmp_path / "a")
+    db = (home / "trusted_folders.toml").read_text()
+    assert f'"{tmp_path / "a"}"' in db and '"/bad"' in db  # the one-line array grows, the untrusted list stays
+    assert "already trusts" in repair.trust(home, tmp_path / "a")
+    write(home / "trusted_folders.toml", "untrusted = []\n")  # no trusted list at all
+    repair.trust(home, tmp_path / "b")
+    db = (home / "trusted_folders.toml").read_text()
+    assert "trusted = [" in db and f'"{tmp_path / "b"}"' in db and "untrusted = []" in db
+    home2 = tmp_path / "vibe2"
+    home2.mkdir()  # no file yet
+    repair.trust(home2, tmp_path / "c")
+    assert f'"{tmp_path / "c"}"' in (home2 / "trusted_folders.toml").read_text()
+
+
+def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
+    """F-24: .vibe/config.toml exists but the folder is not trusted: only the trust entry is added, config kept."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    write(root / ".vibe/config.toml", "# ours\n")
+    home = tmp_path / "vibe"
+    home.mkdir()
+    write(home / "trusted_folders.toml", "trusted = []\n")
+    fix = next(r for r in repair.find(root, "9.9.9", home) if r.key == "vibe")
+    assert "config.toml" not in fix.what and "trusted" in fix.what
+    fix.do()
+    assert (root / ".vibe/config.toml").read_text() == "# ours\n"  # never overwritten
+    assert f'"{root}"' in (home / "trusted_folders.toml").read_text()

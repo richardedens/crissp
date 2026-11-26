@@ -72,10 +72,11 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     env = {**os.environ, "GIT_AUTHOR_NAME": "Example", "GIT_AUTHOR_EMAIL": "example@example.org",
            "GIT_COMMITTER_NAME": "Example", "GIT_COMMITTER_EMAIL": "example@example.org"}
     env.pop("CRISSP_ROOT", None)
+    env["VIBE_HOME"] = str(tmp_path / "vibe-home")  # F-24: no Vibe here, init writes the config and skips the trust
     said = run([str(crissp), "init", "--yes", "--product", "Example", "--owner", "the product owner"], project, env).stdout
     assert (project / ".git").is_dir() and "git init" in said
-    for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", "crissp/CRISSP.md",
-                 "crissp/CLAUDE.md", "crissp/backlog/FINDINGS.md", "crissp/testsuite/suites.json",
+    for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", ".vibe/config.toml",
+                 "crissp/CRISSP.md", "crissp/CLAUDE.md", "crissp/backlog/FINDINGS.md", "crissp/testsuite/suites.json",
                  "crissp/uxsuite/team.json", "crissp/deploy/deploy.json", "crissp/deploy/helm/app/Chart.yaml",
                  "crissp/deploy/terraform/main.tf"):
         assert (project / made).is_file(), made
@@ -84,6 +85,9 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     assert "{{PRODUCT}}" not in text and "{{OWNER}}" not in text and "Example" in text
     mcp = json.loads((project / ".mcp.json").read_text())["mcpServers"]["crissp"]
     assert mcp["command"] == "uvx" and mcp["args"] == [f"crissp=={VERSION}", "mcp"]  # the project pins its crissp
+    vibe = (project / ".vibe" / "config.toml").read_text()  # F-24: the same server for Vibe
+    assert 'name = "crissp"' in vibe and "uvx" in vibe and f"crissp=={VERSION}" in vibe
+    assert ".vibe/" in (project / ".gitignore").read_text().splitlines() and not (tmp_path / "vibe-home").exists()
     assert run(["git", "log"], project, env, check=False).returncode != 0  # nothing committed: the owner reviews first
 
     # a second init keeps what is there
@@ -124,6 +128,7 @@ def test_mcp_answers_for_the_project_it_is_started_in(crissp, tmp_path):
     project = tmp_path / "p"
     project.mkdir()
     env = {k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}  # as Claude Code starts it: in the project
+    env["VIBE_HOME"] = str(tmp_path / "vibe-home")  # F-24: keep the trust file out of a real ~/.vibe
     run([str(crissp), "init", "--yes", "--product", "Example", "--no-git"], project, env)
     (project / "crissp" / "backlog" / "FINDINGS.md").write_text(
         (project / "crissp" / "backlog" / "FINDINGS.md").read_text() + "| F-01 | here | only in this project | E1 |\n")

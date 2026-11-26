@@ -34,7 +34,7 @@ is waiting for whom.
 | `crissp/AGENTS.md` (a short root `AGENTS.md` points to it) | What an agent next to the main session must know: its part, its limits, how to report | Claude |
 | `README.md` | What the product is, how to start it, its commands; for people | Claude |
 | `app/backend/`, `app/frontend/`, `docker-compose.yml` | **The product**, by default: the backend (Python, its tests in `app/backend/tests/`), the frontend (npm, its tests by `npm test`), and the local stack that runs them together. The testsuite's steps, the deploy template (`crissp/deploy/deploy.json`) and the UX suite all expect this layout; a product with another layout names it in its agreement and its `suites.json` | Claude, per PBI |
-| `crissp/tool/` + `.mcp.json` | The crissp MCP server: `brief` and `backlog`, so Claude asks for lines instead of reading files; `finding`, `decision`, `epic`, `feature` and `item`, so it writes them instead of editing files; `run`, `status` and `dashboard`, so it starts the checks (never a deploy) and shows the dashboard | the framework (never edited in a project) |
+| `crissp/tool/` + `.mcp.json` + `.vibe/config.toml` | The crissp MCP server: `brief` and `backlog`, so the agent asks for lines instead of reading files; `finding`, `decision`, `epic`, `feature` and `item`, so it writes them instead of editing files; `run`, `status` and `dashboard`, so it starts the checks (never a deploy) and shows the dashboard. `.mcp.json` registers it for Claude Code, `.vibe/config.toml` for Mistral Vibe (whose folder is also added to `trusted_folders.toml` when Vibe is installed) | the framework (never edited in a project) |
 | `crissp/uxsuite/` | **The UX suite**: virtual people walk the running product, debate what is right and wrong, and a moderator turns it into advice; designs on request; an approved design becomes a PBI (below). Its rounds, designs and verdicts stay in `crissp/uxsuite/results/` (git-ignored) | Claude fills `team.json` and the walks; the engine is part of the package |
 | `crissp/check.sh`, `crissp/check-all.sh`, `crissp/deploy.sh`, `crissp/test.sh`, `crissp/testsuite/` | The guards and the dashboard: everything of the way of working in one visible folder, the root keeps the product | Claude, per stack (E2-05) |
 | `crissp/backlog/README.md` | The item format and the definition of done of this repository | Claude |
@@ -275,7 +275,8 @@ them.
   the placeholders, and Claude fills in the rest from the real repository — its actual tests, deploy and release notes;
   what is missing becomes its first findings. The product owner reviews the diff; nothing is committed before that.
 - The engine (the guards, the crissp tool, the suites, the look) is not copied: it is the `crissp` package, pinned per
-  project (`.mcp.json`: `uvx crissp==<version> mcp`), so every project runs the same, proven framework and the release
+  project (`.mcp.json` for Claude Code and `.vibe/config.toml` for Mistral Vibe: `uvx crissp==<version> mcp`), so every
+  project runs the same, proven framework and the release
   certificate says which one.
 - What a repository already has and is still true is kept; history (old stories, old boards) stays as history.
 - The template follows this file: a change to the framework changes CRISSP.md and the template in one commit.
