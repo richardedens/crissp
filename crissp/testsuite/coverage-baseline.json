@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "f3d8ee631c8fa664db256de4c870bbfccdd7c47d",
+ "commit": "de59846a37154a0c2ab40ca5331c5b28b1ea9d65",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -78,6 +78,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/setup_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/vibe.py": {
      "branch": 100.0,
      "line": 100.0
     },
