@@ -8,7 +8,7 @@ trusted, the agreement read via AGENTS.md.
 Why        A Vibe session in a brought-in project gets the crissp tools and a trusted folder, without hand-editing
            ~/.vibe or writing .vibe/config.toml by hand.
 
-### E5-F1-01 · init writes .vibe/config.toml and trusts the folder                       [doing] [S]
+### E5-F1-01 · init writes .vibe/config.toml and trusts the folder                       [review] [S]
 Why        Today init writes only .mcp.json (Claude Code); a Vibe user must hand-write .vibe/config.toml and edit
            trusted_folders.toml themselves.
 What       crissp init writes .vibe/config.toml from a new template file (uvx crissp==<version> mcp, the same pin as
