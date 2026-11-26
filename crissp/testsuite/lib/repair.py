@@ -300,12 +300,19 @@ def vibe_home(env: dict) -> Path:
     return Path(env.get("VIBE_HOME") or Path.home() / ".vibe")
 
 
+def toml_str(path: Path) -> str:
+    """F-25: a path as a TOML basic string — json.dumps escapes the backslashes a Windows path holds."""
+    return json.dumps(str(path))
+
+
 def trust(home: Path, root: Path) -> str:
-    """F-24: add root to Vibe's trusted folders (home/trusted_folders.toml), never removing an entry."""
+    """F-24/F-25: add root to Vibe's trusted folders (home/trusted_folders.toml), never removing an entry.
+    The path is matched with backslashes and with forward slashes, so Vibe's own entry counts too."""
     db = home / "trusted_folders.toml"
-    path = f'"{root}"'
+    path = toml_str(root)
+    want = str(root)
     lines = db.read_text().splitlines() if db.is_file() else []
-    if any(line.strip().rstrip(",") == path for line in lines):
+    if any(line.strip().rstrip(",").strip('"') in (want, want.replace("\\", "/")) for line in lines):
         return f"{db} already trusts {root}"
     at = next((n for n, line in enumerate(lines) if line.strip().startswith("trusted")), len(lines))
     if at < len(lines) and lines[at].rstrip().endswith("[]"):

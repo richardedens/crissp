@@ -617,6 +617,29 @@
     "test_repair.py::test_vibe_trust_never_removes_and_handles_any_shape_of_the_file",
     "test_repair.py::test_vibe_trust_alone_when_the_config_is_already_there"
    ]
+  },
+  {
+   "id": "vibe-platform-detection",
+   "title": "the Vibe onboarding detects the system and the installation (F-25)",
+   "problem": "The F-24 onboarding assumed a POSIX machine: it never named the system, never checked whether vibe is on PATH (only whether ~/.vibe exists), and wrote the project path into trusted_folders.toml unescaped — on Windows a backslash path would be invalid TOML and Vibe's own forward-slash entry would be duplicated.",
+   "fix": "cli.py gains system()/windows()/toml_str() and a vibe_note(): init prints one line with the platform (Windows/macOS/Linux), whether vibe was found (shutil.which plus the VIBE_HOME directory), and what was done; trust paths are written as TOML basic strings (json.dumps) and matched in both backslash and forward-slash spellings; on native Windows init also prints that the bash guards run inside WSL 2 (F-14). repair's trust() does the same escaping and matching.",
+   "sources": [
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def vibe_note("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def toml_str("
+    }
+   ],
+   "tests": [
+    "test_cli.py::test_system_names_each_platform",
+    "test_cli.py::test_windows_paths_land_as_valid_toml_and_match_vibes_own_entry",
+    "test_cli.py::test_init_on_windows_says_the_guards_run_in_wsl",
+    "test_cli.py::test_init_detects_the_system_and_whether_vibe_is_installed",
+    "test_repair.py::test_vibe_trust_escapes_windows_paths_and_matches_both_spellings"
+   ]
   }
  ],
  "gaps": [

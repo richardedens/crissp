@@ -98,6 +98,69 @@ def test_init_writes_the_vibe_config_and_says_so_when_vibe_is_not_installed(tmp_
     assert "Vibe" in capsys.readouterr().out
 
 
+def test_init_detects_the_system_and_whether_vibe_is_installed(tmp_path, monkeypatch, capsys):
+    """F-25 / E5-F1-02: one line says the system, whether vibe was found, and what the onboarding did."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    home = tmp_path / "vibe-home"
+    home.mkdir()
+    monkeypatch.setattr(cli.shutil, "which", lambda name: f"/usr/bin/{name}" if name == "vibe" else None)
+    env = {"VIBE_HOME": str(home)}
+    assert cli.main(["init", "--yes", "--no-git"], env=env) == 0
+    out = capsys.readouterr().out
+    assert f"Vibe on {cli.system()}" in out and "trusted" in out
+    assert f'"{project.resolve()}"' in (home / "trusted_folders.toml").read_text()
+    # vibe on PATH but never run (no Vibe home yet): said, not trusted
+    env = {"VIBE_HOME": str(tmp_path / "no-home")}
+    assert cli.main(["init", "--yes", "--no-git"], env=env) == 0
+    out = capsys.readouterr().out
+    assert "start vibe once" in out and not (tmp_path / "no-home").exists()
+    # no vibe at all
+    monkeypatch.setattr(cli.shutil, "which", lambda name: None)
+    assert cli.main(["init", "--yes", "--no-git"], env=env) == 0
+    assert "not installed" in capsys.readouterr().out
+
+
+def test_system_names_each_platform(monkeypatch):
+    """F-25: Windows, macOS and Linux each name themselves."""
+    monkeypatch.setattr(cli.os, "name", "nt")
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    assert cli.system() == "Windows"
+    monkeypatch.setattr(cli.os, "name", "posix")
+    monkeypatch.setattr(cli.sys, "platform", "darwin")
+    assert cli.system() == "macOS"
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    assert cli.system() == "Linux"
+
+
+def test_windows_paths_land_as_valid_toml_and_match_vibes_own_entry(tmp_path):
+    """F-25: a Windows path (backslashes) is written as valid TOML, and Vibe's own forward-slash entry in
+    trusted_folders.toml counts as already trusted, so it is not duplicated."""
+    home = tmp_path / "vibe-home"
+    home.mkdir()
+    win = Path("C:\\Users\\x\\proj")
+    assert cli.toml_str(win) == '"C:\\\\Users\\\\x\\\\proj"'
+    (home / "trusted_folders.toml").write_text('trusted = [\n    "C:/Users/x/proj",\n]\nuntrusted = []\n')
+    assert "already trusts" in cli.trust_vibe(win, {"VIBE_HOME": str(home)})
+    (home / "trusted_folders.toml").write_text("trusted = []\n")
+    assert "trusted" in cli.trust_vibe(win, {"VIBE_HOME": str(home)})
+    assert (home / "trusted_folders.toml").read_text() == 'trusted = [\n    "C:\\\\Users\\\\x\\\\proj",\n]\n'
+
+
+def test_init_on_windows_says_the_guards_run_in_wsl(tmp_path, monkeypatch, capsys):
+    """F-25 / F-14: on native Windows init says the system, that the bash guards run inside WSL 2, and still
+    onboards Vibe."""
+    monkeypatch.setattr(cli, "system", lambda: "Windows")
+    monkeypatch.setattr(cli, "windows", lambda: True)
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes", "--no-git"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    out = capsys.readouterr().out
+    assert "Vibe on Windows" in out and "WSL 2" in out
+
+
 def test_a_dash_a_chat_or_word_processor_made_long_still_is_an_option(ran, tmp_path):
     """F-22: Teams, Outlook and Word turn -- into an em or en dash; crissp reads a leading one as --."""
     assert cli.main(["check", "—plan"], env={}) == 0

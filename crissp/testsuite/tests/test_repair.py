@@ -363,3 +363,17 @@ def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
     fix.do()
     assert (root / ".vibe/config.toml").read_text() == "# ours\n"  # never overwritten
     assert f'"{root}"' in (home / "trusted_folders.toml").read_text()
+
+
+def test_vibe_trust_escapes_windows_paths_and_matches_both_spellings(tmp_path):
+    """F-25: a Windows path lands in trusted_folders.toml as valid TOML, and Vibe's own forward-slash entry
+    counts as already trusted (no duplicate)."""
+    home = tmp_path / "vibe"
+    home.mkdir()
+    win = Path("C:\\Users\\x\\proj")
+    assert repair.toml_str(win) == '"C:\\\\Users\\\\x\\\\proj"'
+    write(home / "trusted_folders.toml", 'trusted = [\n    "C:/Users/x/proj",\n]\nuntrusted = []\n')
+    assert "already trusts" in repair.trust(home, win)
+    write(home / "trusted_folders.toml", "trusted = []\n")
+    repair.trust(home, win)
+    assert (home / "trusted_folders.toml").read_text() == 'trusted = [\n    "C:\\\\Users\\\\x\\\\proj",\n]\n'

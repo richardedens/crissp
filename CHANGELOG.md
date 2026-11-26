@@ -9,6 +9,12 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   When Vibe is installed (`VIBE_HOME`, else `~/.vibe`), init also adds the project folder to `trusted_folders.toml`,
   so Vibe loads the project-local config; `crissp repair` puts the same in place in projects brought in earlier.
   Nothing is overwritten, nothing is committed.
+- **The Vibe onboarding detects the system and the installation (F-25).** `crissp init` says one line — Windows,
+  macOS or Linux, whether `vibe` was found on `PATH` or only its home (`VIBE_HOME`/`~/.vibe`) exists — and what it
+  did: trusted, already trusted, start Vibe once first, or not installed. The project path lands in
+  `trusted_folders.toml` as valid TOML on every system (Windows backslashes escaped, and Vibe's own forward-slash
+  entry is matched, never duplicated). On native Windows init also says that the bash guards (`check`, `deploy`,
+  `ux`, `dashboard`) run inside WSL 2 (F-14); the Vibe onboarding itself works natively.
 - **An option with a long dash works.** Teams, Outlook and Word turn `--` into `—`, so a copied
   `crissp repair —yes` stopped with "unrecognized arguments: —yes". crissp now reads a leading `—` or `–` as `--`.
 

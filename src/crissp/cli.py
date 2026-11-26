@@ -94,21 +94,39 @@ def merge_ignore(target: Path, rules: str) -> bool:
 
 
 def vibe_home(env: dict) -> Path:
-    """Where Vibe keeps its configuration: VIBE_HOME, else ~/.vibe."""
+    """Where Vibe keeps its configuration: VIBE_HOME, else ~/.vibe (the same on Windows, macOS and Linux)."""
     return Path(env.get("VIBE_HOME") or Path.home() / ".vibe")
 
 
+def windows() -> bool:
+    return os.name == "nt"
+
+
+def system() -> str:
+    """F-25: the system's name, for the messages: Windows, macOS or Linux."""
+    if windows():
+        return "Windows"
+    return "macOS" if sys.platform == "darwin" else "Linux"
+
+
+def toml_str(path: Path) -> str:
+    """F-25: a path as a TOML basic string — json.dumps escapes the backslashes a Windows path holds."""
+    return json.dumps(str(path))
+
+
 def trust_vibe(root: Path, env: dict) -> str:
-    """F-24: add the project to Vibe's trusted folders (VIBE_HOME/trusted_folders.toml), never removing an entry.
+    """F-24/F-25: add the project to Vibe's trusted folders (VIBE_HOME/trusted_folders.toml), never removing an
+    entry. The path is matched with backslashes and with forward slashes, so Vibe's own entry counts too.
 
     Returns what it did, or '' when there is no Vibe home on this machine."""
     home = vibe_home(env)
     if not home.is_dir():
         return ""
     db = home / "trusted_folders.toml"
-    path = f'"{root}"'
+    path = toml_str(root)
+    want = str(root)
     lines = db.read_text().splitlines() if db.is_file() else []
-    if any(line.strip().rstrip(",") == path for line in lines):
+    if any(line.strip().rstrip(",").strip('"') in (want, want.replace("\\", "/")) for line in lines):
         return f"{db} already trusts {root}"
     at = next((n for n, line in enumerate(lines) if line.strip().startswith("trusted")), len(lines))
     if at < len(lines) and lines[at].rstrip().endswith("[]"):
@@ -121,6 +139,19 @@ def trust_vibe(root: Path, env: dict) -> str:
     tmp.write_text("\n".join(lines) + "\n")
     os.replace(tmp, db)
     return f"trusted {root} in {db}"
+
+
+def vibe_note(root: Path, env: dict) -> str:
+    """F-25: one line for init: the system, whether vibe is installed, and what the onboarding did."""
+    home = vibe_home(env)
+    if home.is_dir():
+        return f"Vibe on {system()}: {trust_vibe(root, env)}"
+    on = shutil.which("vibe")
+    if on:
+        return (f"Vibe on {system()}: vibe is at {on}, but {home} does not exist yet; start vibe once, then "
+                "'crissp repair' trusts this folder. .vibe/config.toml is written either way.")
+    return (f"Vibe on {system()}: not installed; .vibe/config.toml is written, and 'crissp repair' trusts this "
+            "folder once Vibe is installed.")
 
 
 def init(root: Path, args, env: dict, out=None, ask=input) -> int:
@@ -152,12 +183,10 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         made.append(str(rel))
     if merge_ignore(root / ".gitignore", (TEMPLATE / "gitignore.crissp").read_text()):
         made.append(".gitignore (rules added)")
-    note = trust_vibe(root, env)  # F-24: Vibe loads project-local config only in trusted folders
-    if note:
-        print(note, file=out)
-    elif not vibe_home(env).is_dir():
-        print(f"Vibe: no Vibe home at {vibe_home(env)}: .vibe/config.toml is written; install Vibe and run "
-              "'crissp repair' to trust this folder.", file=out)
+    print(vibe_note(root, env), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
+    if windows():  # F-14: the guards are bash scripts; on native Windows they run inside WSL 2
+        print("Windows: crissp check, check-all, deploy, ux and dashboard are bash scripts — run them inside "
+              "WSL 2; the Vibe onboarding above works natively.", file=out)
     print(f"C.R.I.S.S.P. {__version__} for {values['PRODUCT']}: {len(made)} made, {len(kept)} kept as they were.", file=out)
     for rel in made:
         print(f"  made  {rel}", file=out)
