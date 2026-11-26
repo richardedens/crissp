@@ -332,22 +332,21 @@ def test_vibe_repair_needs_a_version_and_a_brought_in_project(tmp_path):
     assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home2)]  # config there and trusted: nothing to do
 
 
-def test_vibe_trust_never_removes_and_handles_any_shape_of_the_file(tmp_path):
+def test_vibe_repair_leaves_an_untrusted_folder_and_an_unknown_file_alone(tmp_path):
+    """F-26: a folder the user marked untrusted is never proposed for trust, nor is one in a file crissp does not
+    know; with the config in place there is then nothing to do."""
+    root = tmp_path / "shop"
+    bring_in(root)
     home = tmp_path / "vibe"
     home.mkdir()
-    write(home / "trusted_folders.toml", 'trusted = []\nuntrusted = ["/bad"]\n')
-    assert "trusted" in repair.trust(home, tmp_path / "a")
-    db = (home / "trusted_folders.toml").read_text()
-    assert f'"{tmp_path / "a"}"' in db and '"/bad"' in db  # the one-line array grows, the untrusted list stays
-    assert "already trusts" in repair.trust(home, tmp_path / "a")
-    write(home / "trusted_folders.toml", "untrusted = []\n")  # no trusted list at all
-    repair.trust(home, tmp_path / "b")
-    db = (home / "trusted_folders.toml").read_text()
-    assert "trusted = [" in db and f'"{tmp_path / "b"}"' in db and "untrusted = []" in db
-    home2 = tmp_path / "vibe2"
-    home2.mkdir()  # no file yet
-    repair.trust(home2, tmp_path / "c")
-    assert f'"{tmp_path / "c"}"' in (home2 / "trusted_folders.toml").read_text()
+    for text in (f'trusted = []\nuntrusted = [\n    "{root}",\n]\n', "trusted = [\n"):
+        write(home / "trusted_folders.toml", text)
+        (root / ".vibe/config.toml").unlink(missing_ok=True)
+        fix = next(r for r in repair.find(root, "9.9.9", home) if r.key == "vibe")
+        assert "trusted" not in fix.what
+        fix.do()
+        assert (home / "trusted_folders.toml").read_text() == text
+        assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home)]
 
 
 def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
@@ -364,16 +363,3 @@ def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
     assert (root / ".vibe/config.toml").read_text() == "# ours\n"  # never overwritten
     assert f'"{root}"' in (home / "trusted_folders.toml").read_text()
 
-
-def test_vibe_trust_escapes_windows_paths_and_matches_both_spellings(tmp_path):
-    """F-25: a Windows path lands in trusted_folders.toml as valid TOML, and Vibe's own forward-slash entry
-    counts as already trusted (no duplicate)."""
-    home = tmp_path / "vibe"
-    home.mkdir()
-    win = Path("C:\\Users\\x\\proj")
-    assert repair.toml_str(win) == '"C:\\\\Users\\\\x\\\\proj"'
-    write(home / "trusted_folders.toml", 'trusted = [\n    "C:/Users/x/proj",\n]\nuntrusted = []\n')
-    assert "already trusts" in repair.trust(home, win)
-    write(home / "trusted_folders.toml", "trusted = []\n")
-    repair.trust(home, win)
-    assert (home / "trusted_folders.toml").read_text() == 'trusted = [\n    "C:\\\\Users\\\\x\\\\proj",\n]\n'

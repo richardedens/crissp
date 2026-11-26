@@ -2,6 +2,7 @@
 crissp ux --shoot <walk>), for the project it is started in. Fast: the scripts are stood in, nothing is run."""
 
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -134,18 +135,20 @@ def test_system_names_each_platform(monkeypatch):
     assert cli.system() == "Linux"
 
 
-def test_windows_paths_land_as_valid_toml_and_match_vibes_own_entry(tmp_path):
-    """F-25: a Windows path (backslashes) is written as valid TOML, and Vibe's own forward-slash entry in
-    trusted_folders.toml counts as already trusted, so it is not duplicated."""
+def test_init_trusts_through_the_engines_vibe_module(tmp_path, monkeypatch):
+    """F-26: init and repair share one trust function (the engine's lib/vibe.py), so a Windows path is added once
+    and a one-line list stays valid TOML from init too."""
+    assert Path(cli.vibe.__file__) == cli.ENGINE / "testsuite" / "lib" / "vibe.py"
     home = tmp_path / "vibe-home"
     home.mkdir()
-    win = Path("C:\\Users\\x\\proj")
-    assert cli.toml_str(win) == '"C:\\\\Users\\\\x\\\\proj"'
-    (home / "trusted_folders.toml").write_text('trusted = [\n    "C:/Users/x/proj",\n]\nuntrusted = []\n')
-    assert "already trusts" in cli.trust_vibe(win, {"VIBE_HOME": str(home)})
-    (home / "trusted_folders.toml").write_text("trusted = []\n")
-    assert "trusted" in cli.trust_vibe(win, {"VIBE_HOME": str(home)})
-    assert (home / "trusted_folders.toml").read_text() == 'trusted = [\n    "C:\\\\Users\\\\x\\\\proj",\n]\n'
+    (home / "trusted_folders.toml").write_text('trusted = ["/a"]\n')
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    for _ in range(2):
+        assert cli.main(["init", "--yes", "--no-git"], env={"VIBE_HOME": str(home)}) == 0
+    assert tomllib.loads((home / "trusted_folders.toml").read_text()) == {
+        "trusted": ["/a", str(project.resolve())], "untrusted": []}
 
 
 def test_init_on_windows_says_the_guards_run_in_wsl(tmp_path, monkeypatch, capsys):

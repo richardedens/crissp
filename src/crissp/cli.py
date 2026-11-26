@@ -22,6 +22,7 @@ its own data. The project is --root, CRISSP_ROOT, or the nearest folder upwards 
 
 import argparse
 import datetime
+import importlib.util
 import json
 import os
 import shutil
@@ -38,6 +39,17 @@ TEMPLATE = ENGINE / "template"
 DEPLOY_TEMPLATE = ("helm", "terraform", "deploy.json", ".env.production.example", "README.md")
 SCRIPTS = {"check": "check.sh", "check-all": "check-all.sh", "deploy": "deploy.sh", "ux": "ux.sh"}
 SKIP = {"__pycache__", ".DS_Store", "results"}
+
+
+def engine_module(name: str):
+    """A module of the engine's testsuite/lib, shared with the engine's scripts (F-26: vibe, also used by repair)."""
+    spec = importlib.util.spec_from_file_location(f"crissp_engine_{name}", ENGINE / "testsuite" / "lib" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+vibe = engine_module("vibe")
 
 
 def find_root(start: Path, env: dict) -> Path:
@@ -93,11 +105,6 @@ def merge_ignore(target: Path, rules: str) -> bool:
     return True
 
 
-def vibe_home(env: dict) -> Path:
-    """Where Vibe keeps its configuration: VIBE_HOME, else ~/.vibe (the same on Windows, macOS and Linux)."""
-    return Path(env.get("VIBE_HOME") or Path.home() / ".vibe")
-
-
 def windows() -> bool:
     return os.name == "nt"
 
@@ -109,43 +116,11 @@ def system() -> str:
     return "macOS" if sys.platform == "darwin" else "Linux"
 
 
-def toml_str(path: Path) -> str:
-    """F-25: a path as a TOML basic string — json.dumps escapes the backslashes a Windows path holds."""
-    return json.dumps(str(path))
-
-
-def trust_vibe(root: Path, env: dict) -> str:
-    """F-24/F-25: add the project to Vibe's trusted folders (VIBE_HOME/trusted_folders.toml), never removing an
-    entry. The path is matched with backslashes and with forward slashes, so Vibe's own entry counts too.
-
-    Returns what it did, or '' when there is no Vibe home on this machine."""
-    home = vibe_home(env)
-    if not home.is_dir():
-        return ""
-    db = home / "trusted_folders.toml"
-    path = toml_str(root)
-    want = str(root)
-    lines = db.read_text().splitlines() if db.is_file() else []
-    if any(line.strip().rstrip(",").strip('"') in (want, want.replace("\\", "/")) for line in lines):
-        return f"{db} already trusts {root}"
-    at = next((n for n, line in enumerate(lines) if line.strip().startswith("trusted")), len(lines))
-    if at < len(lines) and lines[at].rstrip().endswith("[]"):
-        lines[at:at + 1] = ["trusted = [", f"    {path},", "]"]
-    elif at < len(lines):
-        lines.insert(at + 1, f"    {path},")
-    else:
-        lines += ["trusted = [", f"    {path},", "]", "untrusted = []"]
-    tmp = db.with_name(db.name + ".tmp")
-    tmp.write_text("\n".join(lines) + "\n")
-    os.replace(tmp, db)
-    return f"trusted {root} in {db}"
-
-
 def vibe_note(root: Path, env: dict) -> str:
     """F-25: one line for init: the system, whether vibe is installed, and what the onboarding did."""
-    home = vibe_home(env)
+    home = vibe.home(env)
     if home.is_dir():
-        return f"Vibe on {system()}: {trust_vibe(root, env)}"
+        return f"Vibe on {system()}: {vibe.trust(home, root)}"
     on = shutil.which("vibe")
     if on:
         return (f"Vibe on {system()}: vibe is at {on}, but {home} does not exist yet; start vibe once, then "

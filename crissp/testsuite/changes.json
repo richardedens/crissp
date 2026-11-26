@@ -596,8 +596,8 @@
    "fix": "init writes .vibe/config.toml from a new template file (uvx crissp==<version> mcp, the same pin as .mcp.json), merges .vibe/ into the project's .gitignore, and adds the project folder to $VIBE_HOME/trusted_folders.toml when a Vibe home exists (never removing entries, never overwriting the config); with no Vibe home it says so. crissp repair (key vibe) puts the same in place in projects brought in earlier.",
    "sources": [
     {
-     "file": "src/crissp/cli.py",
-     "symbol": "def trust_vibe("
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def trust("
     },
     {
      "file": "crissp/testsuite/lib/repair.py",
@@ -614,7 +614,7 @@
     "test_package.py::test_init_makes_a_crissp_project_that_is_green",
     "test_repair.py::test_vibe_config_and_trust_are_put_in_place",
     "test_repair.py::test_vibe_repair_needs_a_version_and_a_brought_in_project",
-    "test_repair.py::test_vibe_trust_never_removes_and_handles_any_shape_of_the_file",
+    "test_vibe.py::test_no_file_yet_and_missing_lists",
     "test_repair.py::test_vibe_trust_alone_when_the_config_is_already_there"
    ]
   },
@@ -629,16 +629,48 @@
      "symbol": "def vibe_note("
     },
     {
-     "file": "crissp/testsuite/lib/repair.py",
-     "symbol": "def toml_str("
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def trust("
     }
    ],
    "tests": [
     "test_cli.py::test_system_names_each_platform",
-    "test_cli.py::test_windows_paths_land_as_valid_toml_and_match_vibes_own_entry",
+    "test_vibe.py::test_vibes_own_forward_slash_entry_counts",
     "test_cli.py::test_init_on_windows_says_the_guards_run_in_wsl",
     "test_cli.py::test_init_detects_the_system_and_whether_vibe_is_installed",
-    "test_repair.py::test_vibe_trust_escapes_windows_paths_and_matches_both_spellings"
+    "test_vibe.py::test_a_windows_path_is_added_once_however_often_it_runs"
+   ]
+  },
+  {
+   "id": "vibe-trust-tomllib",
+   "title": "Vibe's trusted folders are read with tomllib, in one place for init and repair (F-26)",
+   "problem": "trusted_folders.toml was edited line by line in two copied functions (cli.py trust_vibe, repair.py trust): a Windows path was added again on every run (the escaped entry never matched), a one-line `trusted = [\"/a\"]` became invalid TOML, a folder under `untrusted` was reported as trusted, and repair's fix_vibe still matched the unescaped path, so on Windows it was always out of place.",
+   "fix": "One engine module, crissp/testsuite/lib/vibe.py (standard library): it reads the file with tomllib, compares paths in both slash spellings, never trusts a folder under `untrusted`, leaves a file it does not know (anything but the two lists of strings) untouched, and writes the file back in Vibe's own shape. repair imports it; cli.py loads the same file from the engine (engine_module). The copies are gone.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def trust("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_vibe("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def engine_module("
+    }
+   ],
+   "tests": [
+    "test_vibe.py::test_a_windows_path_is_added_once_however_often_it_runs",
+    "test_vibe.py::test_a_one_line_list_stays_valid_toml_and_keeps_its_entries",
+    "test_vibe.py::test_an_untrusted_folder_stays_untrusted",
+    "test_vibe.py::test_a_file_it_does_not_know_is_left_alone",
+    "test_repair.py::test_vibe_repair_leaves_an_untrusted_folder_and_an_unknown_file_alone",
+    "test_cli.py::test_init_trusts_through_the_engines_vibe_module"
    ]
   }
  ],
