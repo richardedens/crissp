@@ -35,7 +35,7 @@ into `.gitignore`, and commits nothing: the product owner reviews the diff first
 | `CRISSP.md` | `crissp/CRISSP.md`, so the agreement's links work (never edited in a project) | copied as is |
 | `deploy/helm`, `deploy/terraform`, `deploy/deploy.json`, `deploy/.env.production.example` | `crissp/deploy/`: the product's own chart and Terraform (skip with `--no-deploy`) | the product |
 | `template/mcp.json` | `.mcp.json`: `uvx crissp==<version> mcp`, so the project pins its crissp | placeholders |
-| `template/vibe/config.toml` | `.vibe/config.toml`: the same MCP server for Mistral Vibe, same pin; the folder is added to `~/.vibe/trusted_folders.toml` when Vibe is installed (F-24) | placeholders |
+| `template/vibe/config.toml` | `.vibe/config.toml`: the same MCP server for Mistral Vibe, same pin; init asks to add the folder to `~/.vibe/trusted_folders.toml` when Vibe is installed (F-24, F-28) | placeholders |
 | `template/CHANGELOG.md`, `template/VERSION` | release notes and the version | placeholders |
 | `template/gitignore.crissp` | rules **merged** into `.gitignore`, never replacing it | `crissp init` |
 

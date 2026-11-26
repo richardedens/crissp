@@ -104,8 +104,8 @@ crissp check-all && crissp dashboard
 - the release notes and the version;
 - `.mcp.json`, so Claude Code starts the crissp tool, pinned to this version of crissp.
 - `.vibe/config.toml`, so Mistral Vibe registers the same crissp tool with the same pin; when Vibe is installed
-  (`VIBE_HOME`, else `~/.vibe`), the folder is also added to its `trusted_folders.toml`, so the project-local config
-  loads (F-24).
+  (`VIBE_HOME`, else `~/.vibe`), init asks to add the folder to its `trusted_folders.toml` (`--yes` adds it), so the
+  project-local config loads (F-24, F-28). It never trusts a folder you marked untrusted.
 
 In an existing repository it adds only what is missing, and never overwrites a file. It never commits: you review the
 diff first.

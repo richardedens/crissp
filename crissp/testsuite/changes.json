@@ -687,6 +687,25 @@
    "tests": [
     "test_repair.py::test_the_vibe_pin_follows_the_crissp_that_repairs"
    ]
+  },
+  {
+   "id": "vibe-trust-asks",
+   "title": "crissp init asks before trusting the folder in Vibe (F-28)",
+   "problem": "init added the folder to Vibe's trusted_folders.toml without asking, also without --yes; trusting is the security decision Vibe's own prompt exists for, and init did not say how to undo it.",
+   "fix": "vibe_note takes a confirm: without --yes init asks 'Trust <folder> in Vibe (<file>)? [Y/n]' (Enter is yes) when the folder is not listed yet; no leaves the file untouched and says how to trust it later; a trust says how to undo it. --yes trusts as before.",
+   "sources": [
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def vibe_note("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def trust("
+    }
+   ],
+   "tests": [
+    "test_cli.py::test_init_asks_before_trusting_the_folder_in_vibe"
+   ]
   }
  ],
  "gaps": [

@@ -151,6 +151,28 @@ def test_init_trusts_through_the_engines_vibe_module(tmp_path, monkeypatch):
         "trusted": ["/a", str(project.resolve())], "untrusted": []}
 
 
+def test_init_asks_before_trusting_the_folder_in_vibe(tmp_path, capsys):
+    """F-28: trusting is the decision Vibe's own prompt is for: without --yes init asks (no: nothing in Vibe's file,
+    and it says how to trust later), and when it trusts it says how to undo it."""
+    home = tmp_path / "vibe-home"
+    home.mkdir()
+    project = tmp_path / "proj"
+    project.mkdir()
+    args = cli.parser().parse_args(["init", "--no-git"])
+    asked = []
+    answers = iter(["y", "n"])
+    assert cli.init(project, args, {"VIBE_HOME": str(home)}, ask=lambda q: asked.append(q) or next(answers)) == 0
+    assert "Trust" in asked[1] and str(home / "trusted_folders.toml") in asked[1]
+    assert not (home / "trusted_folders.toml").exists()
+    assert "not trusted" in capsys.readouterr().out
+    answers = iter(["y", ""])  # Enter says yes
+    assert cli.init(project, args, {"VIBE_HOME": str(home)}, ask=lambda q: next(answers)) == 0
+    assert str(project) in (home / "trusted_folders.toml").read_text() and "to undo" in capsys.readouterr().out
+    answers = iter(["y"])  # already trusted: not asked again
+    assert cli.init(project, args, {"VIBE_HOME": str(home)}, ask=lambda q: next(answers)) == 0
+    assert "already trusts" in capsys.readouterr().out
+
+
 def test_init_on_windows_says_the_guards_run_in_wsl(tmp_path, monkeypatch, capsys):
     """F-25 / F-14: on native Windows init says the system, that the bash guards run inside WSL 2, and still
     onboards Vibe."""

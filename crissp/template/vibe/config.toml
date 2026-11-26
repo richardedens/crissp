@@ -1,7 +1,7 @@
 # Mistral Vibe: the crissp MCP server — the same tools .mcp.json gives Claude Code (brief, backlog, finding,
 # decision, epic, feature, item, run, status, dashboard), pinned to this project's crissp.
-# Vibe loads project-local config only in trusted folders; `crissp init` / `crissp repair` add this project
-# to trusted_folders.toml under VIBE_HOME (else ~/.vibe) when Vibe is installed.
+# Vibe loads project-local config only in trusted folders; `crissp init` asks to add this project to
+# trusted_folders.toml under VIBE_HOME (else ~/.vibe) when Vibe is installed, `crissp repair --yes` adds it.
 [[mcp_servers]]
 name = "crissp"
 transport = "stdio"

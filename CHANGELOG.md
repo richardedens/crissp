@@ -22,6 +22,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **`crissp repair` moves the Vibe pin too (F-27).** After an update, `uvx crissp==<new> repair --yes` moved the
   crissp pinned in `.mcp.json` but not the one in `.vibe/config.toml`, so Vibe kept the old crissp tools. Both now
   move together; only the pin changes, the file's comments and other servers stay.
+- **`crissp init` asks before it trusts the folder in Vibe (F-28).** Trusting a folder lets Vibe load its
+  project-local config, which is exactly what Vibe's own prompt guards. Without `--yes`, init now asks
+  (`[Y/n]`, Enter is yes); with `--yes` it trusts as before. When it trusts, it says how to undo it.
 - **An option with a long dash works.** Teams, Outlook and Word turn `--` into `—`, so a copied
   `crissp repair —yes` stopped with "unrecognized arguments: —yes". crissp now reads a leading `—` or `–` as `--`.
 

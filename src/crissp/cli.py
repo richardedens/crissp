@@ -4,8 +4,8 @@
                               bring this folder in: git init when it is no repository yet, then the agreement, the
                               backlog, the configuration and the deploy template; never overwrites, never commits.
                               Also writes .vibe/config.toml (the crissp MCP server for Mistral Vibe, pinned like
-                              .mcp.json) and, when Vibe is installed (VIBE_HOME or ~/.vibe), adds this folder to
-                              its trusted_folders.toml (F-24)
+                              .mcp.json) and, when Vibe is installed (VIBE_HOME or ~/.vibe), asks to add this
+                              folder to its trusted_folders.toml (--yes: adds it; F-24, F-28)
     crissp check [--plan]     test what changed since the last green state (crissp/check.sh)
     crissp check-all          the full run (crissp/check-all.sh)
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
@@ -116,10 +116,15 @@ def system() -> str:
     return "macOS" if sys.platform == "darwin" else "Linux"
 
 
-def vibe_note(root: Path, env: dict) -> str:
-    """F-25: one line for init: the system, whether vibe is installed, and what the onboarding did."""
+def vibe_note(root: Path, env: dict, confirm=lambda question: True) -> str:
+    """F-25: one line for init: the system, whether vibe is installed, and what the onboarding did. F-28: trusting is
+    the decision Vibe's own prompt is for, so it is asked (confirm) before the folder is added."""
     home = vibe.home(env)
     if home.is_dir():
+        question = f"Trust {root} in Vibe ({home / vibe.FILE}), so Vibe loads .vibe/config.toml? [Y/n] "
+        if vibe.state(home, root) == "absent" and not confirm(question):
+            return (f"Vibe on {system()}: {root} not trusted, as you chose; 'crissp repair --yes' or vibe itself "
+                    "trusts it later.")
         return f"Vibe on {system()}: {vibe.trust(home, root)}"
     on = shutil.which("vibe")
     if on:
@@ -158,7 +163,8 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         made.append(str(rel))
     if merge_ignore(root / ".gitignore", (TEMPLATE / "gitignore.crissp").read_text()):
         made.append(".gitignore (rules added)")
-    print(vibe_note(root, env), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
+    confirm = (lambda q: True) if args.yes else (lambda q: ask(q).strip().lower() in ("", "y", "yes"))
+    print(vibe_note(root, env, confirm), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
     if windows():  # F-14: the guards are bash scripts; on native Windows they run inside WSL 2
         print("Windows: crissp check, check-all, deploy, ux and dashboard are bash scripts — run them inside "
               "WSL 2; the Vibe onboarding above works natively.", file=out)
