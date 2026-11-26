@@ -672,6 +672,21 @@
     "test_repair.py::test_vibe_repair_leaves_an_untrusted_folder_and_an_unknown_file_alone",
     "test_cli.py::test_init_trusts_through_the_engines_vibe_module"
    ]
+  },
+  {
+   "id": "vibe-pin-follows",
+   "title": "crissp repair moves the Vibe pin along with the .mcp.json pin (F-27)",
+   "problem": "repair moved .mcp.json's crissp==<version> to the crissp that repairs, but never .vibe/config.toml's, so after an update Claude Code and Vibe ran different crissp versions.",
+   "fix": "fix_vibe_pin (repair key vibe-pin) reads .vibe/config.toml with tomllib, finds the crissp server's crissp==<version> argument and replaces only that string in the text, so comments and other servers stay; a config that is not TOML, has no pin, or holds the pin's text more than once is left as it is.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_vibe_pin("
+    }
+   ],
+   "tests": [
+    "test_repair.py::test_the_vibe_pin_follows_the_crissp_that_repairs"
+   ]
   }
  ],
  "gaps": [

@@ -363,3 +363,27 @@ def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
     assert (root / ".vibe/config.toml").read_text() == "# ours\n"  # never overwritten
     assert f'"{root}"' in (home / "trusted_folders.toml").read_text()
 
+
+
+def test_the_vibe_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
+    """F-27: .vibe/config.toml pins crissp like .mcp.json; repair moves both, keeping the file's comments and other
+    servers; an unpinned, unknown or ambiguous config is left as it is."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    config = root / ".vibe/config.toml"
+    text = ('# ours\n[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\n'
+            'args = ["crissp==0.1.2", "mcp"]\n\n[[mcp_servers]]\nname = "other"\nargs = ["x"]\n')
+    write(config, text)
+    assert "vibe-pin" not in [r.key for r in repair.find(root)]  # no version known
+    assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.2")]  # already this crissp
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5", "VIBE_HOME": str(tmp_path / "none")})
+    assert ".vibe/config.toml: crissp==0.1.2 → crissp==0.1.5" in capsys.readouterr().out
+    assert config.read_text() == text.replace("crissp==0.1.2", "crissp==0.1.5")
+    for other in ('[[mcp_servers]]\nname = "crissp"\nargs = ["crissp", "mcp"]\n',  # not pinned
+                  "not toml [\n",  # not TOML
+                  'mcp_servers = "x"\n',  # not a list of servers
+                  '# "crissp==0.1.2"\n[[mcp_servers]]\nname = "crissp"\nargs = ["crissp==0.1.2"]\n'):  # twice in the text
+        write(config, other)
+        assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.5")]
+    config.unlink()
+    assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.5")]  # no config: `vibe` makes it

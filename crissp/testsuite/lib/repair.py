@@ -20,6 +20,7 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     gitignore  .gitignore lacks some of the framework's rules (secrets, dumps, results): added, nothing removed
     sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
                so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
+    vibe-pin   .vibe/config.toml pins an older crissp than the one that repairs (F-27): the pin moves, as in .mcp.json
     vibe       .vibe/config.toml is not there, or the project is not trusted in Vibe's trusted_folders.toml
                (F-24; VIBE_HOME, else ~/.vibe): the config is made from the template with this crissp's pin, and the
                folder is added to the trusted list (never removed; a folder marked untrusted, or a file crissp does
@@ -38,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -298,6 +300,28 @@ def fix_pin(root: Path, version: str | None) -> Repair | None:
     return Repair("mcp-pin", f".mcp.json: {old} → crissp=={version}, the crissp that repairs (its MCP tools)", do)
 
 
+def fix_vibe_pin(root: Path, version: str | None) -> Repair | None:
+    """F-27: .vibe/config.toml pins crissp like .mcp.json; the crissp that repairs moves that pin to itself too. Only
+    the pin's text changes (comments and other servers stay); an unknown or ambiguous config is left as it is."""
+    path = root / ".vibe" / "config.toml"
+    try:
+        text = path.read_text() if path.is_file() else ""
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return None
+    servers = data.get("mcp_servers")
+    args = next((s.get("args") for s in servers if isinstance(s, dict) and s.get("name") == "crissp"),
+                None) if isinstance(servers, list) else None
+    pins = [a for a in args if isinstance(a, str) and a.startswith("crissp==")] if isinstance(args, list) else []
+    if not version or not pins or pins[0] == f"crissp=={version}" or text.count(json.dumps(pins[0])) != 1:
+        return None
+    old, new = pins[0], f"crissp=={version}"
+
+    def do() -> None:
+        path.write_text(text.replace(json.dumps(old), json.dumps(new)))
+    return Repair("vibe-pin", f".vibe/config.toml: {old} → {new}, the same pin as .mcp.json (Vibe's MCP tools)", do)
+
+
 def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | None:
     """F-24: Vibe onboarding for a project brought in before it: .vibe/config.toml with the MCP pin, and the folder
     trusted when Vibe is installed (home None or not a folder: only the config)."""
@@ -329,7 +353,7 @@ def find(root: Path, version: str | None = None, home: Path | None = None) -> li
     """What is out of place, in the order it is put in place."""
     return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
                         fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
-                        fix_vibe(root, version, home)) if r]
+                        fix_vibe_pin(root, version), fix_vibe(root, version, home)) if r]
 
 
 def committed(root: Path) -> bool:

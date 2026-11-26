@@ -19,6 +19,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   that reads the file as TOML: a Windows folder is no longer added again on every run, a one-line `trusted = [...]`
   no longer turns into invalid TOML, a folder you marked untrusted stays untrusted, and a file in a shape crissp
   does not know is left alone (it says so; trust the folder from Vibe itself).
+- **`crissp repair` moves the Vibe pin too (F-27).** After an update, `uvx crissp==<new> repair --yes` moved the
+  crissp pinned in `.mcp.json` but not the one in `.vibe/config.toml`, so Vibe kept the old crissp tools. Both now
+  move together; only the pin changes, the file's comments and other servers stay.
 - **An option with a long dash works.** Teams, Outlook and Word turn `--` into `—`, so a copied
   `crissp repair —yes` stopped with "unrecognized arguments: —yes". crissp now reads a leading `—` or `–` as `--`.
 
