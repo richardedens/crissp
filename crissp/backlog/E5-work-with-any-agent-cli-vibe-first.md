@@ -24,7 +24,7 @@ Tests      package_tests/test_cli.py (init), package_tests/test_package.py (the 
            (repair)
 Depends    —
 
-### E5-F1-02 · platform detection for the Vibe onboarding (Windows, macOS, Linux)        [doing] [S]
+### E5-F1-02 · platform detection for the Vibe onboarding (Windows, macOS, Linux)        [review] [S]
 Why        The onboarding must work the same on every system: on Windows the trust file stays valid TOML and init says
            itself that the bash guards run inside WSL 2 (F-14).
 What       Detect the system (os.name/sys.platform: Windows, macOS, Linux) and whether vibe is installed
