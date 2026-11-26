@@ -1,6 +1,7 @@
 """The crissp command passes every option of a guard on to it untouched (crissp check --plan, crissp deploy --cluster,
 crissp ux --shoot <walk>), for the project it is started in. Fast: the scripts are stood in, nothing is run."""
 
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -79,7 +80,6 @@ def test_init_onboards_vibe_when_a_vibe_home_exists(tmp_path, monkeypatch):
     assert 'name = "crissp"' in config and "uvx" in config and f"crissp=={cli.__version__}" in config
     db = (vibe / "trusted_folders.toml").read_text()
     assert "trusted = [" in db and f'"{project.resolve()}"' in db
-    assert ".vibe/" in (project / ".gitignore").read_text().splitlines()
     # a second init keeps the project's own config and never duplicates the trust entry
     (project / ".vibe" / "config.toml").write_text("# ours\n")
     assert cli.main(["init", "--yes", "--no-git"], env=env) == 0
@@ -171,6 +171,20 @@ def test_init_asks_before_trusting_the_folder_in_vibe(tmp_path, capsys):
     answers = iter(["y"])  # already trusted: not asked again
     assert cli.init(project, args, {"VIBE_HOME": str(home)}, ask=lambda q: next(answers)) == 0
     assert "already trusts" in capsys.readouterr().out
+
+
+def test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored(tmp_path, monkeypatch):
+    """F-29: .vibe/config.toml holds the same pin as the committed .mcp.json, so it is committed too (a teammate's
+    Vibe gets the tools without crissp repair); whatever else Vibe keeps in .vibe/ stays out of git."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    (project / ".vibe" / "cache.json").write_text("{}")
+
+    def ignored(rel: str) -> bool:
+        return subprocess.run(["git", "-C", str(project), "check-ignore", "-q", rel]).returncode == 0
+    assert not ignored(".vibe/config.toml") and ignored(".vibe/cache.json")
 
 
 def test_init_on_windows_says_the_guards_run_in_wsl(tmp_path, monkeypatch, capsys):

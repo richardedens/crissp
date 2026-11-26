@@ -706,6 +706,26 @@
    "tests": [
     "test_cli.py::test_init_asks_before_trusting_the_folder_in_vibe"
    ]
+  },
+  {
+   "id": "vibe-config-committed",
+   "title": ".vibe/config.toml is committed like .mcp.json (F-29)",
+   "problem": ".vibe/ was git-ignored as machine-specific, while .vibe/config.toml holds the same pin as the committed .mcp.json: every teammate had to run crissp repair to get Vibe's crissp tools.",
+   "fix": "The template's .gitignore rules (and this repository's) are `.vibe/*` and `!.vibe/config.toml`: the config is committed, anything else Vibe keeps in .vibe/ stays local. (A plain `.vibe/` would keep git from re-including the file.) This repository's own .vibe/config.toml is committed.",
+   "sources": [
+    {
+     "file": "crissp/template/gitignore.crissp",
+     "symbol": ""
+    },
+    {
+     "file": ".gitignore",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_cli.py::test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored",
+    "test_package.py::test_init_makes_a_crissp_project_that_is_green"
+   ]
   }
  ],
  "gaps": [

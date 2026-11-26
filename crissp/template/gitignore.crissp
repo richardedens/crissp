@@ -25,8 +25,9 @@ crissp/testsuite/results/
 .claude/worktrees/
 .DS_Store
 crissp/uxsuite/results/
-# Vibe config: project-local, machine-specific
-.vibe/
+# Vibe: .vibe/config.toml is committed like .mcp.json (the same pin); the rest of .vibe/ stays local
+.vibe/*
+!.vibe/config.toml
 # Terraform: state and real variables hold secrets
 .terraform/
 *.tfstate

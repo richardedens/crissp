@@ -5,7 +5,7 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 ## 0.1.9 — 2026-11-24
 
 - **`crissp init` onboards Mistral Vibe as well as Claude Code (F-24).** A new project also gets `.vibe/config.toml` —
-  the same crissp MCP server, pinned `uvx crissp==<version> mcp` like `.mcp.json` — and `.vibe/` in its `.gitignore`.
+  the same crissp MCP server, pinned `uvx crissp==<version> mcp` like `.mcp.json`.
   When Vibe is installed (`VIBE_HOME`, else `~/.vibe`), init also adds the project folder to `trusted_folders.toml`,
   so Vibe loads the project-local config; `crissp repair` puts the same in place in projects brought in earlier.
   Nothing is overwritten, nothing is committed.
@@ -25,6 +25,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **`crissp init` asks before it trusts the folder in Vibe (F-28).** Trusting a folder lets Vibe load its
   project-local config, which is exactly what Vibe's own prompt guards. Without `--yes`, init now asks
   (`[Y/n]`, Enter is yes); with `--yes` it trusts as before. When it trusts, it says how to undo it.
+- **`.vibe/config.toml` is committed, like `.mcp.json` (F-29).** It holds the same pin and nothing tied to one
+  machine, so a teammate's Vibe gets the crissp tools from the clone, without `crissp repair`. The `.gitignore`
+  rules are `.vibe/*` and `!.vibe/config.toml`: whatever else Vibe keeps in `.vibe/` stays local.
 - **An option with a long dash works.** Teams, Outlook and Word turn `--` into `—`, so a copied
   `crissp repair —yes` stopped with "unrecognized arguments: —yes". crissp now reads a leading `—` or `–` as `--`.
 

@@ -1,0 +1,8 @@
+# Project-local Vibe config for the C.R.I.S.S.P. repository: the crissp MCP server.
+# The server finds the project from the session's working directory (CRISSP_ROOT or cwd),
+# so no env is needed here. The repo root AGENTS.md loads crissp/AGENTS.md and crissp/CLAUDE.md.
+[[mcp_servers]]
+name = "crissp"
+transport = "stdio"
+command = "python3"
+args = ["-I", "crissp/tool/server.py"]
