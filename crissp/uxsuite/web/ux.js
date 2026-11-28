@@ -5,7 +5,7 @@
   const $ = (sel, el = document) => el.querySelector(sel);
   const { esc, badge } = window.Look;
   let S = null, tab = "overview", query = new URLSearchParams();
-  const TABS = [["overview", "Overview"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
+  const TABS = [["overview", "Overview"], ["review", "Review"], ["map", "Map"], ["jobs", "Jobs"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
 
   const api = async (path, body) => {
     const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -51,10 +51,78 @@
       }).join("") || '<div class="card">No walks yet: add one to <code>crissp/uxsuite/walks/</code>.</div>'}</div>`;
   }
 
+  /* The map (E7-F3-01): every screen the crawl, the project's own E2E tests and the walks found, by area, with its gaps:
+     a screen no link reaches, one the crawl could not open, one no walk looks at. A shot opens enlarged. */
+  const REACH = ["no link reaches it", "the crawl could not open it"];
+  const unreached = s => s.gaps.some(g => REACH.some(r => g.startsWith(r)));
+  function mapTab() {
+    const m = S.map;
+    if (!m) return `<div class="card"><h3>The product is not mapped yet</h3><p>Run <code>crissp ux --map</code> while the product runs on <code>${esc(S.url)}</code>. It opens home and every walk's pages on the team's devices, follows the product's own links (read-only: it never signs out or deletes), adds the screenshots your E2E tests list in <code>crissp/uxsuite/results/test-shots/screens.json</code>, and the walks' own.</p></div>`;
+    const show = query.get("show") || "all", list = m.screens.filter(s => show === "gaps" ? unreached(s) : show === "unwalked" ? !s.walks.length : true);
+    const unwalked = m.screens.filter(s => !s.walks.length).length;
+    const areas = [...new Set(list.map(s => s.area))];
+    const seg = [["all", `All ${m.screens.length}`], ["gaps", `Not reached ${m.gaps}`], ["unwalked", `No walk ${unwalked}`]];
+    return `<div class="grid kpis" style="margin-bottom:14px">
+        <div class="card kpi"><div class="l">Screens</div><div class="v">${m.screens.length}</div><div class="s">in ${Object.keys(m.areas).length} area(s)</div></div>
+        <div class="card kpi"><div class="l">Not reached</div><div class="v">${m.gaps}</div><div class="s">${m.crawled ? "no link gets there, or the crawl could not open it" : "no crawl yet: crissp ux --map"}</div></div>
+        <div class="card kpi"><div class="l">No walk</div><div class="v">${unwalked}</div><div class="s">the team never looks at these</div></div>
+        <div class="card kpi"><div class="l">Mapped</div><div class="v small">${esc((m.at || "").replace("T", " ").slice(0, 16))}</div><div class="s">${esc(m.url || "")}</div></div></div>
+      <div class="toolbar"><span class="seg" role="group" aria-label="Show">${seg.map(([k, l]) => `<button class="ghost small" data-goto="map?show=${k}" aria-pressed="${k === show}">${l}</button>`).join("")}</span>
+        <span class="small muted">Map again: <code>crissp ux --map</code></span></div>
+      ${(m.skipped || []).length ? `<details class="card"><summary>${m.skipped.length} test screenshot(s) skipped</summary><ul class="small">${m.skipped.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+      <div class="screens">${areas.flatMap(a => list.filter(s => s.area === a)).map(s => {
+          const first = s.shots.find(x => x.device === "laptop") || s.shots[0];
+          return `<article class="card screen ${unreached(s) ? "gap" : ""}">
+            ${first ? `<button class="shot thumb" data-view="map" data-key="${esc(s.key)}" data-i="${s.shots.indexOf(first)}" title="Enlarge"><img src="${esc(first.url)}" alt="${esc(s.title)}" loading="lazy"></button>` : '<div class="thumb none small muted">no picture</div>'}
+            <div class="row"><b>${esc(s.title)}</b>${badge("area", s.area)}</div><code class="small muted">${esc(s.key)}</code>
+            <div class="row">${s.found_by.map(f => badge("ver", f === "test" ? "E2E test" : f)).join("")}${s.gaps.map(g => badge(REACH.some(r => g.startsWith(r)) ? "failed" : "missing", g)).join("")}</div>
+            ${s.linked_from.length ? `<p class="small muted">Linked from ${s.linked_from.map(esc).join(", ")}</p>` : ""}
+            ${s.walks.length ? `<p class="small">Walks: ${s.walks.map(w => `<a href="#rounds?walk=${encodeURIComponent(w)}">${esc(w)}</a>`).join(", ")}</p>` : ""}
+            ${s.tests.length ? `<p class="small muted">Tests: ${s.tests.map(esc).join(", ")}</p>` : ""}
+            ${s.shots.length > 1 ? `<div class="row">${s.shots.map((x, i) => `<button class="link small" data-view="map" data-key="${esc(s.key)}" data-i="${i}">${esc(x.device)} · ${esc(x.source === "test" ? "E2E test" : x.source)} ⤢</button>`).join("")}</div>` : ""}
+          </article>`;
+        }).join("") || '<div class="card">Nothing to show here.</div>'}</div>`;
+  }
+
+  /* Discovery (E7-F3-02): every persona tries their jobs on the mapped screens: done, hard or impossible, and where they
+     gave up. What cannot be done becomes a need; an approved need is a design request (a walk with a brief) whose first
+     design starts at once. */
+  const JOB = { done: "passed", hard: "missing", impossible: "failed" };
+  const screenChip = k => `<a class="chip" href="#map" title="On the map">${esc(k)}</a>`;
+  function jobsTab() {
+    const list = [...(S.discovery || [])].reverse();
+    const top = `<div class="toolbar"><button class="primary" data-request="discovery" data-walk="product" ${S.map ? "" : "disabled"}>Ask for a discovery round</button>
+      <span class="small muted">${S.map ? `Every persona tries their own jobs on the ${S.map.screens.length} mapped screens. A run costs tokens.` : "Map the product first: <code>crissp ux --map</code>."}</span></div>`;
+    return top + (list.map((d, i) => {
+      const res = d.result;
+      if (!res) return `<div class="card walk">Discovery ${d.version} ${phase(d.status)} <span class="small muted">${esc(d.status.note || "")}</span></div>`;
+      const count = v => (res.jobs || []).filter(j => j.verdict === v).length;
+      const people = [...new Set((res.jobs || []).map(j => j.persona))];
+      const body = `<p>${esc(res.summary)}</p>
+        <div class="row">${["done", "hard", "impossible"].map(v => badge(JOB[v], `${count(v)} ${v}`)).join("")}</div>
+        <div class="label">The job map</div>
+        ${people.map(k => `<div class="jobs-of">${who(k)}<span class="small muted">${esc(persona(k).role)}</span>
+          <table class="jobs"><tbody>${res.jobs.filter(j => j.persona === k).map(j => `<tr>
+            <td>${badge(JOB[j.verdict] || "missing", j.verdict)}</td><td><b>${esc(j.job)}</b>${j.inferred ? ' <span class="small muted">(inferred)</span>' : ""}${j.why ? `<div class="small muted">${esc(j.why)}</div>` : ""}</td>
+            <td class="small">${(j.screens || []).map(screenChip).join(" → ")}${j.gave_up_at ? ` <span class="gave-up">gave up at ${screenChip(j.gave_up_at)}</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`).join("")}
+        <div class="label">What is missing: the needs</div>
+        ${(res.needs || []).map((n, ni) => {
+          const id = d.needs[ni].id, held = d.needs[ni].verdict, walk = S.walks.find(w => w.need === id);
+          return `<div class="advice ${held?.verdict === "approve" ? "could" : "must"}"><div class="row"><b>${esc(n.title)}</b>${held ? badge(held.verdict === "approve" ? "passed" : "failed", held.verdict === "approve" ? "design requested" : "rejected") : ""}</div>
+            <p>${esc(n.detail)}</p>
+            <p class="small">For ${(n.personas || []).map(name).map(esc).join(", ") || "the team"}${(n.jobs || []).length ? ` · ${n.jobs.map(esc).join("; ")}` : ""}${(n.screens || []).length ? ` · fits at ${n.screens.map(screenChip).join(" ")}` : ""}</p>
+            ${walk ? `<p class="small"><a href="#proposals?walk=${encodeURIComponent(walk.id)}">Its designs ${walk.proposals.length ? `(${walk.proposals.length})` : "(starting)"} →</a></p>` : ""}
+            ${verdictButtons(id, [["approve", "Approve: ask for a design"], ["reject", "Reject"]])}</div>`;
+        }).join("") || '<p class="small muted">Nothing is missing: every job can be done.</p>'}`;
+      return i === 0 ? `<article class="card walk"><header><h3>Discovery ${d.version}</h3>${phase(d.status)}<span class="small muted">${esc((d.request?.at || "").replace("T", " ").slice(0, 16))}</span></header>${body}</article>`
+        : `<details class="card walk"><summary>Discovery ${d.version} · ${esc((d.request?.at || "").replace("T", " ").slice(0, 16))}</summary>${body}</details>`;
+    }).join("") || '<div class="card">No discovery round yet.</div>');
+  }
+
   const walkPicker = (w, to) => `<div class="toolbar"><select id="walk" data-to="${to}" aria-label="Walk">${S.walks.map(x => `<option value="${esc(x.id)}" ${x === w ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></div>`;
 
   function shotsOf(w) {
-    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><button class="shot" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(s.device)}" data-n="${s.n}" title="Enlarge"><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"></button><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}</figcaption></figure>`
+    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><button class="shot" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(s.device)}" data-n="${s.n}" title="Enlarge"><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"></button><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}${(s.measured || []).length ? " " + badge("must", `${s.measured.length} measured`) : ""}</figcaption></figure>`
       : `<p class="small">${badge("failed", s.device)} ${esc(s.error)}</p>`).join("") || '<p class="small muted">No screenshots yet.</p>'}</div>`;
   }
 
@@ -92,7 +160,7 @@
   function verdictButtons(id, options) {
     const held = S.verdicts[id];
     return `<div class="verdicts">${options.map(([v, label]) => `<button class="ghost small" data-verdict="${v}" data-id="${esc(id)}" aria-pressed="${v === "approve-remark" ? held?.verdict === "approve" && !!held?.reason : v === "approve" ? held?.verdict === "approve" && !held?.reason : held?.verdict === v}">${label}</button>`).join("")}
-      ${held?.reason ? `<span class="small muted">“${esc(held.reason)}”</span>` : ""}</div>`;
+      ${held?.reason ? `<span class="small muted">“${esc(held.reason)}”</span>` : ""}${!held && S.held[id] ? `<span class="small muted">${esc(S.held[id].verdict)}, by your verdict on ${esc(S.held[id].by.replace("/", " "))}</span>` : ""}</div>`;
   }
 
   function rounds() {
@@ -137,7 +205,8 @@
         return `<article class="card walk" id="p-${esc(p.key)}"><header><h3>Design ${p.version}${res?.title ? ": " + esc(res.title) : ""}</h3>${phase(p.status)}
             ${p.verdict ? badge(p.verdict.verdict === "approve" ? "passed" : p.verdict.verdict === "reject" ? "failed" : "missing", p.verdict.verdict) : ""}
             ${p.pbi ? `<a href="../dashboard/#board?q=${encodeURIComponent(p.pbi)}">${badge("area", p.pbi)} on the board</a>` : ""}</header>
-          ${p.mockup ? compare(w, p) : ""}
+          ${p.mockup && !rebuilt(w, p) ? compare(w, p) : ""}
+          ${p.verdict?.verdict === "approve" ? builtOf(w, p) : ""}
           ${res ? `<div class="decide">${verdictButtons(p.key, [["approve", "Approve"], ["approve-remark", "Approve with a remark…"], ["redo", "Again, with…"], ["reject", "Reject"]])}<span class="small muted">Approve makes it a backlog item (a remark goes with it); Again asks the designer for the next version.</span></div>` : ""}
           ${p.request?.focus ? `<p class="small muted">Focus: ${esc(p.request.focus)}</p>` : ""}
           ${res ? `<p>${esc(res.summary)}</p>${(res.changes || []).length ? `<ol>${res.changes.map(c => `<li>${badge(c.priority || "should", c.priority || "should")} ${esc(c.what)} <span class="small muted">${esc(c.why)}</span></li>`).join("")}</ol>` : ""}
@@ -147,16 +216,28 @@
       }).join("") || '<div class="card">No design yet.</div>');
   }
 
+  /* What was built (E7-F5-01): once the walk is shot again after the approval, its new screens sit next to the design;
+     accept moves the PBI to review, not good sends it back to doing with the reason as a finding. */
+  const rebuilt = (w, p) => p.verdict?.verdict === "approve" && !!w.shot_at && w.shot_at > p.verdict.at;
+  function builtOf(w, p) {
+    const b = p.built, fresh = rebuilt(w, p);
+    const said = b ? badge(b.verdict === "accept" ? "passed" : "failed", b.verdict === "accept" ? "accepted" : "sent back") + (b.reason ? ` <span class="small muted">${esc(b.reason)}</span>` : "") : "";
+    if (!fresh) return `<div class="built card"><div class="label">What was built ${said}</div><p class="small muted">Once ${p.pbi ? esc(p.pbi) : "it"} is built, shoot the walk again (<code>crissp ux --shoot ${esc(w.id)}</code>): the new screens show here next to this design, to accept or send back.</p></div>`;
+    return `<div class="built card"><div class="label">What was built · shot ${esc(w.shot_at.replace("T", " ").slice(0, 16))} ${said}</div>
+      ${compare(w, p, "Built")}
+      <div class="decide">${verdictButtons(p.key + "/built", [["accept", "Accept"], ["send-back", "Not good…"]])}<span class="small muted">Accept moves ${p.pbi ? esc(p.pbi) : "the backlog item"} to review; Not good sends it back with your reason.</span></div></div>`;
+  }
+
   /* Before | After: what people see today (the walk's own screenshot, laptop or phone) next to the design, the same
      size, so a verdict is a look and a click. The mockup is drawn at the laptop size and scaled to fit (fit()). */
-  function compare(w, p) {
+  function compare(w, p, now = "Before") {
     const shot = d => (w.shots || []).find(s => s.device === d && s.url);
     const devices = ["laptop", "phone"].filter(shot);
     const d = devices.includes(query.get("device")) ? query.get("device") : devices[0];
     const before = d ? shot(d) : null;
     const pick = devices.length > 1 ? `<span class="seg">${devices.map(x => `<button class="ghost small" data-device="${x}" aria-pressed="${x === d}">${x === "laptop" ? "Laptop" : "Phone"}</button>`).join("")}</span>` : "";
     return `<div class="compare">
-        <figure class="pane"><figcaption><b>Before</b> · what people see now ${pick}</figcaption>
+        <figure class="pane"><figcaption><b>${now}</b> · what people see now ${pick}</figcaption>
           <div class="frame ${d === "phone" ? "tall" : ""}">${before ? `<button class="shot" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d)}" data-mode="before" title="Enlarge"><img src="${esc(before.url)}" alt="Before: ${esc(before.title || "")}"></button>` : '<p class="small muted">No screenshot of this walk yet: crissp ux --shoot ' + esc(w.id) + '</p>'}</div></figure>
         <figure class="pane"><figcaption><b>After</b> · design ${p.version}</figcaption>
           <div class="frame fit"><iframe sandbox="allow-scripts" src="${esc(p.mockup)}" title="After: design ${p.version}" tabindex="-1"></iframe>
@@ -182,7 +263,8 @@
     $("#viewer-modes").innerHTML = modes.map(([m, l], i) => `<button class="ghost small" data-mode-to="${m}" aria-pressed="${m === v.mode}" title="key ${i + 1}">${l}</button>`).join("");
     document.querySelectorAll("#viewer [data-zoom]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zoom === String(v.zoom))));
     const pane = (what, label) => what === "before"
-      ? `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><img src="${esc(v.before.url)}" alt="${esc(v.before.title || "")}" data-z></div></figure>`
+      ? `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><div class="marked">
+          <img src="${esc(v.before.url)}" alt="${esc(v.before.title || "")}" data-z>${marks(v.before)}</div></div>${markList(v.before)}</figure>`
       : `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><div class="mock" data-z><iframe sandbox="allow-scripts" src="${esc(v.after)}" title="The design"></iframe></div></div></figure>`;
     const panes = v.mode === "both" ? pane("before", "<b>Before</b> · now") + pane("after", "<b>After</b> · the design") : pane(v.mode === "after" ? "after" : "before");
     $("#viewer-body").className = `viewer-body ${v.mode === "both" ? "two" : "one"}`;
@@ -190,13 +272,25 @@
     $("#viewer-body").querySelectorAll("img[data-z]").forEach(img => img.complete ? zoomViewer() : img.addEventListener("load", zoomViewer));
     zoomViewer();
   }
+  /* What the browser measured on a shot (E7-F2-02): a box on the picture where it is, and the list under it. The
+     screenshot is the viewport at its CSS size, so a place is a share of the picture's width and height. */
+  const SIZE = { laptop: [1440, 900], phone: [390, 844] };
+  function marks(s) {
+    const [W, H] = SIZE[s.device] || [1440, 900];
+    return (s.measured || []).filter(f => f.where).map((f, i) => `<span class="mark" title="${esc(measureName(f.check))}: ${esc(f.detail)}" style="left:${100 * f.where.x / W}%;top:${100 * f.where.y / H}%;width:${100 * f.where.w / W}%;height:${100 * f.where.h / H}%"><b>${i + 1}</b></span>`).join("");
+  }
+  function markList(s) {
+    if (!(s.measured || []).length) return "";
+    let n = 0;
+    return `<ol class="measured small">${s.measured.map(f => `<li${f.where ? ` value="${++n}"` : ' class="off-screen"'}>${badge("must", measureName(f.check))} ${esc(f.detail)}${f.rule ? ` <code class="muted">${esc(f.rule)}</code>` : ""}${f.where ? "" : ' <span class="muted">(not on the first screen)</span>'}</li>`).join("")}</ol>`;
+  }
   function zoomViewer() {
     if (!view) return;
     document.querySelectorAll("#viewer-body .pane").forEach(pane => {
       const box = pane.querySelector(".scroll"), img = pane.querySelector("img"), mock = pane.querySelector(".mock");
-      if (img) {
-        img.style.width = view.zoom === "fit" ? "" : `${img.naturalWidth * view.zoom}px`;
-        img.classList.toggle("fit", view.zoom === "fit");
+      if (img && img.naturalWidth) {  // fit: as large as the pane holds, never larger than the picture
+        const z = view.zoom === "fit" ? Math.min(1, (box.clientWidth - 2) / img.naturalWidth, (box.clientHeight - 2) / img.naturalHeight) : Number(view.zoom);
+        img.style.width = `${img.naturalWidth * z}px`;
       }
       if (mock) {  // the design is drawn 1440 wide; fit scales it to the pane
         const z = view.zoom === "fit" ? Math.min(1, (box.clientWidth - 2) / 1440) : Number(view.zoom);
@@ -232,6 +326,10 @@
   const field = (label, name, value, extra = "") => `<label class="field"><span>${label}</span><input type="text" name="${name}" value="${esc(value ?? "")}" ${extra}></label>`;
   const area = (label, name, value, hint = "") => `<label class="field"><span>${label}${hint ? `<span class="hint muted small">${hint}</span>` : ""}</span><textarea name="${name}">${esc(value ?? "")}</textarea></label>`;
   const choose = (label, name, value, options) => `<label class="field"><span>${label}</span><select name="${name}">${options.map(o => `<option ${o === value ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+  /* What the browser itself checks at every shoot for a rule (E7-F2-02, measure.js). */
+  const MEASURES = [["overflow", "Text that overflows"], ["tap-targets", "Tap targets under 44 × 44 (phone)"],
+    ["below-fold", "The primary action below the fold"], ["dialog-opaque", "See-through dialogs"], ["focus-visible", "No visible focus"]];
+  const measureName = m => (MEASURES.find(x => x[0] === m) || [m, m])[1];
   const tick = (label, name, value) => `<label class="chk"><input type="checkbox" name="${name}" ${value ? "checked" : ""}> ${label}</label>`;
 
   function personaForm(p) {
@@ -267,6 +365,7 @@
       ${field("Title", "title", r.title, "required")}${choose("Weight", "severity", r.severity, ["must", "should", "could"])}
       ${area("What it asks", "text", r.text, "in plain words, as the team should judge it")}
       <div class="row">${tick("Holds", "on", r.on)}</div>
+      <fieldset class="measures"><legend>Measured by the browser at every shoot</legend><div class="row">${MEASURES.map(([m, l]) => tick(l, "m:" + m, (r.measure || []).includes(m))).join("")}</div></fieldset>
       <div class="row"><button class="primary">Save</button><a href="#rules">Cancel</a></div></form>`;
   }
 
@@ -274,16 +373,110 @@
     const e = editing();
     return `<div class="toolbar"><button class="primary" data-goto="rules?edit=new">Add a rule</button><span class="small muted">Every round judges by the rules that hold, and every design follows them. They live in <code>crissp/uxsuite/rules/</code>, one file each${S.rules_from === "PRINCIPLES.md" ? " (the first change moves them out of PRINCIPLES.md)" : ""}.</span></div>
       ${e === "new" ? ruleForm(null) : ""}
+      ${S.proposed.map(p => `<article class="card rule proposed"><div class="row">${badge("area", "proposed")}${badge(p.severity, p.severity)}<h3>${esc(p.title)}</h3></div>
+        <p class="small">${esc(p.text)}</p><p class="small muted">You agreed with this on ${p.walks.length} screens: ${p.walks.map(x => esc(walkOf(x)?.title || x)).join(", ")}.</p>
+        ${verdictButtons(p.id, [["approve", "Make it a rule"], ["reject", "Reject…"]])}</article>`).join("")}
       ${S.rules.map(r => e === r.id ? ruleForm(r) : `<article class="card rule ${r.on ? "" : "off"}"><div class="row">${badge(r.severity, r.severity)}<h3>${esc(r.title)}</h3><code class="small muted">${esc(r.id)}</code>${r.on ? "" : badge("missing", "off")}</div>
         <p class="small">${esc(r.text)}</p>
+        ${S.verdicts["rule/" + r.id] ? `<p class="small muted">Your verdict on all its advice: ${esc(S.verdicts["rule/" + r.id].verdict)}</p>` : ""}
+        ${(r.measure || []).length ? `<div class="row small"><span class="muted">Measured by the browser:</span>${r.measure.map(m => badge("ver", measureName(m))).join("")}</div>` : ""}
         <div class="row"><a href="#rules?edit=${encodeURIComponent(r.id)}">Edit</a>
           <button class="ghost small" data-toggle="rule" data-id="${esc(r.id)}">${r.on ? "Switch off" : "Switch on"}</button>
           <button class="ghost small" data-remove="rule" data-id="${esc(r.id)}">Remove</button></div></article>`).join("") || '<div class="card">No rules yet: add the first one.</div>'}`;
   }
 
+  /* The review screen (E7-F4-01): one screen at a time, the ones that wait for you first. Its status on the way from
+     seen to accepted, the shot with the findings pinned where they are next to the design, the advice must first, and
+     one verdict bar that stays in its place: 1 2 3 give the verdict, ← → go to the previous or next screen, ↑ ↓ to the
+     previous or next item. Everything can be done with the keyboard alone. */
+  const STEP_NAMES = { new: "new", seen: "seen", discussed: "discussed", decided: "decided", designed: "designed", approved: "approved", built: "built", accepted: "accepted" };
+  const OPTIONS = { advice: [["agree", "Agree"], ["disagree", "Disagree…"], ["later", "Later"]],
+    design: [["approve", "Approve"], ["redo", "Again, with…"], ["reject", "Reject…"]], built: [["accept", "Accept"], ["send-back", "Not good…"]] };
+  const stepTone = st => st === "accepted" ? "passed" : st === "new" ? "missing" : "area";
+  function reviewItems(w, sc) {
+    const r = last(w.rounds.filter(x => x.result)), items = [];
+    const order = { must: 0, should: 1, could: 2 };
+    if (r) (r.result.advice || []).map((a, i) => ({ a, i })).sort((x, y) => (order[x.a.priority] ?? 3) - (order[y.a.priority] ?? 3) || x.i - y.i)
+      .forEach(({ a, i }) => items.push({ kind: "advice", id: `${w.id}/r${r.version}/a${i}`, a, title: a.title }));
+    const p = w.proposals.find(x => x.key === sc.design);
+    if (p && p.result) items.push({ kind: "design", id: p.key, title: `Design ${p.version}${p.result.title ? ": " + p.result.title : ""}` });
+    if (p && ["built", "accepted"].includes(sc.status)) items.push({ kind: "built", id: p.key + "/built", title: "What was built" });
+    return items;
+  }
+  function reviewState() {
+    const R = S.review, screens = R.screens;
+    const at = Math.max(0, screens.findIndex(x => x.walk === query.get("walk")));
+    const sc = screens[at], w = sc && walkOf(sc.walk), items = sc ? reviewItems(w, sc) : [];
+    const firstOpen = items.findIndex(x => !S.verdicts[x.id] && !S.held[x.id]);
+    const i = query.has("i") ? Math.min(items.length - 1, Number(query.get("i"))) : Math.max(0, firstOpen);
+    return { R, screens, at, sc, w, items, i, item: items[i] };
+  }
+  function pinned(w, shot, items) {
+    if (!shot) return '<div class="frame none small muted">No screenshot yet.</div>';
+    const [W, H] = SIZE[shot.device] || [1440, 900], ref = `${shot.device} ${shot.n}`;
+    const pins = items.map((x, k) => ({ x, k })).filter(({ x }) => x.a && x.a.where && x.a.shot === ref)
+      .map(({ x, k }) => `<span class="mark pin ${esc(x.a.priority)}" title="${esc(x.title)}" style="left:${100 * x.a.where.x / W}%;top:${100 * x.a.where.y / H}%;width:${100 * x.a.where.w / W}%;height:${100 * x.a.where.h / H}%"><b>${k + 1}</b></span>`).join("");
+    return `<div class="marked"><img src="${esc(shot.url)}" alt="${esc(shot.title)}">${pins}${marks(shot).replace(/<b>(\d+)<\/b>/g, "<b>m$1</b>")}</div>`;
+  }
+  function reviewTab() {
+    if (!S.review.screens.length) return '<div class="card">No walks yet: add one to <code>crissp/uxsuite/walks/</code>.</div>';
+    const { R, screens, at, sc, w, items, i, item } = reviewState();
+    const total = R.total || 1;
+    const bar = R.steps.filter(st => R.progress[st]).map(st => `<span class="seg-${esc(st)}" style="flex:${R.progress[st]}" title="${esc(STEP_NAMES[st])}: ${R.progress[st]}">${R.progress[st]} ${esc(STEP_NAMES[st])}</span>`).join("");
+    const p = w.proposals.find(x => x.key === sc.design);
+    const ref = item?.a?.shot, device = ref ? ref.split(" ")[0] : null;
+    const shot = w.shots.find(x => x.url && (ref ? `${x.device} ${x.n}` === ref : true)) || w.shots.find(x => x.url && x.device === device) || w.shots.find(x => x.url);
+    /* Decide once (E7-F4-02): the verdict on a piece of advice can go to its screen, its area or its rule instead, and
+       then holds for every piece of advice under it without a verdict of its own (s switches). */
+    const scopes = item?.kind === "advice" ? [["", "This advice", item.id], ["screen", "Its screen", `screen/${w.id}`], ["area", "Its area", `area/${sc.area}`]]
+      .concat(item.a.rule ? [["rule", `Rule ${item.a.rule}`, `rule/${item.a.rule}`]] : []) : [["", "", item?.id]];
+    const scope = scopes.find(x => x[0] === (query.get("scope") || "")) || scopes[0];
+    const held = item && S.verdicts[scope[2]];
+    return `<div class="progress card"><div class="row"><b>${R.progress.accepted} of ${R.total} screen(s) accepted</b><span class="small muted">${R.waiting} wait for you</span></div>
+        <div class="progressbar" role="img" aria-label="${R.steps.map(st => `${R.progress[st]} ${st}`).join(", ")}" style="--total:${total}">${bar}</div></div>
+      <div class="review">
+        <nav class="review-list" aria-label="Screens">${screens.map((x, k) => `<a href="#review?walk=${encodeURIComponent(x.walk)}" class="${k === at ? "on" : ""}" ${k === at ? 'aria-current="true"' : ""}>
+          <span class="row">${badge(stepTone(x.status), STEP_NAMES[x.status])}${x.waits === "you" ? badge("must", "you") : ""}${x.must ? `<span class="small muted">${x.must} must</span>` : ""}</span>
+          <b>${esc(x.title)}</b><span class="small muted">${esc(x.next)}</span></a>`).join("")}</nav>
+        <section class="review-main">
+          <header class="row"><h3>${esc(sc.title)}</h3>${badge(stepTone(sc.status), STEP_NAMES[sc.status])}${badge("ver", sc.area)}<span class="small muted">${sc.waits === "you" ? "Waits for you: " : sc.waits === "team" ? "Waits for the team: " : ""}${esc(sc.next)}</span></header>
+          <ol class="steps">${R.steps.slice(1).map(st => `<li class="${R.steps.indexOf(st) <= sc.step ? "done" : ""}">${esc(STEP_NAMES[st])}</li>`).join("")}</ol>
+          <div class="compare">
+            <figure class="pane"><figcaption><b>${sc.status === "built" || sc.status === "accepted" ? "Built" : "Before"}</b> · ${shot ? esc(`${shot.device} ${shot.n} · ${shot.title}`) : "what people see now"}</figcaption>${pinned(w, shot, items)}${shot ? markList(shot) : ""}</figure>
+            <figure class="pane"><figcaption><b>After</b> · ${p ? "design " + p.version : "no design yet"}</figcaption>
+              ${p?.mockup ? `<div class="frame fit"><iframe sandbox="allow-scripts" src="${esc(p.mockup)}" title="After: design ${p.version}" tabindex="-1"></iframe>
+                <button class="cover" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(shot?.device || "")}" data-mode="both" aria-label="Enlarge before and after"></button></div>` : `<div class="frame none small muted">${sc.status === "decided" ? `<button class="ghost" data-request="proposal" data-walk="${esc(w.id)}">Ask for a design</button>` : "Once the advice is decided, ask the team for a design."}</div>`}</figure>
+          </div>
+          <ol class="items">${items.map((x, k) => {
+            const v = S.verdicts[x.id];
+            return `<li class="${k === i ? "on" : ""} ${x.a ? esc(x.a.priority) : ""}"><a href="#review?walk=${encodeURIComponent(w.id)}&i=${k}">
+              <span class="row">${x.a ? badge(x.a.priority, x.a.priority) : badge("area", x.kind === "design" ? "design" : "built")}<b>${esc(x.title)}</b>${v ? badge(v.verdict === "agree" || v.verdict === "approve" || v.verdict === "accept" ? "passed" : v.verdict === "later" ? "missing" : "failed", v.verdict) : S.held[x.id] ? `<span class="small muted">${esc(S.held[x.id].verdict)} · by ${esc(S.held[x.id].by.replace("/", " "))}</span>` : ""}</span>
+              ${k === i && x.a ? `<span class="small">${esc(x.a.detail || "")}${x.a.rule ? ` · rule <code>${esc(x.a.rule)}</code>` : ""}</span>` : ""}</a></li>`;
+          }).join("") || '<li class="small muted">Nothing to decide on this screen yet.</li>'}</ol>
+        </section>
+      </div>
+      <div class="verdict-bar" role="region" aria-label="Your verdict">
+        ${item ? `<span class="what"><b>${i + 1}/${items.length}</b> ${esc(item.title)}${held ? ` · now: ${esc(held.verdict)}` : ""}</span>
+          ${scopes.length > 1 ? `<span class="seg" role="group" aria-label="The verdict holds for (s)">${scopes.map(([k, l]) => `<button class="ghost small" data-scope="${k}" aria-pressed="${k === scope[0]}">${esc(l)}</button>`).join("")}</span>` : ""}
+          <span class="keys">${OPTIONS[item.kind].map(([v, l], k) => `<button class="${k ? "ghost" : "primary"}" data-verdict="${v}" data-id="${esc(scope[2])}" data-key-n="${k + 1}" aria-pressed="${held?.verdict === v}"><kbd>${k + 1}</kbd> ${l}</button>`).join("")}</span>`
+          : `<span class="what muted">Nothing to decide here.</span>`}
+        <span class="small muted nav">← → screen · ↑ ↓ item${scopes.length > 1 ? " · s for" : ""}</span></div>`;
+  }
+  document.addEventListener("keydown", e => {
+    if (tab !== "review" || !S || S.error || document.querySelector("dialog[open]") || e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+    const { screens, at, items, i } = reviewState();
+    const go = (k, n) => { location.hash = `review?walk=${encodeURIComponent(screens[k].walk)}${n === undefined ? "" : "&i=" + n}`; };
+    if (/^[1-3]$/.test(e.key)) { const b = document.querySelector(`.verdict-bar [data-key-n="${e.key}"]`); if (b) { e.preventDefault(); b.click(); } }
+    else if (e.key === "ArrowRight" && at < screens.length - 1) { e.preventDefault(); go(at + 1); }
+    else if (e.key === "ArrowLeft" && at > 0) { e.preventDefault(); go(at - 1); }
+    else if (e.key === "ArrowDown" && i < items.length - 1) { e.preventDefault(); go(at, i + 1); }
+    else if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); go(at, i - 1); }
+    else if (e.key === "s") { const all = [...document.querySelectorAll(".verdict-bar [data-scope]")], k = all.findIndex(b => b.getAttribute("aria-pressed") === "true"); if (all.length) all[(k + 1) % all.length].click(); }
+  });
+
   function render() {
     $("#tabs").innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("");
-    const view = { overview, rounds, proposals, team, rules: rulesTab }[tab] || overview;
+    const view = { overview, review: reviewTab, map: mapTab, jobs: jobsTab, rounds, proposals, team, rules: rulesTab }[tab] || overview;
     $("#view").innerHTML = view();
     fit();
     if (query.get("key")) $(`[id="p-${CSS.escape(query.get("key"))}"]`)?.scrollIntoView();
@@ -317,6 +510,11 @@
     const dv = e.target.closest("[data-device]:not([data-view])");
     if (dv) { query.set("device", dv.dataset.device); render(); return; }  // Before on the laptop or the phone
     const vw = e.target.closest("[data-view]");
+    if (vw && vw.dataset.view === "map") {
+      const sc = S.map.screens.find(x => x.key === vw.dataset.key), s = sc.shots[Number(vw.dataset.i)];
+      openViewer({ title: `${sc.title} · ${sc.key} · ${s.device}, ${s.source === "test" ? "E2E test" : s.source}`, before: s, after: null, mode: "before" });
+      return;
+    }
     if (vw) {
       const w = walkOf(vw.dataset.walk);
       if (vw.dataset.view === "shot") {
@@ -330,6 +528,8 @@
       }
       return;
     }
+    const sp = e.target.closest("[data-scope]");
+    if (sp) { if (sp.dataset.scope) query.set("scope", sp.dataset.scope); else query.delete("scope"); history.replaceState(null, "", "#review?" + query); render(); return; }
     const mt = e.target.closest("[data-mode-to]");
     if (mt) { view.mode = mt.dataset.modeTo; drawViewer(); return; }
     const zm = e.target.closest("[data-zoom]");
@@ -362,12 +562,18 @@
     if (v) {
       const remark = v.dataset.verdict === "approve-remark";  // an approval with the product owner's words for the builder
       const verdict = remark ? "approve" : v.dataset.verdict;
-      const needs = remark || ["disagree", "redo", "reject"].includes(verdict);
-      const reason = needs ? await ask(remark ? "Your remark with the approval" : verdict === "redo" ? "What should the team do differently?" : "Why?",
+      const needs = remark || ["disagree", "redo", "reject", "send-back"].includes(verdict);
+      const reason = needs ? await ask(remark ? "Your remark with the approval" : verdict === "redo" ? "What should the team do differently?" : verdict === "send-back" ? "What is not good?" : "Why?",
         remark ? "It goes into the backlog item, before the changes: the builder reads it first." : "The team reads this next time.") : "";
       if (reason === null || (remark && !reason.trim())) return;
+      if (tab === "review") {  // on to the next open item after this one
+        const { items, i } = reviewState(), open = items.map((x, k) => k).filter(k => k !== i && !S.verdicts[items[k].id] && !S.held[items[k].id]);
+        const to = open.find(k => k > i) ?? open[0];
+        if (to === undefined) query.delete("i"); else query.set("i", to);
+        history.replaceState(null, "", "#review?" + query);
+      }
       try { const out = await api("api/verdict", { id: v.dataset.id, verdict, reason });
-        tell(out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
+        tell(out.rule ? `Rule ${out.rule} written: it holds from the next round` : out.moved ? `${out.pbi} moved to ${verdict === "accept" ? "review" : "doing"}${out.finding ? `, ${out.finding} written` : ""}` : out.not_moved ? out.not_moved : out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
       } catch (err) { tell(err.message); }
       return load();
     }
@@ -377,7 +583,8 @@
     if (!f) return;
     e.preventDefault();
     const kind = f.dataset.form, data = Object.fromEntries(new FormData(f));
-    const body = { ...data, on: !!data.on, ...(kind === "persona" ? { key: f.dataset.key || undefined, moderator: !!data.moderator } : { id: f.dataset.key || undefined }) };
+    const measure = Object.keys(data).filter(k => k.startsWith("m:")).map(k => { delete data[k]; return k.slice(2); });
+    const body = { ...data, on: !!data.on, ...(kind === "rule" ? { measure } : {}), ...(kind === "persona" ? { key: f.dataset.key || undefined, moderator: !!data.moderator } : { id: f.dataset.key || undefined }) };
     try { await api(`api/${kind}`, { [kind]: body }); tell(`Saved ${kind === "persona" ? data.name : data.title}`); location.hash = kind === "persona" ? "team" : "rules"; }
     catch (err) { tell(err.message); }
     return load();

@@ -27,7 +27,7 @@ LINTED = ("src", "crissp", "site")  # what ruff and pylint read
 RUNTIME = ("src/crissp", "crissp/tool", "crissp/testsuite/lib", "crissp/uxsuite")  # standard library only
 SKIP = {"__pycache__", "results", "tests", "package_tests", "pytest_plugin"}  # run with the pinned test tools
 EXCLUDED = ("crissp/testsuite/sast/tests/",)  # unsafe code on purpose, as pyproject.toml's extend-exclude says
-LAZY = {"crissp/uxsuite/ux_shoot.py": {"playwright"}}
+LAZY = {"crissp/uxsuite/ux_shoot.py": {"playwright"}, "crissp/uxsuite/ux_map.py": {"playwright"}}
 RUFF = ("-m", "ruff", "check", "--no-cache", "--quiet")
 PYLINT = ("pylint", "--rcfile=pyproject.toml")
 

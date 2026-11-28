@@ -47,7 +47,7 @@
   },
   {
    "key": "lint",
-   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript",
+   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript, stylelint on the CSS",
    "dir": ".",
    "run": "crissp/testsuite/lint/lint.sh",
    "seconds": 10,
@@ -147,6 +147,15 @@
   },
   {
    "match": "crissp/uxsuite/web/",
+   "steps": [
+    "tools",
+    "lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/uxsuite/measure.js",
    "steps": [
     "tools",
     "lint",

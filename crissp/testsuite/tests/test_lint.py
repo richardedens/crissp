@@ -51,7 +51,8 @@ def test_this_repository_has_a_lint_step_with_its_own_dev_only_tools():
     lint = next(s for s in conf["steps"] if s["key"] == "lint")
     assert lint["run"] == "crissp/testsuite/lint/lint.sh" and not lint["full_only"] and lint["tests"] == []
     package = json.loads((LINT / "package.json").read_text())
-    assert package["private"] is True and set(package["devDependencies"]) == {"eslint", "@eslint/js", "globals"}
+    assert package["private"] is True
+    assert set(package["devDependencies"]) == {"eslint", "@eslint/js", "globals", "stylelint", "stylelint-config-recommended"}
     assert all(v[0].isdigit() for v in package["devDependencies"].values()), "pinned, exact versions"
     assert (LINT / "package-lock.json").is_file() and (LINT / "eslint.config.js").is_file()
     assert [line for line in (LINT / "requirements.txt").read_text().splitlines() if line and not line.startswith("#")] \
@@ -94,3 +95,25 @@ def test_the_lint_script_says_how_to_use_it():
     run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True,
                          check=False)
     assert run.returncode == 2 and "usage" in run.stderr
+
+
+def css() -> list[str]:
+    return sorted(f for f in tracked() if f.endswith(".css"))
+
+
+def test_the_step_lints_every_css_file_of_this_repository_with_stylelint():
+    """F-96: ESLint read crissp's JavaScript, but nothing read its CSS (the look, the dashboard, the session pages, the
+    UX suite, the website): a deprecated `word-break: break-word` sat in the dashboard's stylesheet three times."""
+    assert css() and listed("css") == css()
+    config = (LINT / "stylelint.config.mjs").read_text()
+    assert '"stylelint-config-recommended"' in config  # likely mistakes; the layout stays as written
+    lock = json.loads((LINT / "package-lock.json").read_text())["packages"]
+    assert lock["node_modules/stylelint"]["version"] == json.loads((LINT / "package.json").read_text())[
+        "devDependencies"]["stylelint"]
+    script = (LINT / "lint.sh").read_text()
+    assert "== stylelint (every CSS file)" in script and 'bad "stylelint"' in script
+    conf = project.load(REPO)
+    for f in [*css(), "crissp/testsuite/lint/stylelint.config.mjs"]:
+        kind, detail = impact.classify(f, conf)
+        assert kind == "suites" and "lint" in detail, (f, kind, detail)
+    assert "break-word" not in (REPO / "crissp/testsuite/dashboard/style.css").read_text()
