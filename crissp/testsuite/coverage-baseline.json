@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "5fa21eb14feaeffa43247ab2d0251be735fde8f8",
+ "commit": "650797c43c0bae8015f7dd224046dd338231ff6a",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -89,11 +89,19 @@
      "branch": 100.0,
      "line": 100.0
     },
+    "crissp/testsuite/lib/stages.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
     "crissp/testsuite/lib/tools.py": {
      "branch": 100.0,
      "line": 100.0
     },
     "crissp/testsuite/lib/vibe.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/vibesessions.py": {
      "branch": 100.0,
      "line": 100.0
     },
@@ -138,10 +146,6 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_verdicts.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
-    "crissp/testsuite/lib/vibesessions.py": {
      "branch": 100.0,
      "line": 100.0
     }
