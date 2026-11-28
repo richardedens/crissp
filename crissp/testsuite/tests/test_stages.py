@@ -31,6 +31,9 @@ EPIC = """# E1 · Quality
 FINDINGS = """| # | Seen | Observation | Goes to |
 |---|---|---|---|
 | F-01 | a scan | dumps in an image | E1-F1-03 |
+| F-02 | the board | a long observation that goes on and on about what was seen on the board, far past what one line of the page can hold | the product owner |
+| F-03 | a run | it was red | fixed (0.1.0) |
+| F-04 | a lint | an old rule | removed, with the lint step |
 """
 DECISIONS = """| # | Question | Options | Recommendation |
 |---|---|---|---|
@@ -163,12 +166,15 @@ def test_plan_holds_the_open_findings_decisions_and_approved_designs_without_a_p
     state = by(stages.state(root, crissp, ux=ux([walk(proposals=[design(1, verdict={"verdict": "approve"})])])))
     plan = state["plan"]
     assert plan["status"] == "yours"  # an open decision is the product owner's to take
-    assert plan["items"] == ["F-01 dumps in an image → E1-F1-03", "D-04 Admin kubeconfigs for scans? (your decision)",
+    # a finding that names a backlog item has its place, one that was fixed or removed is done: neither is to plan
+    assert plan["items"] == ["F-02 a long observation that goes on and on about what was seen on the board, far past what one line of "
+                             "the page ca… → the product owner", "D-04 Admin kubeconfigs for scans? (your decision)",
                              "Design home#v1 “design 1” is approved and has no PBI yet"]
     calm = by(stages.state(repo(tmp_path / "b", one="todo", two="todo", decisions=""), crissp, ux=ux()))["plan"]
     assert calm["status"] == "work"
+    assert calm["summary"] == "Findings and approved designs to turn into PBIs."
     empty = by(stages.state(repo(tmp_path / "c", one="todo", two="todo", findings="", decisions=""), crissp, ux=ux()))
-    assert empty["plan"]["status"] == "clear"
+    assert (empty["plan"]["status"], empty["plan"]["summary"]) == ("clear", "Nothing to plan: every finding has its place.")
 
 
 def test_discover_without_a_ux_suite_offers_to_set_it_up(tmp_path):
@@ -284,7 +290,8 @@ def test_the_ux_suite_s_state_is_read_from_the_project_when_it_has_one(tmp_path,
     got = stages.ux_state(root)
     assert [w["id"] for w in got["walks"]] == ["home"] and got["placeholders"] == []
     team = json.loads((here / "team.json").read_text())
-    (here / "team.json").write_text(json.dumps({**team, "about": "CRISSP: what the product is", "rounds": 2}))
+    (here / "team.json").write_text(json.dumps({**team, "about": "CRISSP: what the product is", "rounds": 2,
+                                                "_note": "CRISSP: a note for whoever fills it in"}))
     assert stages.ux_state(root)["placeholders"] == ["about"]  # what crissp init left for the product owner to fill in
     (here / "team.json").write_text(json.dumps({"product": "Shop"}))
     assert "error" in stages.ux_state(root) and "placeholders" not in stages.ux_state(root)

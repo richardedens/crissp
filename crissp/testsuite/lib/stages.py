@@ -34,6 +34,7 @@ UX_API = ENGINE / "uxsuite" / "api.py"
 sys.path.insert(0, str(LIB))
 import project  # noqa: E402
 
+PLACED = re.compile(r"^\s*(fixed|removed|closed|done)\b|\bE\d+(-F\d+)?(-\d+)?\b", re.IGNORECASE)  # a finding with its place
 STATUSES = ("setup", "work", "yours", "clear")
 STAGES = (("discover", "Discover"), ("plan", "Plan"), ("build", "Build"), ("verify", "Verify"), ("review", "Review"),
           ("release", "Release"))
@@ -101,7 +102,8 @@ def ux_state(root: Path) -> dict | None:
     found = api.state(api.ux_config.Suite(root))
     if "error" not in found:  # what crissp init left for the product owner to fill in ("CRISSP: …")
         team = json.loads((root / "crissp" / "uxsuite" / "team.json").read_text())
-        found["placeholders"] = [k for k, v in team.items() if isinstance(v, str) and v.startswith("CRISSP:")]
+        found["placeholders"] = [k for k, v in team.items()
+                                 if not k.startswith("_") and isinstance(v, str) and v.startswith("CRISSP:")]
     return found
 
 
@@ -170,9 +172,13 @@ def discover(ux: dict | None) -> dict:
     return stage("discover", status, summary, items, actions)
 
 
+def _short(text: str, width: int = 110) -> str:
+    return text if len(text) <= width else text[:width].rstrip() + "…"
+
+
 def plan(crissp, root: Path, ux: dict | None) -> dict:
-    findings = [f"{r['id']} {r['cells'][1] if len(r['cells']) > 1 else ''} → {r['cells'][-1]}".replace("  ", " ")
-                for r in crissp.open_findings(root)]
+    findings = [f"{r['id']} {_short(r['cells'][1] if len(r['cells']) > 1 else '')} → {r['cells'][-1]}".replace("  ", " ")
+                for r in crissp.open_findings(root) if not PLACED.search(r["cells"][-1])]
     decisions = [f"{r['id']} {r['cells'][0]} (your decision)" for r in crissp.open_decisions(root)]
     approved = [f"{_title(d)} is approved and has no PBI yet" for d in _designs(ux)
                 if (d.get("verdict") or {}).get("verdict") == "approve" and not d.get("pbi")]
@@ -180,7 +186,7 @@ def plan(crissp, root: Path, ux: dict | None) -> dict:
     status = "yours" if decisions else "work" if items else "clear"
     summary = {"yours": f"{_plural(len(decisions), 'open decision')} {'waits' if len(decisions) == 1 else 'wait'} for you",
                "work": "Findings and approved designs to turn into PBIs",
-               "clear": "Nothing to plan: every finding has its place."}[status]
+               "clear": "Nothing to plan: every finding has its place"}[status]
     if status == "yours" and findings + approved:
         summary += f"; {_plural(len(findings + approved), 'thing')} to turn into PBIs"
     return stage("plan", status, summary + ".", items)
