@@ -4,6 +4,37 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Decide once, for a whole rule, area or screen (E7-F4-02).** In the review screen's verdict bar, press `s` to give
+  your verdict to the advice's screen, its area or its rule instead: it then holds for every piece of advice under it
+  that has no verdict of its own (the nearest one wins, and your verdict on one piece of advice always wins). Advice you
+  agreed with that comes back on two screens or more is proposed as a rule in the **Rules** tab; make it a rule and it
+  is written to `crissp/uxsuite/rules/`.
+- **One screen at a time, from the keyboard (E7-F4-01).** The UX page's new **Review** tab shows how far the product
+  is (every screen new, seen, discussed, decided, designed, approved, built or accepted, as one bar) and goes through
+  the screens that wait for you first. Per screen: the shot with the team's advice pinned where it is, next to the
+  design; the advice must first; and one verdict bar at the bottom of the window. 1 2 3 give the verdict, ← → go to the
+  previous or next screen, ↑ ↓ to the previous or next item; after a verdict it moves on to the next open one.
+- **The browser measures what it can, so the team does not guess (E7-F2-02).** A rule can say what the browser checks
+  for it at every shoot: text that is cut off or runs past the screen, tap targets under 44 × 44 on a phone, the
+  primary action below the fold, a see-through dialog, a control without a visible focus. Tick them in the Rules tab
+  (or write `measure:` in the rule's file, or "Measured by the browser: ..." under a section of PRINCIPLES.md; the
+  template's principles 1, 6, 7 and 8 do). Each shot keeps what was found; the enlarged screenshot draws a numbered box
+  where it is, and the team reports it as a fact under its rule.
+- **Accept what was built, or send it back (E7-F5-01).** Once an approved design is built and its walk shot again, the
+  Designs tab puts the new screens next to the design. **Accept** moves its backlog item to review; **Not good…** moves
+  it back to doing and writes your reason as a finding for that item. Screenshots taken before the approval are never
+  judged as the build.
+- **Discovery: can every persona do their jobs? (E7-F3-02).** `crissp ux --discover` (or the new **Jobs** tab) asks
+  the team about the whole product: every persona tries their own jobs on the mapped screens and says done, hard or
+  impossible, where they gave up and why. The moderator turns what cannot be done into needs. Approve a need and it
+  becomes a design request (a walk with the need as its brief) whose first design starts at once; reject it with a
+  reason and the next discovery round reads why.
+- **A map of every screen, and the gaps (E7-F3-01).** `crissp ux --map` lists the product's screens in the UX page's new
+  **Map** tab, so the team looks at more than the walks someone wrote. It crawls the running product read-only (its own
+  links only, never one that signs out or deletes, at most `map.max` pages per device), adds the screenshots your E2E
+  tests list in `crissp/uxsuite/results/test-shots/screens.json` (`map.tests` points elsewhere), and the walks' own. Per
+  area you see every screen with its pictures, how it was found and its gaps: no link reaches it, the crawl could not
+  open it, or no walk looks at it.
 - **Vibe's desktop app gets the crissp tools (F-100).** A Vibe desktop session listed only Vibe's own tools: the
   desktop app starts MCP servers from its own folder with only a few environment variables, so the server was not
   found (a relative path) or did not know the project. `.vibe/config.toml` now names the project's folder (`cwd` and

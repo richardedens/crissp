@@ -8,7 +8,7 @@ with personas and rules as files the project owns and edits in the page.
 Why        Who looks at the product is the product owner's choice: personas must be easy to add, change and switch off,
            and carry the jobs they come to do.
 
-### E7-F1-01 · Personas as files, and a Team tab to edit them                            [todo] [M]
+### E7-F1-01 · Personas as files, and a Team tab to edit them                            [review] [M]
 Why        team.json's persona array can only be edited by hand, in JSON.
 What       crissp/uxsuite/personas/<key>.md per persona (frontmatter: name, role, device, moderator, on; the body is the
            brief, and a Jobs list). The page's Team tab lists them, and adds, edits, switches off and removes one
@@ -24,7 +24,7 @@ Depends    —
 Why        The rules the team judges by are the product's own: added, weighed and switched off by the product owner,
            some measured by the browser itself.
 
-### E7-F2-01 · Rules as files, and a Rules tab to edit them                              [todo] [M]
+### E7-F2-01 · Rules as files, and a Rules tab to edit them                              [review] [M]
 Why        PRINCIPLES.md is one prose file: a rule cannot be added, weighed or switched off, and advice never says which
            rule it is about.
 What       crissp/uxsuite/rules/<id>.md per rule (frontmatter: title, severity must, should or could, on; the body says
@@ -36,7 +36,7 @@ Tests      uxsuite tests at 100%: parse and write a rule file, the POSTs, the PR
            only rules that are on.
 Depends    —
 
-### E7-F2-02 · Measured rules: what the browser checks at every shoot                    [todo] [M]
+### E7-F2-02 · Measured rules: what the browser checks at every shoot                    [review] [M]
 Why        Overflowing text, small tap targets, an action below the fold and low contrast cost tokens to find by reading
            screenshots, and are found unevenly.
 What       A rule may be kind: measured with a check the shoot runs in the page (overflow, tap targets under 44x44,
@@ -50,7 +50,7 @@ Depends    E7-F2-01
 Why        The suite should not only judge the walks someone wrote: it finds the product's screens, shows the ones
            nothing reaches, and asks per persona whether their job can be done.
 
-### E7-F3-01 · One screen list from a crawl and the project's own test screenshots       [todo] [L]
+### E7-F3-01 · One screen list from a crawl and the project's own test screenshots       [review] [L]
 Why        Only screens someone wrote a walk for are ever looked at.
 What       crissp ux --map crawls the running product read-only (same-origin links, laptop and phone) and reads a
            screenshot manifest the project's E2E tests may write; screens.json lists every screen with its area, how it
@@ -59,7 +59,7 @@ Done when  The UX page shows every screen with its status and the gaps.
 Tests      uxsuite tests at 100%, the crawl against a fixture site in the pinned Playwright.
 Depends    E7-F1-01
 
-### E7-F3-02 · Jobs per persona and a discovery round: done, hard or impossible          [todo] [L]
+### E7-F3-02 · Jobs per persona and a discovery round: done, hard or impossible          [review] [L]
 Why        Nothing asks whether a persona can actually do what they come for, so missing screens are never found.
 What       A discovery round asks each persona, per job, whether and where it can be done and where they would give up;
            the job map shows done, hard and impossible with the screens involved; an impossible job becomes a need, and
@@ -72,7 +72,7 @@ Depends    E7-F1-01 E7-F3-01
 Why        The product owner decides fast and once: one screen with before and after, findings pinned on it, and a
            verdict on a rule that holds for every screen under it.
 
-### E7-F4-01 · The review screen: status per screen, before and after, pinned findings   [todo] [L]
+### E7-F4-01 · The review screen: status per screen, before and after, pinned findings   [review] [L]
 Why        The page lists walks with advice; there is no status per screen, no progress and no before and after in one
            view.
 What       Per screen its status (seen, discussed, decided, designed, approved, built, accepted), a progress bar, before
@@ -82,7 +82,7 @@ Done when  The product owner can go through every open screen with the keyboard 
 Tests      uxsuite tests at 100%, and the page walked by the suite itself.
 Depends    E7-F3-01
 
-### E7-F4-02 · Decide once on a rule; advice that keeps coming back becomes a rule       [todo] [M]
+### E7-F4-02 · Decide once on a rule; advice that keeps coming back becomes a rule       [review] [M]
 Why        Hundreds of pieces of advice each need their own verdict, and agreed advice is never turned into a rule.
 What       A decision tree: rule, area, screen, advice; a verdict higher up holds below it unless changed; agreed advice
            seen on several screens is proposed as a rule, which the product owner approves into rules/.
@@ -93,7 +93,7 @@ Depends    E7-F2-01 E7-F4-01
 ## E7-F5 · Accepting what was built                                                      [todo]
 Why        An approved design is only done when the built screen matches it.
 
-### E7-F5-01 · Built next to the approved design, accept or send back                    [todo] [M]
+### E7-F5-01 · Built next to the approved design, accept or send back                    [review] [M]
 Why        After a build nobody compares the screen with the design that was approved.
 What       After a build, the walk's new shots sit next to the approved design; accept marks the PBI ready for the
            product owner's review, not good (with a reason) sends it back with that reason.
