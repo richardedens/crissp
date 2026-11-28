@@ -78,7 +78,7 @@ class Live:
                 try:
                     self.rebuild()
                     self.seen, self.error = now, ""
-                except Exception as err:  # noqa: BLE001  the page keeps the last good data and says why
+                except Exception as err:
                     self.error = str(err) or type(err).__name__
                     print(f"dashboard data not rebuilt: {self.error}", file=sys.stderr)
             return self.built()

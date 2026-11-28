@@ -12,7 +12,7 @@ import pytest
 
 LIB = Path(__file__).resolve().parents[1] / "lib"
 sys.path.insert(0, str(LIB))
-import frontend_lint  # noqa: E402
+import frontend_lint
 
 KIT = LIB.parent / "frontend-lint"
 PINS = {"eslint": "9.39.5", "@eslint/js": "9.39.5", "typescript-eslint": "8.72.2", "typescript": "6.0.3",

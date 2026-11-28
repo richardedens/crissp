@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "38da4b47479e36b47003ff407f31395d54242b66",
+ "commit": "5fa21eb14feaeffa43247ab2d0251be735fde8f8",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -101,6 +101,10 @@
      "branch": 100.0,
      "line": 100.0
     },
+    "crissp/testsuite/lint/python_lint.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
     "crissp/tool/server.py": {
      "branch": 100.0,
      "line": 100.0
@@ -122,14 +126,6 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_config.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
-    "crissp/uxsuite/ux_discovery.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
-    "crissp/uxsuite/ux_map.py": {
      "branch": 100.0,
      "line": 100.0
     },

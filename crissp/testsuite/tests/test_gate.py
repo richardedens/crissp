@@ -68,7 +68,8 @@ def test_the_gate_holds_the_suites_the_product_gates(tmp_path):
     """configure(): the gated steps of suites.json, each with its sources, its folder and what it leaves out."""
     real = _module()
     real.configure(REPO)
-    assert real.SOURCES == {"tools": [REPO / "crissp/testsuite/lib", REPO / "crissp/tool", REPO / "crissp/uxsuite"]}
+    assert real.SOURCES == {"tools": [REPO / "crissp/testsuite/lib", REPO / "crissp/tool", REPO / "crissp/uxsuite",
+                                      REPO / "crissp/testsuite/lint"]}
     assert real.DIRS == {"tools": REPO / "crissp/testsuite"} and real.OMIT == {"tools": ["*/tests/*"]}
     assert real.BASELINE == REPO / "crissp/testsuite/coverage-baseline.json" and real.RESULTS == REPO / "crissp/testsuite/results"
     assert all(p.is_dir() for p in real.SOURCES["tools"])

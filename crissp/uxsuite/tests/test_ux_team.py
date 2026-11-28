@@ -3,6 +3,7 @@ the rest waits in the queue, and nothing starts while a check run holds the mach
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -96,7 +97,7 @@ def test_what_cannot_start_is_refused_with_why(product):
         ux_team.start(product, conf, "poll", "first-visit")
     with pytest.raises(ValueError, match="unknown walk 'nowhere' \\(known: first-visit\\)"):
         ux_team.start(product, conf, "round", "nowhere")
-    with pytest.raises(ValueError, match="no screenshots yet: crissp/ux.sh --shoot first-visit"):
+    with pytest.raises(ValueError, match=re.escape("no screenshots yet: crissp/ux.sh --shoot first-visit")):
         ux_team.start(product, conf, "round", "first-visit")
     assert ux_team.popen.started == [] and ux_team.shots(product, "first-visit") == []
 

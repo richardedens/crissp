@@ -9,7 +9,7 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ENGINE / "testsuite" / "lib"))
-import movement  # noqa: E402
+import movement
 
 spec = importlib.util.spec_from_file_location("crissp_tool_for_moves", ENGINE / "tool" / "server.py")
 TOOL = importlib.util.module_from_spec(spec)

@@ -124,14 +124,14 @@ def test_a_finding_is_written_under_the_next_number(tmp_path):
     assert srv.finding(root, {"seen": "a", "observation": "b", "goes_to": "c"}).startswith("F-04 ")
     with pytest.raises(ValueError, match="observation is missing"):
         srv.finding(root, {"seen": "a", "observation": "  ", "goes_to": "c"})
-    with pytest.raises(ValueError, match="cannot hold a |"):
+    with pytest.raises(ValueError, match=re.escape("cannot hold a |")):
         srv.finding(root, {"seen": "a", "observation": "x | y", "goes_to": "c"})
     first = tmp_path / "first"
     (first / "crissp/backlog").mkdir(parents=True)
     (first / "crissp/backlog/FINDINGS.md").write_text("# Findings\n\n| # | Seen | Observation | Goes to |\n|---|---|---|---|\n<!-- note -->\n")
     assert srv.finding(first, {"seen": "a", "observation": "b", "goes_to": "c"}) == "F-01 written to crissp/backlog/FINDINGS.md"
     assert (first / "crissp/backlog/FINDINGS.md").read_text().endswith("|---|---|---|---|\n| F-01 | a | b | c |\n<!-- note -->\n")
-    with pytest.raises(LookupError, match="FINDINGS.md is missing"):
+    with pytest.raises(LookupError, match=re.escape("FINDINGS.md is missing")):
         srv.finding(tmp_path / "nowhere", {"seen": "a", "observation": "b", "goes_to": "c"})
     (first / "crissp/backlog/FINDINGS.md").write_text("# Findings, no table yet\n")
     with pytest.raises(LookupError, match="no table"):
@@ -180,7 +180,7 @@ def test_a_decision_is_asked_and_then_taken(tmp_path):
         srv.decision(root, {"id": "D-04"})
     with pytest.raises(ValueError, match="question is missing"):
         srv.decision(root, {"options": "a", "recommendation": "b"})
-    with pytest.raises(LookupError, match="DECISIONS.md is missing"):
+    with pytest.raises(LookupError, match=re.escape("DECISIONS.md is missing")):
         srv.decision(tmp_path / "nowhere", ask)
 
 
@@ -344,11 +344,11 @@ def test_plans_answer_at_once_and_a_deploy_is_never_run(tmp_path, monkeypatch):
     assert "deploy" not in srv.RUNS and all(not a or a in (["--plan"], ["--status"]) for _, a, _ in srv.RUNS.values())
     assert not any("round" in name or "propose" in name for name in srv.RUNS)  # a UX round costs tokens: the owner asks
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")  # neither the project nor the engine has it
-    with pytest.raises(LookupError, match="crissp/check-all.sh is missing"):
+    with pytest.raises(LookupError, match=re.escape("crissp/check-all.sh is missing")):
         srv.run(tmp_path, {"what": "check-all"})
     _scripts(tmp_path, check="sleep 5")
     monkeypatch.setattr(srv, "PLAN_TIMEOUT", 0.2)
-    with pytest.raises(ValueError, match="took longer than 0.2s"):
+    with pytest.raises(ValueError, match=re.escape("took longer than 0.2s")):
         srv.run(tmp_path, {"what": "check-plan"})
 
 
@@ -480,6 +480,16 @@ def test_served_means_the_dashboard_itself_answers(tmp_path):
     assert srv.served(f"http://127.0.0.1:{_free_port()}/dashboard/") is False  # nothing listens
 
 
+def test_served_opens_only_this_machines_address(tmp_path):
+    """F-91: the address comes from a log line the project's own test.sh writes; served() opened whatever it said, a
+    file: URL or another host too. It opens http://127.0.0.1 alone, as the dashboard only listens there."""
+    secret = tmp_path / "index.html"
+    secret.write_text('<a id="sessions"></a>')
+    assert srv.served(secret.as_uri()) is False  # a file, read without a server
+    assert srv.served("http://example.invalid/dashboard/") is False
+    assert srv.served("http://127.0.0.1.example.invalid:8766/dashboard/") is False  # a host that only starts alike
+
+
 def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
@@ -520,7 +530,7 @@ def test_ux_status_answers_at_once_what_the_ux_team_does(tmp_path):
 
 def test_it_works_for_the_project_it_is_started_in():
     """CRISSP_ROOT, or the current directory (Claude Code starts it in the project's root): never its own place."""
-    assert srv.ROOT == Path(srv.os.environ.get("CRISSP_ROOT") or srv.os.getcwd()).resolve()
+    assert Path(srv.os.environ.get("CRISSP_ROOT") or srv.os.getcwd()).resolve() == srv.ROOT
 
 
 def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_path, monkeypatch):
@@ -528,17 +538,17 @@ def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_pa
     # server from a moved folder (404s), the new server failed: the tool must not answer the address as if it worked
     url = f"http://127.0.0.1:{_free_port()}/dashboard/"
     _scripts(tmp_path, test=f'echo "Dashboard: {url}   (Ctrl-C to stop)"; echo "OSError: Address already in use" >&2; exit 1')
-    with pytest.raises(ValueError, match="the dashboard did not start:\nDashboard: .*\nOSError: Address already in use"):
+    with pytest.raises(ValueError, match=r"the dashboard did not start:\nDashboard: .*\nOSError: Address already in use"):
         srv.dashboard(tmp_path)
     _scripts(tmp_path, test='echo "usage: crissp/test.sh --dashboard" >&2; exit 2')
-    with pytest.raises(ValueError, match="the dashboard did not start:\nusage: crissp/test.sh --dashboard"):
+    with pytest.raises(ValueError, match=re.escape("the dashboard did not start:\nusage: crissp/test.sh --dashboard")):
         srv.dashboard(tmp_path)
     _scripts(tmp_path, test="sleep 5")
     monkeypatch.setattr(srv, "DASHBOARD_WAIT", 0.3)
-    with pytest.raises(ValueError, match="said nothing in 0.3s"):
+    with pytest.raises(ValueError, match=re.escape("said nothing in 0.3s")):
         srv.dashboard(tmp_path)
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")
-    with pytest.raises(LookupError, match="crissp/test.sh is missing"):
+    with pytest.raises(LookupError, match=re.escape("crissp/test.sh is missing")):
         srv.dashboard(tmp_path / "nowhere")
 
 

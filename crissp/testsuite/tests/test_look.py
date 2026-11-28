@@ -13,7 +13,7 @@ import pytest
 ENGINE = Path(__file__).resolve().parents[2]
 LOOK_JS = ENGINE / "look" / "look.js"
 sys.path.insert(0, str(ENGINE / "testsuite" / "lib"))
-import sessionview as sv  # noqa: E402
+import sessionview as sv
 
 SECTIONS = ["tests", "backlog", "ux", "workers", "activity", "sessions"]
 PAGES = {ENGINE / "testsuite" / "dashboard" / "index.html": "tests",

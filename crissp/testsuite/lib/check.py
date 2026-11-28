@@ -165,7 +165,7 @@ def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None)
         if plan_only:
             return 0
         ok = True
-        for check in p["light"]:  # the one light check: the release notes
+        for _check in p["light"]:  # the one light check: the release notes
             problems = impact.check_release_notes(root)
             print(f"▸ {'Release notes (VERSION, CHANGELOG.md)':<44}" + ("FAILED" if problems else "passed"), file=out)
             for line in problems:

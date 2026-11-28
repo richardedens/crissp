@@ -279,7 +279,7 @@ def test_the_look_is_the_shared_one_dark_by_default_with_its_own_font(monkeypatc
     assert "<script src=../../look/look.js></script>" in page and "id=theme" in page  # the shared theme and switch
     assert "<header class=top>" in page
     assert "MutationObserver" in page and "uRip" in page  # the water, from crissp/look/water.js
-    assert sv.WATER_JS == Path(sv.__file__).resolve().parents[2] / "look" / "water.js" and sv.FONT.is_file()
+    assert Path(sv.__file__).resolve().parents[2] / "look" / "water.js" == sv.WATER_JS and sv.FONT.is_file()
     assert 'font-family:"Figtree"' in page and "data:font/woff2;base64," in page and "fonts.googleapis" not in page
     monkeypatch.setattr(sv, "FONT", tmp_path / "missing.woff2")
     assert sv.font_face() == "" and "Figtree" in sv.page("t", "b")  # the font stack still names it, falling back

@@ -4,6 +4,7 @@ right from the backlog's history in git, and every recommendation names the meas
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -262,3 +263,19 @@ def test_the_pages_build_under_a_latin_1_locale(tmp_path):
                           text=True, check=False)
     assert done.returncode == 0, done.stderr
     assert "◐" in (tmp_path / "o" / "index.html").read_text(encoding="utf-8")
+
+
+def test_the_session_pages_css_and_script_live_in_files_a_linter_reads():
+    """F-94: the Claude session pages' stylesheet and tab script were Python strings (sessionview.STYLE, measure.EXTRA,
+    measure.TABS_JS), out of reach of ESLint and any CSS tool. They live in the dashboard's folder, read as UTF-8 when
+    the page is made, and the pages still carry them inline (self-contained)."""
+    m, sv = ms, ms.sv
+    dashboard = Path(sv.__file__).resolve().parents[1] / "dashboard"
+    assert (dashboard / "sessions.css").read_text(encoding="utf-8") == sv.STYLE
+    assert (dashboard / "measure.css").read_text(encoding="utf-8") == m.EXTRA
+    assert (dashboard / "session-tabs.js").read_text(encoding="utf-8") == m.TABS_JS
+    page = m.shell("t", "s", "<p>b</p>", m.TABS_JS)
+    assert m.EXTRA in page and m.TABS_JS in page and sv.STYLE in sv.page("t", "<p>b</p>")
+    for module in (sv, m):
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        assert not re.search(r'"""\s*[.:#\[*a-z][^"\n]*\{[a-z-]+:', source), f"{module.__name__} holds CSS"

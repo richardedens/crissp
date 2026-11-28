@@ -3,6 +3,7 @@ so a mistake in it is caught with a message that says where, never a confusing r
 
 import importlib.util
 import json
+import re
 import runpy
 import sys
 from pathlib import Path
@@ -107,7 +108,7 @@ def test_a_mistake_says_where_and_what(conf, message):
 
 
 def test_a_missing_or_broken_file_says_how_to_start(tmp_path):
-    with pytest.raises(project.ConfigError, match="suites.json is missing: describe the product's parts there"):
+    with pytest.raises(project.ConfigError, match=re.escape("suites.json is missing: describe the product's parts there")):
         project.load(tmp_path)
     (tmp_path / "crissp" / "testsuite").mkdir(parents=True)
     (tmp_path / "crissp" / "testsuite" / "suites.json").write_text("{")
@@ -121,7 +122,8 @@ def test_this_repository_is_a_product_of_its_own():
     conf = project.load(REPO)
     tools = conf["steps"][0]
     assert conf["product"] == "C.R.I.S.S.P." and tools["key"] == "tools" and tools["gate"] and tools["fail_under"] == 100
-    assert tools["sources"] == ["crissp/testsuite/lib", "crissp/tool", "crissp/uxsuite"] and tools["omit"] == ["*/tests/*"]
+    assert tools["sources"] == ["crissp/testsuite/lib", "crissp/tool", "crissp/uxsuite", "crissp/testsuite/lint"]
+    assert tools["omit"] == ["*/tests/*"]
     deploy = next(s for s in conf["steps"] if s["key"] == "deploy")
     assert deploy["run"] == "crissp/deploy/check.sh" and deploy["when"] == "crissp/deploy/check.sh"
 
