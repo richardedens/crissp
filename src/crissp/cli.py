@@ -56,6 +56,7 @@ def engine_module(name: str):
 
 vibe = engine_module("vibe")
 hook = engine_module("hook")  # F-50: the lint before every commit, also used by repair
+lint_start = engine_module("lint_start")  # F-155: the lint baseline of every frontend_lint step, also used by init
 upgrade = engine_module("upgrade")  # F-145: the steps a newer crissp brings, also used by repair
 
 
@@ -206,6 +207,7 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
     if merge_ignore(root / ".gitignore", (TEMPLATE / "gitignore.crissp").read_text()):
         made.append(".gitignore (rules added)")
     made += add_new_steps(root)
+    made += lint_baseline(root, env)
     confirm = (lambda q: True) if args.yes else (lambda q: ask(q).strip().lower() in ("", "y", "yes"))
     print(hook_note(root), file=out)
     print(vibe_note(root, env, confirm), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
@@ -249,6 +251,14 @@ def add_new_steps(root: Path) -> list[str]:
     return [f"crissp/testsuite/suites.json (steps added: {', '.join(gap['steps'])})"] if gap["steps"] else []
 
 
+def lint_baseline(root: Path, env: dict) -> list[str]:
+    """F-155: a project with a frontend already: its lint baseline, so the lint is green from the first run."""
+    if not lint_start.pending(root):
+        return []
+    lint_start.start(root, engine_env(root, env))
+    return [f"{lint_start.lint_ratchet.BASELINE} (what the frontend lint finds now: it only goes down)"]
+
+
 def engine_env(root: Path, env: dict) -> dict:
     """The environment the engine's scripts run in: the project, and this Python first on PATH (they call python3)."""
     return {
@@ -288,6 +298,8 @@ def parser() -> argparse.ArgumentParser:
         sub.add_parser(name, help=help_, add_help=False)  # its options belong to the guard: passed on untouched
     sub.add_parser("dashboard", help="the Tests dashboard and the UX suite on 127.0.0.1")
     sub.add_parser("hook", help="the lint steps, as git runs them before every commit (.githooks/pre-commit)")
+    lint = sub.add_parser("lint", help="the frontend lint's baseline: --baseline writes it again for every frontend")
+    lint.add_argument("--baseline", action="store_true", required=True, help="write it from what the lint finds now")
     r = sub.add_parser("repair", help="what this project has out of place; --yes puts it in place")
     r.add_argument("--yes", action="store_true", help="put it in place (never deletes, never commits)")
     sub.add_parser("mcp", help="the crissp MCP server on stdin/stdout")
@@ -324,6 +336,13 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     if args.command == "repair":
         return subprocess.run(
             [sys.executable, str(ENGINE / "testsuite" / "lib" / "repair.py"), *(["--yes"] if args.yes else [])],
+            cwd=root,
+            env=engine_env(root, env),
+            check=False,
+        ).returncode
+    if args.command == "lint":
+        return subprocess.run(
+            [sys.executable, str(ENGINE / "testsuite" / "lib" / "lint_start.py"), "--redo"],
             cwd=root,
             env=engine_env(root, env),
             check=False,

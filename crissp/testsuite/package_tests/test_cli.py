@@ -324,3 +324,33 @@ def test_init_leaves_a_suites_json_it_cannot_read_as_it_is(tmp_path, monkeypatch
     monkeypatch.chdir(project)
     assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
     assert suites.read_text() == text
+
+
+def test_lint_baseline_writes_every_frontend_s_lint_baseline_with_no_paths(monkeypatch, tmp_path):
+    """F-155: `crissp lint --baseline` runs the engine's lint_start.py --redo for the project."""
+    calls = []
+    monkeypatch.setattr(
+        cli.subprocess,
+        "run",
+        lambda cmd, cwd, env, check: calls.append((cmd, env["CRISSP_ROOT"])) or type("Done", (), {"returncode": 0})(),
+    )
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["lint", "--baseline"], env={}) == 0
+    assert calls == [
+        ([sys.executable, str(cli.ENGINE / "testsuite/lib/lint_start.py"), "--redo"], str(tmp_path.resolve()))
+    ]
+    with pytest.raises(SystemExit):
+        cli.main(["lint"], env={})  # --baseline is what it does
+
+
+def test_init_over_a_project_with_a_frontend_writes_its_lint_baseline(tmp_path, monkeypatch, capsys):
+    """F-155: init in a folder that already has a frontend writes its lint baseline, so the lint is green at once."""
+    project = tmp_path / "shop"
+    (project / "app/frontend").mkdir(parents=True)
+    (project / "app/frontend/package.json").write_text("{}")
+    started = []
+    monkeypatch.setattr(cli.lint_start, "start", lambda root, env: started.append((root, env["CRISSP_ROOT"])) or 0)
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"HOME": str(tmp_path)}) == 0
+    assert started == [(project.resolve(), str(project.resolve()))]
+    assert "made  crissp/testsuite/lint-baseline.json" in capsys.readouterr().out

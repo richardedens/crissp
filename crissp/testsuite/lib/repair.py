@@ -68,6 +68,7 @@ from pathlib import Path
 
 import hook  # F-50: the lint before every commit, shared with crissp init
 import level  # F-160 to F-162: the template's steps, every stale pin, scans the project runs itself
+import lint_start  # F-155: the lint baseline of every frontend_lint step, shared with crissp lint
 import upgrade  # F-145: the steps a newer crissp brings, shared with crissp init
 import vibe  # F-26: Vibe's trusted folders, shared with crissp init
 
@@ -646,6 +647,7 @@ def find(root: Path, version: str | None = None, home: Path | None = None) -> li
             fix_pins(root, version),
             fix_vibe(root, version, home),
             fix_hook(root),
+            fix_lint_baseline(root),
         )
         if r
     ]
@@ -688,7 +690,30 @@ def needs(root: Path) -> list[str]:
     return out
 
 
-def main(argv: list[str], env: dict) -> int:
+def fix_lint_baseline(root: Path) -> Repair | None:
+    """F-155: a frontend_lint step without a lint baseline: written from what the lint finds now, so a project that
+    already has code is green at once and its findings only go down. main() writes it after the other repairs, so a
+    frontend-lint step fix_suites just added gets one too."""
+    if not brought_in(root) or is_engine(root):
+        return None
+    missing = lint_start.pending(root)
+    if not missing:
+        return None
+    return Repair(
+        "lint-base",
+        f"no lint baseline for {', '.join(missing)} → written from what the lint finds now "
+        f"(commit {lint_start.lint_ratchet.BASELINE})",
+        lambda: None,
+    )
+
+
+def write_lint_baselines(root: Path, env: dict, lint) -> None:
+    """F-155: after the other repairs, so a frontend-lint step a repair just added gets its baseline too."""
+    if fix_lint_baseline(root):
+        lint(root, env)
+
+
+def main(argv: list[str], env: dict, lint=lint_start.start) -> int:
     if argv not in ([], ["--yes"]):
         print("usage: crissp repair [--yes]")
         return 2
@@ -699,6 +724,8 @@ def main(argv: list[str], env: dict) -> int:
         print(f"  {r.key:<10} {r.what}")
         if yes:
             r.do()
+    if yes:
+        write_lint_baselines(root, env, lint)
     left = needs(root)
     if left:
         print("Needs you:")

@@ -2,6 +2,13 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.2.2 — 2026-11-28
+
+- **The frontend lint switches itself on in a project that already has code (F-155).** `crissp repair --yes` and
+  `crissp init` write the lint baseline of every frontend lint step that has none
+  (`crissp/testsuite/lint-baseline.json`: commit it), so the step is green from the first run and the findings only
+  go down from there. `crissp lint --baseline` writes them all again, with no paths to type.
+
 ## 0.2.1 — 2026-11-28
 
 - **Code quality, held by a ratchet (F-142).** A new `quality` step measures the cyclomatic complexity of every
