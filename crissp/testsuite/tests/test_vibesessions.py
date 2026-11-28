@@ -117,3 +117,50 @@ def test_a_vibe_sessions_images_and_whole_big_reads_are_counted(tmp_path):
                                called("read_file", {"path": str(tmp_path / "outside.py")})], NOW - 5)
     s = vs.sessions(repo, home, NOW)[0]
     assert s["images"] == activity.IMAGES and s["whole"] == ["big.py"]
+
+
+def pack(folder: Path, messages: list[dict], tokens: int) -> None:
+    """F-109: what Vibe 3.1 does to a session's older turns: a generation whose checkpoint lists chunks of messages,
+    named by CURRENT, and a new journal that may still be empty."""
+    gen = folder / "generations" / "0000000000000399"
+    (folder / "chunks").mkdir()
+    gen.mkdir(parents=True)
+    (folder / "chunks" / "aa.json").write_text(json.dumps([{"message": m, "source": "history", "turn_index": 0}
+                                                           for m in messages[:1]]))
+    (folder / "chunks" / "bb.json").write_text(json.dumps([{"message": m, "source": "history", "turn_index": 0}
+                                                           for m in messages[1:]]))
+    (gen / "manifest.json").write_text(json.dumps({"checkpoint": {"chunks": ["aa", "bb", "gone"], "path": "checkpoint.json"}}))
+    (gen / "checkpoint.json").write_text(json.dumps({"last_reported_context_tokens": tokens, "context": {"messages": []}}))
+    (folder / "CURRENT").write_text(json.dumps({"generation": "0000000000000399"}))
+
+
+def test_a_packed_vibe_session_still_shows_its_prompt_step_and_history(tmp_path):
+    """F-109: Vibe packs older turns into generations/ and chunks/ and starts a new, often empty journal: the prompt, the
+    latest step, the history and the context budget come from the packed messages then."""
+    repo, home = tmp_path / "repo", tmp_path / "vibe-home"
+    repo.mkdir()
+    (repo / "big.py").write_text("x\n" * (activity.BIG_LINES + 1))
+    folder = session(home, "v4", repo, [], NOW - 5)
+    pack(folder, [{"role": "user", "content": [{"type": "text", "text": "can you use crissp fully?"}]},
+                  {"role": "assistant", "content": [
+                      {"type": "reasoning", "content": [{"type": "text", "text": "hm"}]},
+                      {"type": "tool_call", "id": "a", "name": "read_file",
+                       "arguments": {"type": "json", "value": {"path": str(repo / "big.py")}}},
+                      {"type": "tool_call", "id": "b", "name": "run_typescript", "arguments": {"type": "json", "value": {
+                          "code": "await Promise.all([tools.mcp_crissp.brief(), tools.mcp_crissp.backlog({}), "
+                                  "tools.mcp_crissp.brief()])"}}}]},
+                  {"role": "tool", "content": [{"type": "text", "text": "never shown"}]}], 55_567)
+    s = vs.sessions(repo, home, NOW)[0]
+    assert s["prompt"] == "can you use crissp fully?" and s["history"] == 55_567 and s["whole"] == ["big.py"]
+    assert (s["main"]["kind"], s["main"]["text"]) == ("other", "crissp: brief, backlog")
+    (folder / "CURRENT").write_text("{broken")
+    assert vs.sessions(repo, home, NOW)[0]["prompt"] == ""  # a pack it cannot read is no pack
+
+
+def test_a_run_typescript_call_names_the_tools_it_used():
+    """F-109: Vibe calls MCP tools from a run_typescript program; the step names them, else says it ran code."""
+    repo = vs.sv.Repo(Path("/r"))
+    assert vs.step("run_typescript", {"code": "tools.mcp_crissp.status({wait: true})"}, repo, None)["text"] == \
+        "crissp: status"
+    assert vs.step("run_typescript", {"code": "tools.vibe.ls(); tools.mcp_x.y()"}, repo, None)["text"] == "vibe: ls; x: y"
+    assert vs.step("run_typescript", {"code": "1 + 1"}, repo, None)["text"] == "run_typescript"

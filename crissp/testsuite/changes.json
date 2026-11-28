@@ -1714,6 +1714,26 @@
    "tests": [
     "test_crissp_tool::test_the_full_run_starts_only_when_the_product_owner_asked_for_it"
    ]
+  },
+  {
+   "id": "vibe-packed-sessions",
+   "title": "A packed Vibe session showed no prompt or step on /activity (F-109)",
+   "problem": "Vibe 3.1 packs a session's older turns into generations/ and chunks/ and starts a new, often empty journal; the Activity page read only the journal, so a busy session showed no prompt, no step and no history. Vibe calls MCP tools through run_typescript, which showed as other.",
+   "fix": "vibesessions.packed reads CURRENT, the generation's manifest and checkpoint and its chunks of messages (and the context's last reported tokens); read takes those turns before the journal. A run_typescript step names the tools its program called, by namespace.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def packed("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def step("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_packed_vibe_session_still_shows_its_prompt_step_and_history",
+    "test_vibesessions::test_a_run_typescript_call_names_the_tools_it_used"
+   ]
   }
  ],
  "gaps": [

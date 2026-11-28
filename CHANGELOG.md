@@ -34,7 +34,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **The Activity page shows Mistral Vibe's sessions too (F-101).** `/activity` lists the Vibe sessions working in
   the repository next to Claude Code's, read from Vibe's own session logs (`VIBE_HOME`, else `~/.vibe`): the last
   prompt, the latest step, its subagents, and the history the last request carried, with the same "start fresh"
-  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe.
+  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe. It also reads the turns Vibe
+  packs away in a long session, and shows a crissp call Vibe makes from a program as the tools it used (F-109).
 - **The Activity page warns about the context budget (F-104).** Besides the 300k-token history, a session's card
   now says when its main thread holds 10 or more images (screenshots belong in a subagent that reports text) or read
   a file of more than 800 lines whole (read the part needed). For Claude Code and Mistral Vibe sessions alike.
