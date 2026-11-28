@@ -99,15 +99,19 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
 
 @pytest.mark.parametrize("path, steps", [
     ("crissp/testsuite/lib/collect.py", LINTED), ("crissp/testsuite/tests/test_gate.py", LINTED),
-    ("crissp/testsuite/dashboard/app.js", LINTED), ("crissp/testsuite/changes.json", LINTED),
-    ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", LINTED),
-    ("crissp/ux.sh", TOOLS), ("crissp/tool/server.py", LINTED), ("crissp/look/look.css", TOOLS),
+    ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]), ("crissp/testsuite/changes.json", LINTED),
+    ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
+    ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", LINTED),
+    ("crissp/look/look.css", ["tools", "gate", "lint"]),
     ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
-    ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "python-lint"]),
-    ("crissp/deploy.sh", ["deploy"]), (".githooks/pre-commit", TOOLS),
+    ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "lint"]),
+    ("crissp/deploy.sh", ["deploy", "lint"]), ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
+    ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
+    (".githooks/pre-commit", ["tools", "gate", "lint"]), ("crissp/template/githooks/pre-commit", ["tools", "gate", "lint"]),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
-    """The framework is a product of its own: its tests, its deploy template, the audit of its pinned tools."""
+    """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its bash and JavaScript (F-38),
+    the audit of its pinned tools."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
     assert not p["full"] and sorted(p["suites"]) == sorted(steps), p

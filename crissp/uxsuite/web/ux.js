@@ -97,7 +97,6 @@
   function proposals() {
     const w = walkOf(query.get("walk"));
     if (!w) return '<div class="card">No walks yet.</div>';
-    const open = query.get("key");
     return walkPicker(w, "proposals") + `<div class="toolbar"><button class="primary" data-request="proposal" data-walk="${esc(w.id)}">Ask for a design</button></div>` +
       ([...w.proposals].reverse().map(p => {
         const res = p.result;

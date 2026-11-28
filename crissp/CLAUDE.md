@@ -49,25 +49,34 @@ This project's steps (`crissp/testsuite/suites.json`):
   (`[tool.ruff]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
+- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script and ESLint on every tracked
+  JavaScript file (the look, the dashboard, the uxsuite's page). Dev-only tools, pinned in `crissp/testsuite/lint/`
+  (`requirements.txt` for shellcheck-py, `package.json` and its lock for ESLint) and never in the wheel; it needs uv
+  and Node.js (20 or newer), and says FAILED, never a silent pass, without them.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
-- `audit`: pip-audit of the pinned tools (full run only).
+- `audit`: pip-audit and npm audit of the pinned tools, the lint tools too (full run only).
 
 What `crissp/check.sh` runs per change:
 
 - notes and backlog → nothing;
 - `CHANGELOG.md`/`VERSION` → a file check;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
-  `look/` and `template/`);
-- `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`);
+  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `ux.sh`,
+  `site/`, `testsuite/frontend-lint/`) → lint instead of python-lint;
+- `crissp/testsuite/lint/` → lint;
+- `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`; `deploy.sh` and `deploy/check.sh` → lint instead);
 - `src/`, `pyproject.toml` → package and python-lint;
+- `.githooks/` and `crissp/template/githooks/` → tools and lint;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 
-- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy package`. CI (`.github/workflows/ci.yml`) runs the same.
+- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package`. CI
+  (`.github/workflows/ci.yml`) runs the same.
 - **The lint runs before every commit**: `.githooks/pre-commit` (the template's, the same file) runs the lint steps
-  with the engine in this checkout. Turn it on once per clone: `python3 crissp/testsuite/lib/repair.py --yes` (here
-  it only sets `core.hooksPath .githooks`). Never `--no-verify` to get past a red lint; fix it.
+  (`python-lint` and `lint`) with the engine in this checkout. Turn it on once per clone:
+  `python3 crissp/testsuite/lib/repair.py --yes` (here it only sets `core.hooksPath .githooks`). Never `--no-verify`
+  to get past a red lint; fix it.
 - **Commit first**: the scripts test what is committed. **One run at a time** (a lock in `crissp/testsuite/results/`).
   Claude may run `crissp/check.sh` for its own work; the full run is the product owner's to start unless they ask.
 - Tests never read a developer's `.env`, never touch a real cluster, registry or PyPI, and never start a real Claude

@@ -1,0 +1,12 @@
+{
+  "name": "crissp-lint",
+  "private": true,
+  "description": "This repository's own lint tools (dev-only, never in the package): ESLint for the engine's plain JavaScript.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.16.0",
+    "globals": "17.14.0"
+  }
+}

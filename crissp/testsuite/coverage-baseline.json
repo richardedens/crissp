@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "16852f19f12c2c360c2e2445d670b771c7e7cc0a",
+ "commit": "92dd1d7b38ba2115794be091749173977ca04251",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -26,6 +26,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/deploy_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/frontend_lint.py": {
      "branch": 100.0,
      "line": 100.0
     },

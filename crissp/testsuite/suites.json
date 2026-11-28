@@ -45,6 +45,14 @@
    ]
   },
   {
+   "key": "lint",
+   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript",
+   "dir": ".",
+   "run": "crissp/testsuite/lint/lint.sh",
+   "seconds": 10,
+   "tests": []
+  },
+  {
    "key": "package",
    "label": "The package: build, install, init a project, its full run",
    "dir": ".",
@@ -71,10 +79,37 @@
    ]
   },
   {
+   "match": "crissp/testsuite/lint/",
+   "steps": [
+    "lint"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/dashboard/",
+   "steps": [
+    "tools",
+    "lint"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/frontend-lint/",
+   "steps": [
+    "tools",
+    "lint"
+   ]
+  },
+  {
    "match": "crissp/testsuite/",
    "steps": [
     "tools",
     "python-lint"
+   ]
+  },
+  {
+   "match": "crissp/uxsuite/web/",
+   "steps": [
+    "tools",
+    "lint"
    ]
   },
   {
@@ -87,7 +122,8 @@
   {
    "match": "crissp/ux.sh",
    "steps": [
-    "tools"
+    "tools",
+    "lint"
    ]
   },
   {
@@ -100,7 +136,15 @@
   {
    "match": "crissp/look/",
    "steps": [
-    "tools"
+    "tools",
+    "lint"
+   ]
+  },
+  {
+   "match": "crissp/template/githooks/",
+   "steps": [
+    "tools",
+    "lint"
    ]
   },
   {
@@ -113,7 +157,15 @@
    "match": "site/",
    "steps": [
     "tools",
+    "lint",
     "python-lint"
+   ]
+  },
+  {
+   "match": "crissp/deploy/check.sh",
+   "steps": [
+    "deploy",
+    "lint"
    ]
   },
   {
@@ -126,7 +178,8 @@
   {
    "match": "crissp/deploy.sh",
    "steps": [
-    "deploy"
+    "deploy",
+    "lint"
    ]
   },
   {
@@ -153,7 +206,8 @@
   {
    "match": ".githooks/",
    "steps": [
-    "tools"
+    "tools",
+    "lint"
    ]
   }
  ],
@@ -166,7 +220,11 @@
  "audit": {
   "pip": [
    "crissp/testsuite/requirements.txt",
-   "crissp/deploy/requirements.txt"
+   "crissp/deploy/requirements.txt",
+   "crissp/testsuite/lint/requirements.txt"
+  ],
+  "npm": [
+   "crissp/testsuite/lint"
   ]
  },
  "texts": {}

@@ -1,6 +1,6 @@
 # Every push and pull request: the framework's own tests at 100% coverage, the coverage gate, the lint of its own Python
-# (ruff), the deploy template (helm lint and template, its tests) and the package (build, install, init a project, that
-# project's full run).
+# (ruff), the deploy template (helm lint and template, its tests), the lint step (shellcheck and ESLint on this
+# repository's bash and JavaScript) and the package (build, install, init a project, that project's full run).
 name: ci
 
 on:
@@ -18,10 +18,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.3  # Astral publishes full version tags only (no v10)
       - uses: azure/setup-helm@v5
+      - uses: actions/setup-node@v6  # ESLint, for the lint step (dev-only)
+        with:
+          node-version: 22
       - name: Git can commit (the package test commits in a throwaway project)
         run: git config --global user.name "ci" && git config --global user.email "ci@example.org"
-      - name: Tools, gate, Python lint, deploy template and package
-        run: crissp/testsuite/run.sh --quick tools gate python-lint deploy package
+      - name: Tools, gate, Python lint, deploy template, lint and package
+        run: crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package
       - name: The logs of a red run
         if: failure()
         run: tail -n 60 crissp/testsuite/results/*.log
