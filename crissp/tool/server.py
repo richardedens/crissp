@@ -22,10 +22,10 @@ and moved as they are until they are regrouped.
             in the background, or answers at once: check-plan, deploy-plan, ux-status (what the UX team does and
             waits for). Never a deploy: that stays in the product owner's terminal; never a UX round: those cost tokens
             and are the product owner's to ask for (crissp/ux.sh). The server reaps every check it started the moment
-            it ends (F-30: no zombie); wait for the result with status, never on the pid.
+            it ends (F-31: no zombie); wait for the result with status, never on the pid.
 - status    how the checks started with run are doing: running or finished, the exit code, the last lines of the log;
             with wait, it answers once the run has ended (the lock is free and no check it started still runs), or when
-            the timeout passes (F-30).
+            the timeout passes (F-31).
 - dashboard builds the Tests dashboard's data and serves it with the UX suite (crissp/test.sh --dashboard, one local
             server); answers the address of the view asked for (tests or ux).
 The writers are for the main session: agents never edit the backlog (crissp/AGENTS.md).
@@ -65,7 +65,7 @@ VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the o
 PLAN_TIMEOUT = 120  # seconds a plan may take
 DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
 EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.M)
-WAIT = 300  # status with wait: seconds it waits by default (F-30) …
+WAIT = 300  # status with wait: seconds it waits by default (F-31) …
 WAIT_MAX = 3600  # … and at most
 WAIT_POLL = 0.5  # how often it looks while it waits
 
@@ -471,7 +471,7 @@ def background(root: Path, key: str, argv: list[str]) -> int:
     with open(out / f"{key}.log", "w") as log:
         proc = subprocess.Popen(["/bin/sh", "-c", '"$0" "$@"; echo "[crissp] exit $?"', *argv], cwd=root, stdout=log,
                                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
-    # reaped the moment it ends (F-30): an unreaped child stays a zombie, which `kill -0 <pid>` still finds alive
+    # reaped the moment it ends (F-31): an unreaped child stays a zombie, which `kill -0 <pid>` still finds alive
     threading.Thread(target=proc.wait, name=f"reap-{key}", daemon=True).start()
     runs = json.loads(read(out / "runs.json") or "{}")
     runs[key] = {"pid": proc.pid, "started": datetime.datetime.now().strftime("%H:%M:%S"), "log": f"crissp/testsuite/results/mcp/{key}.log"}

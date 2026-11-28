@@ -303,7 +303,7 @@ def test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool
     _write(b / "DECISIONS.md", "| # | Question | Options | Recommendation |\n|---|---|---|---|\n"
                                "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n| ~~D-01~~ | A private repository. | 2026-10-23 |\n")
     board = collect._backlog()
-    # F-31: the open findings and decisions are on the board, read by the crissp tool too (done ones and taken ones not)
+    # F-32: the open findings and decisions are on the board, read by the crissp tool too (done ones and taken ones not)
     assert board["findings"] == [{"id": "F-01", "seen": "a scan", "observation": "dumps in an image", "goes_to": "E5-01", "file": "crissp/backlog/FINDINGS.md"},
                                  {"id": "F-02", "seen": "the board", "observation": "no findings on it", "goes_to": "—", "file": "crissp/backlog/FINDINGS.md"}]
     assert board["decisions"] == [{"id": "D-04", "question": "Admin kubeconfigs?", "options": "a) keep · b) read-only",

@@ -102,7 +102,7 @@ def test_a_failed_rebuild_keeps_the_last_good_data(world, capsys):
 
 
 def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
-    """F-31: a finding written or a run that ended while collect.py was busy is older than the data.js it then wrote;
+    """F-32: a finding written or a run that ended while collect.py was busy is older than the data.js it then wrote;
     compared with data.js it was never seen, and the dashboard stayed behind until the next change."""
     root, _, _ = world
     findings = root / "crissp" / "backlog" / "FINDINGS.md"
@@ -126,7 +126,7 @@ def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
 
 
 def test_a_failed_rebuild_is_said_on_the_page(world):
-    """F-31: the page says live while its data no longer is; the stamp carries why the data was not rebuilt."""
+    """F-32: the page says live while its data no longer is; the stamp carries why the data was not rebuilt."""
     root, _, _ = world
     httpd, base, calls = _serve(world, FakeUx())
     try:

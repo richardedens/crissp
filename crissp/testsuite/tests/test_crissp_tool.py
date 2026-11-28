@@ -358,7 +358,7 @@ def test_a_check_runs_in_the_background_and_status_follows_it(tmp_path):
     assert srv.status(tmp_path) == "Lock: free\nNothing started with run yet."
     started = srv.run(tmp_path, {"what": "check"})
     assert started.startswith("check started: crissp/check.sh (pid ") and "log: crissp/testsuite/results/mcp/check.log" in started
-    assert "Wait for its result with status (wait: true), not on the pid" in started  # F-30: the pid is no way to wait
+    assert "Wait for its result with status (wait: true), not on the pid" in started  # F-31: the pid is no way to wait
     text = _until(lambda: (lambda t: t if "finished" in t else None)(srv.status(tmp_path)))
     assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
     assert "[crissp] exit" not in text  # the exit marker is read, not shown
@@ -399,7 +399,7 @@ def _pid(root: Path, key: str) -> int:
 
 
 def test_a_finished_check_is_reaped_at_once(tmp_path):
-    """F-30: the server waits for every check it started, so a finished one is no zombie that `kill -0 <pid>` still
+    """F-31: the server waits for every check it started, so a finished one is no zombie that `kill -0 <pid>` still
     finds alive (an agent that waited on the pid hung until its own timeout)."""
     _scripts(tmp_path, check="exit 0")
     srv.run(tmp_path, {"what": "check"})
@@ -409,7 +409,7 @@ def test_a_finished_check_is_reaped_at_once(tmp_path):
 
 
 def test_status_waits_until_the_run_has_ended(tmp_path, monkeypatch):
-    """F-30: status (wait: true) answers once the run has ended, so nobody has to poll or wait on a pid."""
+    """F-31: status (wait: true) answers once the run has ended, so nobody has to poll or wait on a pid."""
     monkeypatch.setattr(srv, "WAIT_POLL", 0.02)
     _scripts(tmp_path, check='sleep 0.4; echo "Green: crissp/deploy.sh may go."')
     srv.run(tmp_path, {"what": "check"})

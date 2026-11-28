@@ -8,11 +8,13 @@
   {"key": "backend-lint", "label": "CRISSP: the backend's lint (ruff)", "dir": "app/backend",
    "run": "py -m ruff check --no-cache .", "seconds": 3, "when": "app/backend"},
   {"key": "frontend", "label": "CRISSP: the frontend's tests", "dir": "app/frontend", "run": "npm test",
-   "seconds": 20, "when": "app/frontend/package.json"}
+   "seconds": 20, "when": "app/frontend/package.json"},
+  {"key": "frontend-lint", "label": "CRISSP: the frontend's lint (the package's lint script)", "dir": "app/frontend",
+   "run": "npm run --silent lint", "seconds": 5, "when": "app/frontend/package.json"}
  ],
  "paths": [
   {"match": "app/backend/", "steps": ["backend", "backend-lint"]},
-  {"match": "app/frontend/", "steps": ["frontend"]}
+  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint"]}
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},

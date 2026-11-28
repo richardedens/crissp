@@ -4,12 +4,16 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
-- **The dashboard no longer misses a change, and the board shows the open decisions and findings (F-31).** The open
+- **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
+  `backend-lint`: `npm run --silent lint` in `app/frontend`, there once `app/frontend/package.json` is, and run by
+  `crissp check` for every change under `app/frontend/`. The linter is the frontend's own `lint` script (ESLint,
+  Biome …), so a frontend's `package.json` needs one. `crissp repair` gives projects with no steps the same default.
+- **The dashboard no longer misses a change, and the board shows the open decisions and findings (F-32).** The open
   page already rebuilt its data when the backlog, `changes.json` or a run's results changed, but a change made while a
   rebuild ran was skipped until the next one; now it is picked up. When a rebuild fails, the page says "not current"
   with the reason instead of "live". The Backlog board lists the open decisions and the findings (newest first, with
   how many are not fixed yet) above the lanes.
-- **A check started with `run` no longer stays a zombie, and `status` can wait (F-30).** The crissp MCP server now
+- **A check started with `run` no longer stays a zombie, and `status` can wait (F-31).** The crissp MCP server now
   reaps every check it starts the moment it ends; before, a finished check stayed a zombie that `kill -0 <pid>` still
   found alive, so an agent waiting on the pid hung until its own timeout. `status` takes `wait: true` (and `timeout`,
   default 300 s, at most 3600 s) and answers as soon as the run has ended, with its exit code and the end of its log.

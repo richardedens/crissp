@@ -23,7 +23,7 @@
   $("#stamp").title = S.root || "";  /* the folder's name in sight, the whole path only on hover: a screenshot never shows a home folder */
   // live: the server (lib/serve.py) rebuilds the data when the backlog, a change or a run's results changed; the page
   // reloads when it did, on the same tab. Served without it (a plain file server) the page simply stays as it is.
-  // A rebuild that failed is said here, so a page that says live is current (F-31).
+  // A rebuild that failed is said here, so a page that says live is current (F-32).
   let seen = null;
   const said = $("#stamp").textContent;
   const poll = async () => {
@@ -338,7 +338,7 @@
     return rows ? `<details class="card moved" open><summary><b>Moved recently</b> <span class="muted small">newest first, from git and what is not committed yet</span></summary>
       <ul class="moves">${rows}</ul></details>` : "";
   }
-  // F-31: what waits for the product owner and what was noticed, on the board too (crissp/backlog/DECISIONS.md, FINDINGS.md)
+  // F-32: what waits for the product owner and what was noticed, on the board too (crissp/backlog/DECISIONS.md, FINDINGS.md)
   const md = v => esc(v).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");  // the backlog's **bold**, nothing else of Markdown
   function decisionsView() {
     const open = B.decisions || [];

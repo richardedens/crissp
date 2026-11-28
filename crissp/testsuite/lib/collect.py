@@ -247,7 +247,7 @@ def _backlog() -> dict | None:
                       "items": [i for i in items if re.fullmatch(rf"{epic}-\d+", i["id"])]})
     cells = lambda r, n: (r["cells"] + [""] * n)[:n]  # noqa: E731  a short row still has every column
     findings = [dict(zip(("seen", "observation", "goes_to"), cells(r, 3)), id=r["id"], file=r["file"])
-                for r in crissp.open_findings(ROOT)]  # F-31: on the board, not only in the tool
+                for r in crissp.open_findings(ROOT)]  # F-32: on the board, not only in the tool
     decisions = [dict(zip(("question", "options", "recommendation"), cells(r, 3)), id=r["id"], file=r["file"])
                  for r in crissp.open_decisions(ROOT)]
     return {"epics": epics, "statuses": list(crissp.STATUSES),
