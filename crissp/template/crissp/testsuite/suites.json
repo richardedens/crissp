@@ -12,11 +12,13 @@
   {"key": "frontend-lint", "label": "CRISSP: the frontend's lint (the package's lint script)", "dir": "app/frontend",
    "run": "npm run --silent lint", "seconds": 5, "when": "app/frontend/package.json"},
   {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "run": "audit run",
-   "seconds": 60, "full_only": true, "when": "app"}
+   "seconds": 60, "full_only": true, "when": "app"},
+  {"key": "secrets", "label": "CRISSP: secrets in the git history (gitleaks)", "run": "audit secrets", "seconds": 5,
+   "when": "app"}
  ],
  "paths": [
-  {"match": "app/backend/", "steps": ["backend", "backend-lint"]},
-  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint"]}
+  {"match": "app/backend/", "steps": ["backend", "backend-lint", "secrets"]},
+  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint", "secrets"]}
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},

@@ -38,12 +38,12 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
     assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
-                                                              "frontend-lint", "audit"]
+                                                              "frontend-lint", "audit", "secrets"]
     assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
                                                          "frontend": "app/frontend", "frontend-lint": "app/frontend",
-                                                         "audit": "."}
-    assert [(r["match"], r["steps"]) for r in conf["paths"]] == [("app/backend/", ["backend", "backend-lint"]),
-                                                                ("app/frontend/", ["frontend", "frontend-lint"])]
+                                                         "audit": ".", "secrets": "."}
+    assert [(r["match"], r["steps"]) for r in conf["paths"]] == [
+        ("app/backend/", ["backend", "backend-lint", "secrets"]), ("app/frontend/", ["frontend", "frontend-lint", "secrets"])]
     lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
     assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
@@ -62,6 +62,13 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
                              "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
                              "own_images": {"values": "crissp/deploy/helm/app/values.yaml",
                                             "parts": ["backend", "frontend"]}}
+
+
+def test_every_project_scans_its_git_history_for_secrets(tmp_path):
+    """F-43: gitleaks over the history, in every check that touches a part; the project's own gitleaks files count."""
+    conf, root = configured(tmp_path)
+    step = next(s for s in conf["steps"] if s["key"] == "secrets")
+    assert step["run"] == "audit secrets" and not step["full_only"] and step["when"] == "app"
 
 
 def test_the_ux_suite_walks_the_local_stack_the_deploy_template_names():

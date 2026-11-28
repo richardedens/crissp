@@ -118,6 +118,15 @@ trivy (and gitleaks, below) are pinned in `lib/tools.py`: one version, fetched o
 (`CRISSP_CACHE`, else `XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`). A download that differs is refused. The version
 on a machine's `PATH` is never used. `python3 crissp/testsuite/lib/tools.py path trivy` says where it is.
 
+## Secrets (lib/audit.py secrets)
+
+`audit secrets` runs the pinned gitleaks over the whole git history (over the files when there is no git) and writes
+`results/secrets.json`. A finding says where (file, line, commit) and which rule, never the value: gitleaks redacts it
+and crissp never reads it. Every finding blocks. The project's own gitleaks configuration counts, as gitleaks reads
+it: `.gitleaks.toml` (rules, allowed paths), `.gitleaksignore` (fingerprints of findings that are no secret, from
+`results/secrets.json`, each with a comment saying why) and `gitleaks:allow` on a line. A real leak is rotated first,
+then removed from the history.
+
 ## The dashboard (dashboard/, lib/collect.py, lib/serve.py)
 
 `crissp/test.sh --dashboard` builds the data (`results/data.js`, generated, not in git) and serves the page with the UX

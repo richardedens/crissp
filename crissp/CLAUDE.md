@@ -47,6 +47,8 @@ This project's steps (`crissp/testsuite/suites.json`):
   installed (otherwise a visible "skipped"), and the chart's structure tests.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
+- `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that
+  is no secret goes into `.gitleaksignore` by fingerprint, with a comment saying why.
 - `audit`: pip-audit of the pinned tools and trivy config of the deploy chart and Terraform (full run only; trivy is
   pinned and checksum-checked, `crissp/testsuite/lib/tools.py`).
 
@@ -54,13 +56,15 @@ What `crissp/check.sh` runs per change:
 
 - notes and backlog → nothing;
 - `CHANGELOG.md`/`VERSION` → a file check;
+- every part below → also secrets;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools;
 - `crissp/deploy*` → deploy;
 - `src/`, `pyproject.toml` → package;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 
-- Directly: `crissp/testsuite/run.sh --quick tools gate deploy package`. CI (`.github/workflows/ci.yml`) runs the same.
+- Directly: `crissp/testsuite/run.sh --quick tools gate deploy package secrets`. CI (`.github/workflows/ci.yml`) runs
+  the same.
 - **Commit first**: the scripts test what is committed. **One run at a time** (a lock in `crissp/testsuite/results/`).
   Claude may run `crissp/check.sh` for its own work; the full run is the product owner's to start unless they ask.
 - Tests never read a developer's `.env`, never touch a real cluster, registry or PyPI, and never start a real Claude

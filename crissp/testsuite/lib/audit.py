@@ -16,7 +16,12 @@ trivy is the pinned one (lib/tools.py), never whatever a machine has on its PATH
 problem, never a pass. crissp/testsuite/accepted-risks.json accepts a finding for at most
 90 days, with why and by whom; an expired or incomplete acceptance is a problem and accepts nothing.
 
-    python3 crissp/testsuite/lib/audit.py run     scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
+The secrets scan is the pinned gitleaks (lib/tools.py) over the git history, or over the files when there is no git.
+It says where a secret is, never what it is (redacted, and the value is never read). The project's own gitleaks
+configuration counts, as gitleaks reads it: .gitleaks.toml, .gitleaksignore (fingerprints) and gitleaks:allow.
+
+    python3 crissp/testsuite/lib/audit.py run       scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
+    python3 crissp/testsuite/lib/audit.py secrets   the git history, into results/secrets.json, exit 1 on a secret
 """
 
 import datetime
@@ -168,10 +173,8 @@ def own_images(root: Path, conf: dict) -> list[str]:
     return sorted(f"{repo}:{part}-{version}" for repo, version in found for part in own.get("parts", []))
 
 
-def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> dict:
-    """Every scan the project's audit configuration names (suites.json, audit), and what they found."""
-    findings, problems, scanned = [], [], []
-
+def _scanner(run, findings: list, problems: list, scanned: list):
+    """scan(label, argv, cwd, parse, target): run one scanner, its JSON parsed into findings, or a problem."""
     def scan(label: str, argv: list[str], cwd: Path, parse, target: str) -> None:
         code, out, err = run(argv, cwd)
         try:
@@ -181,6 +184,20 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
             return
         findings.extend(parse(data, target))
         scanned.append(label)
+    return scan
+
+
+def _report(kind: str, on: datetime.date, scanned: list, problems: list, findings: list, accepted: dict,
+            **more) -> dict:
+    findings, invalid = apply_accepted(findings, accepted, on)
+    return {"kind": kind, "date": on.isoformat(), "scanned": scanned, "not_scanned": [], "absent": [], **more,
+            "problems": problems + invalid, "findings": findings, "blocking": [f for f in findings if f["blocks"]]}
+
+
+def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> dict:
+    """Every scan the project's audit configuration names (suites.json, audit), and what they found."""
+    findings, problems, scanned = [], [], []
+    scan = _scanner(run, findings, problems, scanned)
 
     skip = conf.get("missing") == "skip"
     absent: list[str] = []
@@ -236,11 +253,47 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
     if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
-    findings, invalid = apply_accepted(findings, accepted, on)
-    return {"date": on.isoformat(), "scanned": scanned, "not_scanned": own_images(root, conf), "absent": absent,
-            "problems": problems + invalid,
-            "findings": findings,
-            "blocking": [f for f in findings if f["blocks"]]}
+    return _report("audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf),
+                   absent=absent)
+
+
+def from_gitleaks(data: list, target: str) -> list[dict]:
+    """Where a secret is, never what it is: the Secret and Match fields are not read."""
+    out = []
+    for leak in data or []:
+        commit = (leak.get("Commit") or "")[:12]
+        where = f"line {leak['StartLine']}" + (f" in {commit}" if commit else "")
+        out.append({**_finding("gitleaks", target, leak["File"], where, leak["RuleID"], "HIGH",
+                               "rotate it, then remove it from the history", leak.get("Description", ""), True),
+                    "fingerprint": leak.get("Fingerprint", "")})
+    return out
+
+
+def secrets_all(root: Path, run, on: datetime.date, accepted: dict) -> dict:
+    """The pinned gitleaks over the git history (over the files when there is no git). The project's own gitleaks
+    configuration counts as gitleaks reads it: .gitleaks.toml, .gitleaksignore, gitleaks:allow."""
+    findings, problems, scanned = [], [], []
+    scan = _scanner(run, findings, problems, scanned)
+    try:
+        gitleaks = binary("gitleaks")
+    except tools.ToolError as e:
+        problems.append(f"gitleaks: {e}")
+    else:
+        history = (root / ".git").exists()
+        scan("gitleaks git history" if history else "gitleaks files",
+             [gitleaks, "git" if history else "dir", "--no-banner", "--redact", "--report-format", "json",
+              "--report-path", "-", "--exit-code", "0", "--log-level", "warn", "."], root, from_gitleaks,
+             "git history" if history else "files")
+    return _report("secrets", on, scanned, problems, findings, accepted)
+
+
+NOT_GREEN = {
+    "audit": "Not green: update the package or image to the fixed version, or accept it for a while with a reason in "
+             "crissp/testsuite/accepted-risks.json (at most 90 days).",
+    "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
+               "is no secret goes into .gitleaksignore (its fingerprint, from results/secrets.json, with a comment "
+               "saying why).",
+}
 
 
 def render(report: dict) -> str:
@@ -251,16 +304,19 @@ def render(report: dict) -> str:
         lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:
         lines.append(f"PROBLEM  {p}")
+    kind = report.get("kind", "audit")
+    fix = "fixed in " if kind == "audit" else ""
     for f in report["blocking"]:
         lines.append(f"BLOCKING {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): "
-                     f"{f['title']} — fixed in {f['fixed']}")
+                     f"{f['title']} — {fix}{f['fixed']}")
     listed = [f for f in report["findings"] if not f["blocks"]]
     for f in listed:
-        note = f"accepted: {f['accepted']}" if f.get("accepted") else f"fixed in {f['fixed']}"
+        note = f"accepted: {f['accepted']}" if f.get("accepted") else f"{fix}{f['fixed']}"
         lines.append(f"listed   {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): {note}")
     if report["blocking"] or report["problems"]:
-        lines.append("Not green: update the package or image to the fixed version, or accept it for a while with a "
-                     "reason in crissp/testsuite/accepted-risks.json (at most 90 days).")
+        lines.append(NOT_GREEN[kind])
+    elif kind == "secrets":
+        lines.append("No secret found.")
     elif not report["scanned"]:
         lines.append("Nothing to audit yet: none of the places suites.json names is here.")
     else:
@@ -268,8 +324,11 @@ def render(report: dict) -> str:
     return "\n".join(lines)
 
 
+SCANS = {"run": "audit", "secrets": "secrets"}
+
+
 def main(argv: list[str], root: Path | None = None) -> int:
-    if argv[1:] != ["run"]:
+    if len(argv) != 2 or argv[1] not in SCANS:
         print(__doc__, file=sys.stderr)
         return 2
     root = root or project.root()
@@ -280,10 +339,13 @@ def main(argv: list[str], root: Path | None = None) -> int:
         return 2
     risks = root / "crissp/testsuite/accepted-risks.json"
     accepted = json.loads(risks.read_text()) if risks.is_file() else {"accepted": []}
-    report = run_all(root, runner, today(), accepted, conf)
+    if argv[1] == "secrets":
+        report = secrets_all(root, runner, today(), accepted)
+    else:
+        report = run_all(root, runner, today(), accepted, conf)
     results = project.results(root)
     results.mkdir(parents=True, exist_ok=True)
-    (results / "audit.json").write_text(json.dumps(report, indent=1) + "\n")
+    (results / f"{SCANS[argv[1]]}.json").write_text(json.dumps(report, indent=1) + "\n")
     print(render(report))
     return 1 if report["blocking"] or report["problems"] else 0
 

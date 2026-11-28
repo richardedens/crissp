@@ -47,6 +47,13 @@
    ]
   },
   {
+   "key": "secrets",
+   "label": "Secrets in the git history (gitleaks)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py secrets",
+   "seconds": 5
+  },
+  {
    "key": "audit",
    "label": "CVE audit of the pinned test tools (pip-audit)",
    "dir": "crissp/testsuite",
@@ -59,79 +66,92 @@
   {
    "match": "crissp/testsuite/accepted-risks.json",
    "steps": [
-    "audit"
+    "audit",
+    "secrets"
    ]
   },
   {
    "match": "crissp/testsuite/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/uxsuite/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/ux.sh",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/tool/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/look/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/template/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "site/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets"
    ]
   },
   {
    "match": "crissp/deploy/",
    "steps": [
-    "deploy"
+    "deploy",
+    "secrets"
    ]
   },
   {
    "match": "crissp/deploy.sh",
    "steps": [
-    "deploy"
+    "deploy",
+    "secrets"
    ]
   },
   {
    "match": "src/",
    "steps": [
-    "package"
+    "package",
+    "secrets"
    ]
   },
   {
    "match": "pyproject.toml",
    "steps": [
-    "package"
+    "package",
+    "secrets"
    ]
   },
   {
    "match": "crissp/testsuite/package_tests/",
    "steps": [
-    "package"
+    "package",
+    "secrets"
    ]
   }
  ],

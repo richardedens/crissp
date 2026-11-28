@@ -1,5 +1,6 @@
 # Every push and pull request: the framework's own tests at 100% coverage, the coverage gate, the deploy template
-# (helm lint and template, its tests) and the package (build, install, init a project, that project's full run).
+# (helm lint and template, its tests), the package (build, install, init a project, that project's full run) and the
+# git history scanned for secrets (gitleaks, pinned).
 name: ci
 
 on:
@@ -15,12 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the whole history: the secrets step scans every commit
       - uses: astral-sh/setup-uv@v10.3.3  # Astral publishes full version tags only (no v10)
       - uses: azure/setup-helm@v5
       - name: Git can commit (the package test commits in a throwaway project)
         run: git config --global user.name "ci" && git config --global user.email "ci@example.org"
-      - name: Tools, gate, deploy template and package
-        run: crissp/testsuite/run.sh --quick tools gate deploy package
+      - name: Tools, gate, deploy template, package and secrets
+        run: crissp/testsuite/run.sh --quick tools gate deploy package secrets
       - name: The logs of a red run
         if: failure()
         run: tail -n 60 crissp/testsuite/results/*.log

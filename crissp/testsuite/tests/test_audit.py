@@ -326,3 +326,63 @@ def test_the_report_shows_problems_and_what_was_accepted_and_why():
     assert "PROBLEM  npm audit app/frontend: no package-lock.json" in text
     assert "accepted: the product owner until 2026-12-01: the TLS code" in text
     assert text.splitlines()[-1].startswith("Not green")
+
+
+# The secrets scan (E6-F2-01): gitleaks over the git history; a finding names where, never the secret.
+FAKE = "ghp_" + "0123456789abcdefABCDEF0123456789abcd"  # made up, and split so it is no token in git either
+LEAKS = [{"RuleID": "github-pat", "Description": "Found a GitHub Personal Access Token", "StartLine": 3, "EndLine": 3,
+          "File": "app/backend/settings.py", "Commit": "4930073bb07a5f25b0c52ef663fc29f64e28ecb5",
+          "Secret": FAKE, "Match": f"TOKEN = '{FAKE}'",
+          "Fingerprint": "4930073bb07a5f25b0c52ef663fc29f64e28ecb5:app/backend/settings.py:github-pat:3"}]
+
+
+def test_a_secret_in_the_history_blocks_and_its_value_is_never_kept_or_said(repo):
+    (repo / ".git").mkdir()
+    runner = Runner({"gitleaks": (0, LEAKS)})
+    report = audit.secrets_all(repo, runner, TODAY, accepted={"accepted": []})
+    (f,) = report["blocking"]
+    assert (f["id"], f["package"], f["installed"]) == ("github-pat", "app/backend/settings.py", "line 3 in 4930073bb07a")
+    assert report["scanned"] == ["gitleaks git history"]
+    said = json.dumps(report) + audit.render(report)
+    assert "ghp_0123" not in said and "TOKEN =" not in said  # where it is, never what it is
+    assert "rotate" in audit.render(report) and ".gitleaksignore" in audit.render(report)
+    (argv, cwd), = runner.calls
+    assert argv[:2] == ["/cache/tools/gitleaks", "git"] and "--redact" in argv and cwd == repo
+    assert argv[argv.index("--report-path") + 1] == "-" and argv[-1] == "."
+
+
+def test_without_git_the_files_are_scanned(repo):
+    runner = Runner({"gitleaks": (0, [])})
+    report = audit.secrets_all(repo, runner, TODAY, accepted={"accepted": []})
+    assert runner.calls[0][0][1] == "dir" and report["scanned"] == ["gitleaks files"]
+    assert report["blocking"] == [] and audit.render(report).splitlines()[-1] == "No secret found."
+
+
+def test_a_secrets_scan_that_cannot_run_is_a_problem(repo, monkeypatch):
+    report = audit.secrets_all(repo, Runner({"gitleaks": (1, "fatal")}), TODAY, accepted={"accepted": []})
+    assert report["problems"][0].startswith("gitleaks files could not run (exit 1)")
+
+    def refused(name):
+        raise audit.tools.ToolError("no pinned build for linux-riscv64")
+
+    monkeypatch.setattr(audit, "binary", refused)
+    report = audit.secrets_all(repo, Runner({}), TODAY, accepted={"accepted": []})
+    assert report["problems"] == ["gitleaks: no pinned build for linux-riscv64"]
+    assert audit.render(report).splitlines()[-1].startswith("Not green")
+
+
+def test_the_command_line_runs_each_scan_into_its_own_results(repo, monkeypatch, capsys):
+    (repo / "crissp/testsuite").mkdir(parents=True)
+    (repo / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "Shop"}))
+    monkeypatch.setenv("CRISSP_ROOT", str(repo))
+    monkeypatch.setattr(audit, "runner", Runner({"gitleaks": (0, LEAKS)}))
+    assert audit.main(["audit.py", "secrets"]) == 1
+    saved = (repo / "crissp/testsuite/results/secrets.json").read_text()
+    assert "github-pat" in saved and "ghp_" not in saved
+    assert "BLOCKING" in capsys.readouterr().out
+
+
+def test_this_repository_scans_its_history_for_secrets():
+    conf = audit.project.load(LIB.parents[2])
+    step = next(s for s in conf["steps"] if s["key"] == "secrets")
+    assert step["run"] == "python3 lib/audit.py secrets" and not step["full_only"]
