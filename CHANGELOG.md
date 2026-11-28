@@ -4,6 +4,18 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **See where the work is in the six stages, and get help with each (F-130).** The dashboard has a Stages page
+  (`/stages`, first in the top bar): Discover, Plan, Build, Verify, Review and Release, which stage the work is in now,
+  and per stage what is in it and whose move it is (to set up, work to do, waits for you, clear). It is read from the
+  backlog, the release certificate, git, `VERSION`, `CHANGELOG.md` and the UX team's state. Ask Claude and Ask Vibe copy
+  the command that starts a session on that stage (`claude "crissp: help me with Plan"`, the same with `vibe`), and
+  Discover can start the UX team's rounds right there. The crissp tool has a new `stage` tool, so Claude Code and
+  Mistral Vibe both get the same answer and the same instructions per stage. Helping never pushes, tags, publishes or
+  deploys.
+- **Every session opens with the stage and offers its help (F-131).** At the start of a session, and on every
+  `<!-- CRISSP … -->` prompt, Claude and Vibe now say which stage the work is in and offer the next step, for example
+  setting up the UX suite when there is none yet. It is a new section of the agreement, *The six stages*; `crissp
+  repair --yes` brings it into projects brought in earlier.
 - **Vibe's desktop app gets the crissp tools (F-100).** A Vibe desktop session listed only Vibe's own tools: the
   desktop app starts MCP servers from its own folder with only a few environment variables, so the server was not
   found (a relative path) or did not know the project. `.vibe/config.toml` now names the project's folder (`cwd` and
