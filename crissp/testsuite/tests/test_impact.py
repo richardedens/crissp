@@ -96,14 +96,16 @@ def test_a_file_name_rule_matches_the_exact_name_anywhere(shop):
 
 @pytest.mark.parametrize("path, steps", [
     ("crissp/testsuite/lib/collect.py", ["tools", "gate"]), ("crissp/testsuite/tests/test_gate.py", ["tools", "gate"]),
-    ("crissp/testsuite/dashboard/app.js", ["tools", "gate"]), ("crissp/testsuite/changes.json", ["tools", "gate"]),
-    ("crissp/uxsuite/ux_team.py", ["tools", "gate"]), ("crissp/uxsuite/web/ux.js", ["tools", "gate"]),
-    ("crissp/ux.sh", ["tools", "gate"]), ("crissp/tool/server.py", ["tools", "gate"]), ("crissp/look/look.css", ["tools", "gate"]),
+    ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]), ("crissp/testsuite/changes.json", ["tools", "gate"]),
+    ("crissp/uxsuite/ux_team.py", ["tools", "gate"]), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
+    ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", ["tools", "gate"]), ("crissp/look/look.css", ["tools", "gate", "lint"]),
     ("crissp/template/crissp/uxsuite/team.json", ["tools", "gate"]), ("crissp/testsuite/accepted-risks.json", ["audit"]),
-    ("crissp/deploy/helm/app/values.yaml", ["deploy"]), ("crissp/deploy/check.sh", ["deploy"]), ("crissp/deploy.sh", ["deploy"]),
+    ("crissp/deploy/helm/app/values.yaml", ["deploy"]), ("crissp/deploy/check.sh", ["deploy", "lint"]), ("crissp/deploy.sh", ["deploy", "lint"]),
+    ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
-    """The framework is a product of its own: its tests, its deploy template, the audit of its pinned tools."""
+    """The framework is a product of its own: its tests, its deploy template, the lint of its bash and JavaScript (F-30),
+    the audit of its pinned tools."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
     assert not p["full"] and sorted(p["suites"]) == sorted(steps), p
