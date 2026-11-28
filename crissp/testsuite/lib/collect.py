@@ -18,6 +18,7 @@ from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
+import lint_ratchet  # noqa: E402
 import movement  # noqa: E402
 import project  # noqa: E402
 
@@ -353,6 +354,12 @@ def _not_tests(steps: list[dict], keep, count, field: str) -> list[dict]:
     return out
 
 
+def _lint_exceptions() -> dict:
+    """F-153: the lint rules this project switched off, each with why, by whom and since when; never silent."""
+    off, problems = lint_ratchet.exceptions(ROOT)
+    return {"off": off, "problems": problems}
+
+
 def _product() -> dict:
     """What the page needs to name this product: from suites.json, plus the Claude sessions when they were built."""
     out = {k: CONFIG[k] for k in ("product", "monogram", "texts")}
@@ -528,6 +535,7 @@ def main(root: Path | None = None) -> int:
         "steps": steps,
         "suites": {k: summary(k) for k in SUITES if not not_tests(k)},
         "lint": _not_tests(steps, is_lint, lint_problems, "problems"),
+        "lintExceptions": _lint_exceptions(),
         "security": _not_tests(steps, is_security, blocking_findings, "blocking"),
         "tests": tests,
         "coverage": {k: coverage(k) for k in COVERAGE},

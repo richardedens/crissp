@@ -181,3 +181,19 @@ def test_the_changes_without_a_passing_test_can_be_listed_on_their_own():
 def test_a_failed_step_s_log_is_open_and_a_passed_one_folded():
     view = render(run_data(), "#steps?step=backend")["#view"]
     assert 'id="step-backend-lint" open' in view and 'id="step-backend" >' in view
+
+
+def test_the_lint_rules_a_project_switched_off_are_listed_with_why():
+    """F-153: a rule off in crissp/testsuite/lint-exceptions.json is on the Lint tile, with its reason: never silent."""
+    off = {
+        "rule": "jsx-a11y/no-autofocus",
+        "why": "a dialog focuses its first field",
+        "by": "Pat",
+        "since": "2026-11-28",
+    }
+    view = render(run_data(lintExceptions={"off": [off], "problems": ["exception 2 lacks why"]}))["#view"]
+    assert "1 rule off:" in view and "<code>jsx-a11y/no-autofocus</code>" in view
+    assert "a dialog focuses its first field" in view and 'title="Pat, since 2026-11-28"' in view
+    assert "exception 2 lacks why" in view
+    assert "rule off" not in render(run_data(lintExceptions={"off": [], "problems": []}))["#view"]
+    assert "rule off" not in render(run_data())["#view"]  # data from before 0.2.1

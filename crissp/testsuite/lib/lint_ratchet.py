@@ -13,10 +13,16 @@ Rules, once a folder has a baseline:
 - A green run that finds fewer shrinks the baseline (a file with none left, or gone, leaves it). It never grows.
 - A run of some files only (the pre-commit hook: the staged ones) judges those and leaves the baseline as it is.
 Without a baseline every finding is red, as before.
+
+A rule can be switched off for the project, with a reason (F-153): crissp/testsuite/lint-exceptions.json,
+{"exceptions": [{"rule", "why", "by", "since"}]}, like accepted-risks.json. Its findings are not counted, every run
+says how many there were, and the dashboard lists the rules that are off. An incomplete entry is red and switches
+nothing off.
 """
 
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -115,3 +121,44 @@ def judge(
         return blocking, allowed, None
     tighter = {"files": dict(sorted(kept.items()))}
     return [], allowed, (tighter if tighter != known else None)
+
+
+# F-153: a rule switched off for this project, with why, by whom and since when (like accepted-risks.json)
+EXCEPTIONS = "crissp/testsuite/lint-exceptions.json"
+NEEDED = ("rule", "why", "by", "since")
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def exceptions(root: Path) -> tuple[list[dict], list[str]]:
+    """The project's rules switched off, and what is wrong in the file. An incomplete entry switches nothing off."""
+    path = root / EXCEPTIONS
+    if not path.is_file():
+        return [], []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as e:
+        return [], [f"{EXCEPTIONS} is not JSON: {e}"]
+    entries = data.get("exceptions") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        return [], [f'{EXCEPTIONS}: the rules switched off go in a list, "exceptions"']
+    out, problems = [], []
+    for n, entry in enumerate(entries, 1):
+        entry = entry if isinstance(entry, dict) else {}
+        missing = [k for k in NEEDED if not isinstance(entry.get(k), str) or not entry[k].strip()]
+        if missing:
+            problems.append(f"{EXCEPTIONS}: exception {n} lacks {', '.join(missing)}, so it switches nothing off")
+        elif not DATE.fullmatch(entry["since"].strip()):
+            problems.append(f"{EXCEPTIONS}: exception {n} ({entry['rule']}): since is a date, YYYY-MM-DD")
+        else:
+            out.append({k: entry[k].strip() for k in NEEDED})
+    return out, problems
+
+
+def without(findings: list[dict], off: list[dict]) -> tuple[list[dict], dict[str, int]]:
+    """The findings of the rules that are on, and how many each rule that is off had."""
+    rules = {e["rule"] for e in off}
+    dropped: dict[str, int] = {}
+    for f in findings:
+        if f["rule"] in rules:
+            dropped[f["rule"]] = dropped.get(f["rule"], 0) + 1
+    return [f for f in findings if f["rule"] not in rules], dropped

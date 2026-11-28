@@ -20,6 +20,10 @@ What 0.2.0 showed on a real project: the frontend lint now works on a project th
   only go down, like coverage only goes up: an unchanged file may keep its count of each rule, a new or changed file
   must be clean, and a green run with fewer findings shrinks the baseline. Without a baseline every finding blocks,
   as before.
+- **Switch one lint rule off, with a reason (F-153).** `crissp/testsuite/lint-exceptions.json` lists rules the
+  project switches off, each with `rule`, `why`, `by` and `since` (like `accepted-risks.json`). Their findings are
+  not counted, every run says how many there were, and the dashboard's Lint tile lists the rules that are off. An
+  incomplete entry is red and switches nothing off.
 
 ## 0.2.0 — 2026-11-28
 

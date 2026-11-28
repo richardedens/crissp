@@ -194,6 +194,14 @@ def main(
         problems += why
     root = lint_ratchet.root_of(folder, env)
     key = lint_ratchet.key_of(folder, root)
+    off, wrong = lint_ratchet.exceptions(root)  # F-153: rules switched off for this project, each with why
+    problems += wrong
+    findings, dropped = lint_ratchet.without(findings, off)
+    for e in off:
+        print(
+            f"frontend-lint: {e['rule']} is off ({lint_ratchet.EXCEPTIONS}): {e['why']} ({e['by']}, since "
+            f"{e['since']}); {dropped.get(e['rule'], 0)} not counted"
+        )
     folders = lint_ratchet.load(root)
     if "--baseline" in flags:
         return write_baseline(root, folder, key, folders, findings, problems)
