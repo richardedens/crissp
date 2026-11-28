@@ -28,7 +28,7 @@ json.dump({s: "failed" if s == fails else "passed" for s in steps}, open(out, "w
 PY
 if [ -n "${RUN_FAILS:-}" ]; then printf '✗ src/a.py:3: changed line not covered\\ncoverage gate: RED\\n' > "$R/gate.log"; exit 1; fi
 rm -f "$R/gate.log"
-""" % STEPS
+""".replace("%s", STEPS)
 SHOP = {"product": "Shop", "steps": [
     {"key": "backend", "label": "Backend", "dir": "app/backend", "run": "covered", "seconds": 40, "gate": True,
      "sources": ["app/backend/shop"]},
@@ -75,7 +75,7 @@ def door(root: Path, script: str, *args: str, **env: str) -> subprocess.Complete
     """The script itself, as the product owner starts it."""
     clean = {k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}  # the script names its own project
     return subprocess.run([str(root / "crissp" / script), *args], cwd=root, capture_output=True, text=True,
-                          env={**clean, **env}, timeout=120)
+                          env={**clean, **env}, timeout=120, check=False)
 
 
 @pytest.fixture

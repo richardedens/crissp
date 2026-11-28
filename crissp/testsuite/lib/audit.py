@@ -40,8 +40,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
-import tools  # noqa: E402
+import project
+import tools
 
 BLOCKING = ("CRITICAL", "HIGH")
 MAX_DAYS = 90

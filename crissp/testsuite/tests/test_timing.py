@@ -33,7 +33,7 @@ def pytest_run(root: Path, timing: Path, *args: str, **env: str) -> subprocess.C
     return subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "crissp_timing", *args,
                            "tests"], cwd=root, capture_output=True, text=True, timeout=120,
                           env={**clean, "PYTHONPATH": str(PLUGINS), "CRISSP_TIMING_DIR": str(timing), "STEP": "unit",
-                               "WORKERS": "2", "WORKERS_WHY": "3 CPUs, one left for the machine", **env})
+                               "WORKERS": "2", "WORKERS_WHY": "3 CPUs, one left for the machine", **env}, check=False)
 
 
 def lines(path: Path) -> list[dict]:
@@ -107,7 +107,7 @@ def test_writes_that_fail_are_dropped(tmp_path, monkeypatch):
 
 def test_a_worker_with_an_odd_name_writes_no_now_file(tmp_path, monkeypatch):
     class Config:
-        workerinput = {"workerid": "../../etc"}
+        workerinput = {"workerid": "../../etc"}  # noqa: RUF012  (a stand-in for pytest-xdist's config)
     monkeypatch.setenv("CRISSP_TIMING_DIR", str(tmp_path))
     monkeypatch.setitem(crissp_timing._now, "path", None)
     crissp_timing.pytest_configure(Config())

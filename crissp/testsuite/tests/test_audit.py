@@ -453,7 +453,7 @@ def test_the_rules_have_tests_and_the_rules_command_runs_them(monkeypatch, capsy
     for rules in audit.RULES.glob("*.yaml"):
         tests = list((audit.RULES / "tests").glob(rules.stem + ".*"))
         assert tests, f"{rules.name} has no tests"
-        ids = re.findall(r"^  - id: (\S+)", rules.read_text(), re.M)
+        ids = re.findall(r"^  - id: (\S+)", rules.read_text(), re.MULTILINE)
         text = tests[0].read_text()
         for rule in ids:  # every rule must match something and leave something alone
             assert f"ruleid: {rule}" in text and f"ok: {rule}" in text, rule

@@ -28,7 +28,7 @@ def configured(tmp_path: Path, *parts: str) -> tuple[dict, Path]:
 
 
 def test_the_testsuite_skeleton_is_a_valid_configuration(tmp_path):
-    conf, root = configured(tmp_path)
+    conf, _ = configured(tmp_path)
     assert conf["product"] == "Example"
     assert all(s["label"].startswith("CRISSP: ") for s in conf["steps"])  # what the project fills in is marked
 
@@ -45,16 +45,17 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [
         ("app/backend/", ["backend", "backend-lint", "secrets", "sast"]),
         ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast"])]
-    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
-    assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
+    assert ".githooks/" in [r["match"] for r in conf["shared"]]  # F-50: what git runs before every commit
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
+    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-34: crissp's own tools, the project's files
+    assert lint["run"] == "frontend_lint" and lint["when"] == "app/frontend/package.json"  # untouched
 
 
 def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path):
     """F-42: CVEs in the dependencies and images, misconfigurations in the Dockerfiles, the chart and Terraform; a place
     the project does not have yet is listed, not red."""
-    conf, root = configured(tmp_path)
+    conf, _ = configured(tmp_path)
     step = next(s for s in conf["steps"] if s["key"] == "audit")
     assert step["run"] == "audit run" and step["full_only"] and step["when"] == "app"
     assert conf["audit"] == {"missing": "skip", "pip": ["app/backend/requirements.txt"], "npm": ["app/frontend"],
@@ -68,7 +69,7 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
 
 def test_every_project_scans_its_git_history_for_secrets(tmp_path):
     """F-43: gitleaks over the history, in every check that touches a part; the project's own gitleaks files count."""
-    conf, root = configured(tmp_path)
+    conf, _ = configured(tmp_path)
     step = next(s for s in conf["steps"] if s["key"] == "secrets")
     assert step["run"] == "audit secrets" and not step["full_only"] and step["when"] == "app"
 
@@ -76,7 +77,7 @@ def test_every_project_scans_its_git_history_for_secrets(tmp_path):
 def test_every_project_s_code_is_scanned_for_unsafe_code(tmp_path):
     """F-44: Semgrep with crissp's rules on app/ (the project's own rules folders can be named in sast_rules), and
     ruff's Bandit rules (S) on top of the backend's own ruff configuration."""
-    conf, root = configured(tmp_path)
+    conf, _ = configured(tmp_path)
     step = next(s for s in conf["steps"] if s["key"] == "sast")
     assert step["run"] == "audit sast" and not step["full_only"] and step["when"] == "app"
     assert conf["audit"]["sast"] == ["app"]

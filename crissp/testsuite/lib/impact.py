@@ -123,14 +123,14 @@ def check_release_notes(root: Path) -> list[str]:
         log = (root / "CHANGELOG.md").read_text()
     except OSError:
         return why + ["CHANGELOG.md is missing (its top section is the release notes of VERSION)"]
-    sections = re.split(r"^## ", log, flags=re.M)[1:]
+    sections = re.split(r"^## ", log, flags=re.MULTILINE)[1:]
     if not sections:
         return why + ["CHANGELOG.md has no section (## <version> — <date or unreleased>)"]
     title, _, body = sections[0].partition("\n")
     named = SEMVER.match(title.strip())
     if not named or named.group(0) != version:
         why.append(f"CHANGELOG.md: the top section is {title.strip()!r}, it should name the version in VERSION ({version})")
-    if not re.search(r"^\s*[-*] \S", body, re.M):
+    if not re.search(r"^\s*[-*] \S", body, re.MULTILINE):
         why.append(f"CHANGELOG.md: the top section ({title.strip()}) has no bullet: say what changed")
     return why
 

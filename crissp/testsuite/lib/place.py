@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
+import project
 
 TRIES = 20  # ports tried after the asked one
 

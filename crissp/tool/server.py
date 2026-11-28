@@ -50,11 +50,11 @@ from pathlib import Path
 ROOT = Path(os.environ.get("CRISSP_ROOT") or os.getcwd()).resolve()  # the project; never this file's place
 ENGINE = Path(__file__).resolve().parent.parent  # the framework this tool belongs to: its guards, when a project has none
 PROTOCOL = "2025-06-18"
-ITEM = re.compile(r"^### (E\d+(?:-F\d+)?-\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\](?:\s+\[(\w+)\])?", re.M)
-FEATURE = re.compile(r"^## (E\d+-F\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\]", re.M)
-EPIC = re.compile(r"^# (E\d+) · (.+)$", re.M)
-HEADING = re.compile(r"^#{1,3} ", re.M)
-ROW = re.compile(r"^\|\s*(~~)?([FD]-\d+)(?:~~)?\s*\|(.*)\|\s*$", re.M)
+ITEM = re.compile(r"^### (E\d+(?:-F\d+)?-\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\](?:\s+\[(\w+)\])?", re.MULTILINE)
+FEATURE = re.compile(r"^## (E\d+-F\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\]", re.MULTILINE)
+EPIC = re.compile(r"^# (E\d+) · (.+)$", re.MULTILINE)
+HEADING = re.compile(r"^#{1,3} ", re.MULTILINE)
+ROW = re.compile(r"^\|\s*(~~)?([FD]-\d+)(?:~~)?\s*\|(.*)\|\s*$", re.MULTILINE)
 STATUSES = ("todo", "doing", "review", "done", "parked")
 SIZES = ("S", "M", "L")
 MAIN = " For the main session only: agents never edit the backlog."
@@ -64,7 +64,7 @@ RUNS = {"check-plan": ("check.sh", ["--plan"], False), "deploy-plan": ("deploy.s
 VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the one local server to answer
 PLAN_TIMEOUT = 120  # seconds a plan may take
 DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
-EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.M)
+EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.MULTILINE)
 WAIT = 300  # status with wait: seconds it waits by default (F-31) …
 WAIT_MAX = 3600  # … and at most
 WAIT_POLL = 0.5  # how often it looks while it waits
@@ -206,7 +206,7 @@ def rows(root: Path, name: str) -> list[dict]:
 
 
 def git(root: Path, *args: str) -> str:
-    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
     return done.stdout.strip() if done.returncode == 0 else ""
 
 
@@ -256,7 +256,7 @@ def backlog(root: Path, args: dict) -> str:
             m = EPIC.search(read(f))
             if m and m.group(1) == wanted:
                 own = [f'{ft["id"]} · {ft["title"]} [{ft["status"]}]' for ft in features(root) if ft["id"].startswith(wanted + "-")]
-                return "\n".join([str(f.relative_to(root)), until(read(f), m.start(), re.compile(r"^#{2,3} ", re.M)),
+                return "\n".join([str(f.relative_to(root)), until(read(f), m.start(), re.compile(r"^#{2,3} ", re.MULTILINE)),
                                   "Features:", *(own or ["none yet"])])
         for r in rows(root, "FINDINGS.md") + rows(root, "DECISIONS.md"):
             if r["id"] == wanted:
@@ -411,7 +411,7 @@ def move(root: Path, wanted: str, status: str) -> str:
     if found["status"] == "done" or "/done/" in found["file"]:
         raise ValueError(f"{wanted} is done; it does not move back")
     path = root / found["file"]
-    header = re.compile(rf"^(#{{2,3}} {re.escape(wanted)} · .+?\s+\[)(\w+)(\])", re.M)
+    header = re.compile(rf"^(#{{2,3}} {re.escape(wanted)} · .+?\s+\[)(\w+)(\])", re.MULTILINE)
     write(path, header.sub(lambda m: m.group(1) + status + m.group(3), path.read_text(), count=1))
     return f"{wanted} [{found['status']}] → [{status}], in {found['file']}"
 
@@ -425,7 +425,7 @@ def item(root: Path, args: dict) -> str:
                          "or an id and a status to move one")
     path = open_epic(root, feature_id.split("-")[0])
     text = path.read_text()
-    heading = re.search(rf"^## {re.escape(feature_id)} · ", text, re.M)
+    heading = re.search(rf"^## {re.escape(feature_id)} · ", text, re.MULTILINE)
     if heading is None:
         raise LookupError(f"{feature_id} is not a feature of {path.relative_to(root)}")
     size = str(args.get("size") or "").strip().upper()
@@ -437,7 +437,7 @@ def item(root: Path, args: dict) -> str:
             field("Depends", " ".join(str(args.get("depends") or "—").split()))]
     new = next_id(feature_id, [i["id"] for i in items(root) if i["id"].startswith(feature_id + "-")])
     block = "\n".join([f"{f'### {new} · {title}':<88} [todo] [{size}]", *body])
-    nxt = re.compile(r"^#{1,2} ", re.M).search(text, heading.end())  # the feature ends where the next feature starts
+    nxt = re.compile(r"^#{1,2} ", re.MULTILINE).search(text, heading.end())  # the feature ends where the next feature starts
     at = nxt.start() if nxt else len(text)
     write(path, text[:at].rstrip("\n") + "\n\n" + block + "\n" + ("\n" + text[at:] if nxt else ""))
     return f"{new} written to {path.relative_to(root)}"
@@ -497,7 +497,7 @@ def run(root: Path, args: dict) -> str:
     if not detached:
         try:
             done = subprocess.run([str(path), *argv], cwd=root, capture_output=True, text=True, timeout=PLAN_TIMEOUT,
-                                  stdin=subprocess.DEVNULL)
+                                  stdin=subprocess.DEVNULL, check=False)
         except subprocess.TimeoutExpired:
             raise ValueError(f"{what} took longer than {PLAN_TIMEOUT}s; run crissp/{name} {' '.join(argv)} in a terminal") from None
         return f"crissp/{name} {' '.join(argv)} (exit {done.returncode})\n" + (done.stdout + done.stderr).strip()
@@ -524,7 +524,7 @@ def status(root: Path, args: dict | None = None) -> str:
     args = args or {}
     wait, timeout = args.get("wait", False), args.get("timeout", WAIT)
     if not isinstance(wait, bool):
-        raise ValueError("wait is true or false")
+        raise ValueError("wait is true or false")  # noqa: TRY004  (a bad argument: a ValueError, like the rest)
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout < 0:
         raise ValueError(f"timeout is a number of seconds (default {WAIT}, at most {WAIT_MAX})")
     if wait:

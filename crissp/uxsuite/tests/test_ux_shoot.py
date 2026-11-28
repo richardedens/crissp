@@ -9,9 +9,10 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import PERSONAS, make_product, ux_config  # noqa: E402
+from ux_kit import PERSONAS, make_product, ux_config
 
-import ux_shoot  # noqa: E402
+# isort: split
+import ux_shoot  # ux_kit put the uxsuite on sys.path
 
 
 def test_the_plan_takes_the_walk_on_the_team_s_devices(tmp_path):

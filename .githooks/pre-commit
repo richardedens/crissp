@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# C.R.I.S.S.P.: before every commit, this project's lint steps (crissp/testsuite/suites.json: lint and *-lint), by
+# the crissp that .mcp.json pins. On when core.hooksPath is .githooks (crissp init and crissp repair set it).
+# git commit --no-verify skips it once; crissp check and CI still run the lint.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+if [ -f crissp/testsuite/lib/hook.py ]; then  # the framework's own checkout: its engine is right here
+  exec python3 crissp/testsuite/lib/hook.py
+fi
+pin="$(python3 -c 'import json; a = json.load(open(".mcp.json"))["mcpServers"]["crissp"]["args"]
+print(next(x for x in a if x.startswith("crissp==")))' 2>/dev/null)"
+if [ -n "$pin" ] && command -v crissp >/dev/null 2>&1 && [ "$(crissp --version 2>/dev/null)" = "crissp ${pin#crissp==}" ]; then
+  exec crissp hook  # the pinned crissp is installed: nothing to fetch
+fi
+if [ -n "$pin" ] && command -v uvx >/dev/null 2>&1; then
+  exec uvx "$pin" hook
+fi
+if command -v crissp >/dev/null 2>&1; then
+  exec crissp hook
+fi
+echo "crissp hook: no crissp to lint with (install uv for uvx ${pin:-crissp}, or crissp itself)." >&2
+echo "crissp hook: not committed. git commit --no-verify commits without the lint." >&2
+exit 1

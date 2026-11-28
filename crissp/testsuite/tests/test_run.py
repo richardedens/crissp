@@ -43,7 +43,7 @@ def gate_stand_in(argv, **kw):
     if argv[0] == sys.executable:
         kw["stdout"].write(" ".join(argv[1:]) + "\n")
         return subprocess.CompletedProcess(argv, 0)
-    return subprocess.run(argv, **kw)
+    return subprocess.run(argv, **kw)  # noqa: PLW1510  (a stand-in: the caller's arguments, as given)
 
 
 def results(root: Path) -> Path:
@@ -111,7 +111,7 @@ def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
            "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s", "COVERAGE_OMIT": "*/t/*",
            "COVERAGE_FAIL_UNDER": "100"}
     rc = tmp_path / "coverage-unit.rc"
-    assert subprocess.run(["bash", "-c", "covered tests -k x"], env=env).returncode == 0
+    assert subprocess.run(["bash", "-c", "covered tests -k x"], env=env, check=False).returncode == 0
     assert (tmp_path / "calls").read_text().splitlines() == [
         f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests -k x",
         f"py -m coverage combine --rcfile={rc} -q", f"py -m coverage json --rcfile={rc} -q -o C.json",
@@ -119,12 +119,12 @@ def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
     assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
                               "disable_warnings = no-data-collected\nsource = /s\nomit = */t/*\n")
     below = {**env, "FAIL_ON": f"-m coverage report --rcfile={rc} --show-missing --fail-under=100"}
-    assert subprocess.run(["bash", "-c", "covered tests"], env=below).returncode == 1  # under fail_under: red
+    assert subprocess.run(["bash", "-c", "covered tests"], env=below, check=False).returncode == 1  # under fail_under: red
     red = {**env, "FAIL_ON": f"-m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml"}
-    assert subprocess.run(["bash", "-c", "covered"], env=red).returncode == 1  # a red test is red
+    assert subprocess.run(["bash", "-c", "covered"], env=red, check=False).returncode == 1  # a red test is red
     plain = {k: v for k, v in env.items() if not k.startswith("COVERAGE_") or k == "COVERAGE_JSON"}
     (tmp_path / "calls").unlink()
-    assert subprocess.run(["bash", "-c", "covered"], env=plain).returncode == 0
+    assert subprocess.run(["bash", "-c", "covered"], env=plain, check=False).returncode == 0
     assert rc.read_text() == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
 
 
@@ -133,7 +133,7 @@ def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
     (tmp_path / "crissp/testsuite").mkdir(parents=True)
     (tmp_path / "crissp/testsuite/suites.json").write_text('{"audit": {"missing": "skip", "fs": ["app/backend"]}}')
     env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "CRISSP_ROOT": str(tmp_path)}
-    done = subprocess.run(["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path)
+    done = subprocess.run(["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path, check=False)
     assert done.returncode == 0, done.stdout + done.stderr
     assert "not there yet, not scanned: app/backend" in done.stdout
     assert (tmp_path / "crissp/testsuite/results/audit.json").is_file()
@@ -146,7 +146,7 @@ def test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwor
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n')
     (bin_ / "py").chmod(0o755)
-    done = subprocess.run(["bash", "-c", "ruff_check ."], capture_output=True, text=True,
+    done = subprocess.run(["bash", "-c", "ruff_check ."], capture_output=True, text=True, check=False,
                           env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")})
     argv = done.stdout.splitlines()
     assert argv[:5] == ["-m", "ruff", "check", "--no-cache", "--extend-select"] and argv[5] == "S" and argv[-1] == "."
@@ -160,7 +160,7 @@ def test_without_py_it_runs_the_pinned_tools_with_uv(tmp_path):
     bin_.mkdir()
     (bin_ / "uv").write_text('#!/usr/bin/env bash\necho "uv $*"\n')
     (bin_ / "uv").chmod(0o755)
-    done = subprocess.run(["bash", "-c", "py -m coverage --version"], capture_output=True, text=True,
+    done = subprocess.run(["bash", "-c", "py -m coverage --version"], capture_output=True, text=True, check=False,
                           env={"PATH": f"{bin_}:/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "TOOLS": "/t/req.txt"})
     assert done.stdout == "uv run --quiet --no-project --with-requirements /t/req.txt python -m coverage --version\n"
 
@@ -217,7 +217,7 @@ def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_cov
     env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
            "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s,/t",
            "COVERAGE_OMIT": "*/t/*", "WORKERS": "3"}
-    assert subprocess.run(["bash", "-c", "covered tests"], env=env).returncode == 0
+    assert subprocess.run(["bash", "-c", "covered tests"], env=env, check=False).returncode == 0
     rc = tmp_path / "coverage-unit.rc"
     assert (tmp_path / "calls").read_text().splitlines() == [
         f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider -n 3 --dist loadfile --junitxml=J.xml tests",
@@ -227,7 +227,7 @@ def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_cov
                               "disable_warnings = no-data-collected\nsource = /s,/t\nomit = */t/*\n")
     (tmp_path / "calls").unlink()
     one = {**env, "WORKERS": "1"}  # one worker: no xdist, coverage measured the same way
-    assert subprocess.run(["bash", "-c", "covered tests"], env=one).returncode == 0
+    assert subprocess.run(["bash", "-c", "covered tests"], env=one, check=False).returncode == 0
     assert (tmp_path / "calls").read_text().splitlines()[0] == \
         f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
 
@@ -258,7 +258,7 @@ def test_covered_loads_the_timing_plugin_when_the_run_names_it(tmp_path):  # E1-
     env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
            "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "CRISSP_PLUGINS": "/engine/plugins",
            "PYTHONPATH": "/theirs"}
-    assert subprocess.run(["bash", "-c", "covered tests"], env=env).returncode == 0
+    assert subprocess.run(["bash", "-c", "covered tests"], env=env, check=False).returncode == 0
     first = (tmp_path / "calls").read_text().splitlines()[0]
     assert "-m pytest -q -p no:cacheprovider -p crissp_timing --junitxml=J.xml tests" in first
     assert first.endswith("PYTHONPATH=/engine/plugins:/theirs")  # theirs kept, after the plugin's folder

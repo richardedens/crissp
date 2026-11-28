@@ -130,13 +130,13 @@ def test_fetch_reads_the_url(monkeypatch):
 
 
 def test_this_machine_is_asked_when_no_system_is_given(pinned, monkeypatch, tmp_path):
-    fetched, fetch = pinned
+    _, fetch = pinned
     monkeypatch.setattr(tools, "system", lambda: "linux-x86_64")
     assert tools.ensure("scanner", env(tmp_path), fetch).name == "scanner"
 
 
 def test_path_prints_where_the_tool_is(pinned, monkeypatch, tmp_path, capsys):
-    fetched, fetch = pinned
+    _, fetch = pinned
     monkeypatch.setattr(tools, "fetch", fetch)
     monkeypatch.setattr(tools, "system", lambda: "linux-x86_64")
     monkeypatch.setattr(tools.os, "environ", env(tmp_path))

@@ -799,6 +799,122 @@
    ]
   },
   {
+   "id": "workers-command-portable-test",
+   "title": "The workers' command reader is covered on every platform (F-33)",
+   "problem": "workers._command's last line ran only on macOS (sysctl, vm_stat), so on Linux, where CI runs, lib/workers.py was at 99.5% and the coverage gate was red.",
+   "fix": "The test of the real sources also runs the current Python as the command: one that prints and one that exits 3, so the output and the None for a failure are both proven on any platform.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "_command"
+    }
+   ],
+   "tests": [
+    "test_workers.py::test_the_real_sources_answer_on_this_machine"
+   ]
+  },
+  {
+   "id": "frontend-lint-own-tools",
+   "title": "The frontend is linted with crissp's own pinned tools (F-34)",
+   "problem": "The template's frontend-lint step ran the frontend's own lint script (npm run --silent lint), but crissp offered no tools or configs for it: a project's frontend lint was missing or assembled by hand, at versions that drift between projects.",
+   "fix": "crissp/testsuite/frontend-lint/ pins ESLint 9.39.5, @eslint/js, typescript-eslint 8.72.2 with TypeScript 6.0.3, eslint-plugin-react-hooks 7.1.1, eslint-plugin-jsx-a11y 6.10.2, eslint-plugin-react 7.37.5 (only react/no-danger), globals, stylelint 17.16.0 and stylelint-config-standard 40.0.0, with the lockfile and the two configs. lib/frontend_lint.py installs them once per toolkit with npm ci into crissp's cache and runs both on the step's folder with crissp's configs; the project's package.json and files are never touched. The template step runs it (steps.sh's frontend_lint), and the wheel carries the toolkit.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/package.json",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/eslint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/stylelint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "frontend_lint"
+    },
+    {
+     "file": "crissp/template/crissp/testsuite/suites.json",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_frontend_lint.py",
+    "test_template.py::test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_once_its_part_does",
+    "test_package.py::test_the_wheel_carries_the_licences_and_the_engine_but_no_project_data"
+   ]
+  },
+  {
+   "id": "own-python-lint",
+   "title": "crissp lints its own Python with the pinned ruff (F-35)",
+   "problem": "ruff was pinned in crissp/testsuite/requirements.txt, but no step of crissp's own ran it: the Python in src/, crissp/ and site/ was never linted, locally or in CI.",
+   "fix": "pyproject.toml has [tool.ruff] (Python 3.12, 120 columns, ruff's default rules plus E402, E731 and N802, which the code's noqa comments already name). suites.json has a `python-lint` step, `py -m ruff check --no-cache src crissp site` with the pinned tools, and every path rule for Python under src/, crissp/ and site/ (and pyproject.toml) brings it. CI runs it with the other quick steps.",
+   "sources": [
+    {
+     "file": "pyproject.toml",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": ""
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_python_lint.py::test_ruff_is_configured_in_pyproject_for_the_python_crissp_supports",
+    "test_python_lint.py::test_the_lint_step_runs_the_pinned_ruff_over_src_crissp_and_site",
+    "test_python_lint.py::test_every_change_to_linted_python_brings_the_lint_step",
+    "test_python_lint.py::test_ci_runs_the_lint_step"
+   ]
+  },
+  {
+   "id": "lint-before-commit",
+   "title": "git lints before every commit: .githooks/pre-commit, turned on by init and repair (F-50)",
+   "problem": "A project's lint steps only ran in crissp check and CI, after the commit was made; nothing set up a git hook, neither crissp init nor crissp repair, and this repository had none either.",
+   "fix": "The template's githooks/pre-commit becomes .githooks/pre-commit. It runs `crissp hook` (lib/hook.py: the `lint` and `*-lint` steps that are there, each in its folder with lib/steps.sh and the pinned tools, writing no results) with the crissp .mcp.json pins: the installed one when its version matches, else uvx, else crissp on PATH; in the framework's checkout its engine. crissp init and crissp repair --yes set core.hooksPath .githooks, but never over a core.hooksPath of the project's own or hooks in .git/hooks: those are said. This repository commits the same hook.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/hook.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/template/githooks/pre-commit",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_hook"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "hook_note"
+    },
+    {
+     "file": ".githooks/pre-commit",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_hook.py::test_the_pre_commit_hook_runs_the_lint_and_blocks_a_red_commit",
+    "test_hook.py::test_a_project_s_hook_runs_the_crissp_that_mcp_json_pins",
+    "test_hook.py::test_hooks_a_project_already_has_are_never_switched_off",
+    "test_repair.py::test_the_lint_hook_is_made_and_turned_on",
+    "test_repair.py::test_hooks_of_its_own_are_never_switched_off_they_are_said",
+    "test_cli.py::test_init_makes_the_lint_hook_and_turns_it_on",
+    "test_cli.py::test_init_never_switches_off_hooks_a_repository_already_has",
+    "test_package.py::test_init_makes_a_crissp_project_that_is_green"
+   ]
+  },
+  {
    "id": "pinned-scanners",
    "title": "trivy ran as whatever version a machine had on its PATH (F-42, E6-F1-01)",
    "problem": "lib/audit.py called trivy from the PATH: an old trivy, a missing one, or a replaced release (as happened to trivy's own releases in 2026) decided what was green, and two machines could disagree.",

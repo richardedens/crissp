@@ -35,6 +35,8 @@ def bring_in(root: Path) -> None:
             write(root / "crissp" / src.relative_to(repair.TEMPLATE / "crissp"), src.read_text().replace("{{PRODUCT}}", "x"))
     write(root / "crissp/CRISSP.md", (repair.ENGINE / "CRISSP.md").read_text())
     write(root / ".gitignore", (repair.TEMPLATE / "gitignore.crissp").read_text())
+    write(root / ".githooks/pre-commit", (repair.TEMPLATE / "githooks/pre-commit").read_text())
+    (root / ".githooks/pre-commit").chmod(0o755)
 
 
 def git(root: Path, *args: str) -> None:
@@ -79,7 +81,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 8" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 9" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
@@ -111,8 +113,9 @@ def test_a_project_in_place_hears_nothing_out_of_place(tmp_path, capsys):
     bring_in(root)
     write(root / "docker-compose.yml", "services: {}\n")
     git(root, "init", "-q")
+    git(root, "config", "core.hooksPath", ".githooks")  # F-50: as crissp init leaves it
     git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", "start")
+    git(root, "commit", "-q", "--no-verify", "-m", "start")
     assert repair.main([], {"CRISSP_ROOT": str(root)}) == 0
     assert capsys.readouterr().out == "crissp repair: nothing out of place.\n"
 
@@ -387,3 +390,64 @@ def test_the_vibe_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
         assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.5")]
     config.unlink()
     assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.5")]  # no config: `vibe` makes it
+
+
+def test_the_lint_hook_is_made_and_turned_on(tmp_path, capsys):
+    """F-50: a project brought in before the hook gets .githooks/pre-commit and core.hooksPath on --yes."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    (root / ".githooks/pre-commit").unlink()
+    git(root, "init", "-q")
+    assert repair.main([], {"CRISSP_ROOT": str(root)}) == 1
+    out = capsys.readouterr().out
+    assert "  git-hook " in out and ".githooks/pre-commit is not there" in out and "core.hooksPath" in out
+    assert not (root / ".githooks/pre-commit").exists()  # said, not done
+    assert repair.main(["--yes"], {"CRISSP_ROOT": str(root)}) == 0
+    hook = root / ".githooks/pre-commit"
+    assert hook.read_text() == (repair.TEMPLATE / "githooks/pre-commit").read_text() and hook.stat().st_mode & 0o111
+    assert repair.hook.state(root) == "on" and "git-hook" not in keys(root)
+
+
+def test_a_hook_file_of_the_project_is_kept_and_only_turned_on(tmp_path):
+    root = tmp_path / "shop"
+    bring_in(root)
+    (root / ".githooks/pre-commit").write_text("#!/bin/sh\necho ours\n")
+    git(root, "init", "-q")
+    (fix,) = [r for r in repair.find(root) if r.key == "git-hook"]
+    assert "not there" not in fix.what
+    fix.do()
+    assert (root / ".githooks/pre-commit").read_text() == "#!/bin/sh\necho ours\n" and repair.hook.state(root) == "on"
+
+
+def test_hooks_of_its_own_are_never_switched_off_they_are_said(tmp_path):
+    root = tmp_path / "shop"
+    bring_in(root)
+    git(root, "init", "-q")
+    write(root / ".git/hooks/pre-commit", "#!/bin/sh\n")
+    assert "git-hook" not in keys(root)
+    assert any("switch them off" in line for line in repair.needs(root))
+    (root / ".git/hooks/pre-commit").unlink()
+    git(root, "config", "core.hooksPath", ".husky")
+    assert "git-hook" not in keys(root)
+    assert any("core.hooksPath is .husky" in line for line in repair.needs(root))
+
+
+def test_without_git_the_hook_file_is_made_and_nothing_is_turned_on(tmp_path):
+    root = tmp_path / "shop"
+    bring_in(root)
+    (root / ".githooks/pre-commit").unlink()
+    (fix,) = [r for r in repair.find(root) if r.key == "git-hook"]
+    assert "core.hooksPath" not in fix.what
+    fix.do()
+    assert (root / ".githooks/pre-commit").is_file() and repair.hook.state(root) == "no-git"
+
+
+def test_the_frameworks_own_checkout_gets_the_hook_turned_on_only(tmp_path, monkeypatch):
+    """crissp's own repository commits its .githooks/pre-commit; repair only sets core.hooksPath there."""
+    monkeypatch.setattr(repair, "ENGINE", tmp_path / "eng" / "crissp")
+    write(tmp_path / "eng/crissp/uxsuite/ux_team.py", "")
+    git(tmp_path / "eng", "init", "-q")
+    (fix,) = repair.find(tmp_path / "eng")
+    assert fix.key == "git-hook" and "not there" not in fix.what
+    fix.do()
+    assert repair.hook.state(tmp_path / "eng") == "on" and not (tmp_path / "eng/.githooks").exists()

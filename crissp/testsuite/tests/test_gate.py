@@ -251,7 +251,8 @@ def lines(n: int, first: int = 1) -> str:
 
 
 def head(gate) -> str:
-    return subprocess.run(["git", "-C", str(gate.ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    return subprocess.run(["git", "-C", str(gate.ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
+                          check=False).stdout.strip()
 
 
 @pytest.fixture

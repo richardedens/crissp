@@ -122,7 +122,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802  (the name http.server calls)
+    def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path in ("/", "/workers", "/activity"):
             self.send_response(302)
@@ -145,7 +145,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.live.stamp()  # a first load gets current data too
         super().do_GET()
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/ux" or path.startswith("/ux/"):
             return self._ux("POST")

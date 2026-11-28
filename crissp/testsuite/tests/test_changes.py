@@ -124,4 +124,4 @@ def test_the_manifest_is_this_repository_s_with_its_gaps():
     data = json.loads(MANIFEST.read_text())
     assert isinstance(data["changes"], list) and len(data["gaps"]) >= 3
     text = json.dumps(data)
-    assert not re.search(r"a[e]gis|cvew[a]tch|b[r]idge|sm[a]sh|py[o]dide|w[a]ndvol|\\bF[l]ow\\b", text, re.I)
+    assert not re.search(r"a[e]gis|cvew[a]tch|b[r]idge|sm[a]sh|py[o]dide|w[a]ndvol|\\bF[l]ow\\b", text, re.IGNORECASE)

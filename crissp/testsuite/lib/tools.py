@@ -70,7 +70,7 @@ def cache(env: dict) -> Path:
 
 
 def fetch(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=TIMEOUT) as answer:  # noqa: S310 — a fixed https release URL
+    with urllib.request.urlopen(url, timeout=TIMEOUT) as answer:  # a fixed https release URL, never a value from outside
         return answer.read()
 
 

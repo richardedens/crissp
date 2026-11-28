@@ -229,7 +229,7 @@ def test_features_and_their_pbis_are_three_levels(tmp_path):
     assert srv.item(root, {**pbi, "title": "The plan", "depends": "E2-F1-01"}).startswith("E2-F1-02 ")
     assert srv.item(root, {**pbi, "feature": "E2-F2", "title": "The move"}).startswith("E2-F2-01 ")
     text = path.read_text()
-    order = [m.group(0).split(" · ")[0] for m in re.finditer(r"^#{1,3} E[\w-]+ · ", text, re.M)]
+    order = [m.group(0).split(" · ")[0] for m in re.finditer(r"^#{1,3} E[\w-]+ · ", text, re.MULTILINE)]
     assert order == ["# E2", "## E2-F1", "### E2-F1-01", "### E2-F1-02", "## E2-F2", "### E2-F2-01"]  # each PBI under its feature
     assert f"{'## E2-F1 · Detect and plan':<88} [todo]\nWhy        see what would move\n\n### E2-F1-01" in text
     block = srv.backlog(root, {"id": "E2-F1-01"}).splitlines()
@@ -241,7 +241,7 @@ def test_features_and_their_pbis_are_three_levels(tmp_path):
         "crissp/backlog/E2-repair.md", f"{'## E2-F1 · Detect and plan':<88} [todo]", "Why        see what would move", "PBIs:",
         "E2-F1-01 · Which layout a project has [todo] [S]", "E2-F1-02 · The plan [todo] [S]"]
     assert srv.backlog(root, {"id": "E2"}).splitlines() == [
-        "crissp/backlog/E2-repair.md", "# E2 · Repair\n\nWhy: the layout moved".split("\n")[0], "", "Why: the layout moved",
+        "crissp/backlog/E2-repair.md", ["# E2 · Repair", "", "Why: the layout moved"][0], "", "Why: the layout moved",
         "Features:", "E2-F1 · Detect and plan [todo]", "E2-F2 · Move [todo]"]
     srv.feature(root, {"epic": "E2", "title": "Later", "why": "w"})
     assert srv.backlog(root, {"id": "E2-F3"}).endswith("PBIs:\nnone yet")
@@ -359,11 +359,11 @@ def test_a_check_runs_in_the_background_and_status_follows_it(tmp_path):
     started = srv.run(tmp_path, {"what": "check"})
     assert started.startswith("check started: crissp/check.sh (pid ") and "log: crissp/testsuite/results/mcp/check.log" in started
     assert "Wait for its result with status (wait: true), not on the pid" in started  # F-31: the pid is no way to wait
-    text = _until(lambda: (lambda t: t if "finished" in t else None)(srv.status(tmp_path)))
+    text = _until(lambda: t if "finished" in (t := srv.status(tmp_path)) else None)
     assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
     assert "[crissp] exit" not in text  # the exit marker is read, not shown
     srv.run(tmp_path, {"what": "check-all"})
-    text = _until(lambda: (lambda t: t if "check-all · " in t and "exit 1" in t else None)(srv.status(tmp_path)))
+    text = _until(lambda: t if "check-all · " in (t := srv.status(tmp_path)) and "exit 1" in t else None)
     assert "finished, exit 1 · " in text and "(green)" not in text.split("check-all · ")[1] and "  Coverage gate: RED" in text
 
 
@@ -549,7 +549,7 @@ def test_served_is_only_this_projects_dashboard(tmp_path):
 
     def stamp(root):
         class H(http.server.BaseHTTPRequestHandler):
-            def do_GET(self):  # noqa: N802
+            def do_GET(self):
                 body = (b'<a id="sessions"></a>' if not self.path.endswith("stamp")
                         else json.dumps({"stamp": 1.0, "root": root}).encode())
                 self.send_response(200)
@@ -588,7 +588,7 @@ def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tm
     (root / "crissp/testsuite/lib/serve.py").write_text("import sys\nprint('serve', *sys.argv[1:])\n")  # never a real server
 
     class Other(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
+        def do_GET(self):
             self.send_response(200)
             self.end_headers()
             self.wfile.write(json.dumps({"stamp": 1.0, "root": "/elsewhere/shop"}).encode())
@@ -600,7 +600,7 @@ def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tm
     port = httpd.server_address[1]
     try:
         done = subprocess.run([str(root / "crissp" / "test.sh"), "--dashboard"], capture_output=True, text=True, timeout=30,
-                              env={**{k: v for k, v in srv.os.environ.items() if k != "CRISSP_ROOT"},
+                              check=False, env={**{k: v for k, v in srv.os.environ.items() if k != "CRISSP_ROOT"},
                                    "CRISSP_DASHBOARD_PORT": str(port), "CRISSP_NO_BROWSER": "1"})
     finally:
         httpd.shutdown()
@@ -626,7 +626,7 @@ def test_test_sh_names_a_port_held_by_something_else(tmp_path):
         held.listen()
         port = held.getsockname()[1]
         done = subprocess.run([str(root / "crissp" / "test.sh"), "--dashboard"], capture_output=True, text=True, timeout=30,
-                              env={**srv.os.environ, "CRISSP_DASHBOARD_PORT": str(port)})
+                              check=False, env={**srv.os.environ, "CRISSP_DASHBOARD_PORT": str(port)})
     assert done.returncode == 1 and f"Port {port} is in use" in done.stderr and "does not serve this dashboard" in done.stderr
     assert "Dashboard:" not in done.stdout  # it no longer claims an address it cannot serve
 
