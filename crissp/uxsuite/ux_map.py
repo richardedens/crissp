@@ -271,13 +271,7 @@ def capture(
         browser = pw.chromium.launch()
         found: list[tuple[str, str | None]] = []  # the laptop finds the pages; every other device opens the same ones
         for device, vp in p["devices"].items():
-            (out / device).mkdir(parents=True, exist_ok=True)
-            ctx = browser.new_context(
-                viewport={"width": vp["width"], "height": vp["height"]},
-                has_touch=vp["touch"],
-                is_mobile=vp["touch"],
-                reduced_motion="reduce",
-            )
+            ctx = ux_shoot.device_context(browser, out, device, vp)
             page = ctx.new_page()
             todo = list(found) if found else [(s, None) for s in p["start"]]
             seen = {screen_key(t[0]) for t in todo}

@@ -98,6 +98,17 @@ def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[i
     )
 
 
+def device_context(browser, out: Path, device: str, vp: dict):  # pragma: no cover — needs a real browser
+    """A browser context the size of one device, its shots folder made (ux_map's capture uses it too)."""
+    (out / device).mkdir(parents=True, exist_ok=True)
+    return browser.new_context(
+        viewport={"width": vp["width"], "height": vp["height"]},
+        has_touch=vp["touch"],
+        is_mobile=vp["touch"],
+        reduced_motion="reduce",
+    )
+
+
 def capture(
     plan_file: Path,
 ) -> None:  # pragma: no cover — drives a real browser; shoot() and plan() are tested with a stand-in
@@ -110,13 +121,7 @@ def capture(
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         for device, vp in p["devices"].items():
-            (out / device).mkdir(parents=True, exist_ok=True)
-            ctx = browser.new_context(
-                viewport={"width": vp["width"], "height": vp["height"]},
-                has_touch=vp["touch"],
-                is_mobile=vp["touch"],
-                reduced_motion="reduce",
-            )
+            ctx = device_context(browser, out, device, vp)
             page, n = ctx.new_page(), 0
             for i, step in enumerate(p["steps"], 1):
                 try:
