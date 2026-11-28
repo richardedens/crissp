@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from gitrepo import git
 
 LIB = Path(__file__).resolve().parents[1] / "lib"
 sys.path.insert(0, str(LIB))
@@ -70,9 +71,30 @@ def lint(tmp_path: Path, npm: Npm, argv: list[str] | None = None, which=lambda n
 @pytest.fixture
 def frontend(tmp_path):
     app = tmp_path / "app/frontend"
-    app.mkdir(parents=True)
+    (app / "src").mkdir(parents=True)
     (app / "package.json").write_text('{"name": "shop"}\n')
+    (app / "src/main.tsx").write_text("export const a = 1;\n")
+    (app / "src/app.css").write_text("a { color: red; }\n")
     return app
+
+
+SOURCE = ["src/main.tsx"]
+STYLE = ["src/app.css"]
+
+
+def eslint_argv(place: Path, *files: str) -> list[str]:
+    return ["--config", str(place / "eslint.config.mjs"), "--max-warnings", "0", "--no-warn-ignored", *files]
+
+
+def stylelint_argv(place: Path, *files: str) -> list[str]:
+    return [
+        "--config",
+        str(place / "stylelint.config.mjs"),
+        "--config-basedir",
+        str(place),
+        "--allow-empty-input",
+        *files,
+    ]
 
 
 def test_the_tools_are_installed_once_then_both_run_on_the_frontend_with_crissps_configs(tmp_path, frontend, capsys):
@@ -82,19 +104,8 @@ def test_the_tools_are_installed_once_then_both_run_on_the_frontend_with_crissps
     assert place.parent == tmp_path / "cache/frontend-lint"
     assert npm.calls == [
         ("npm", ["ci", "--no-audit", "--no-fund", "--loglevel=error"], place),
-        ("eslint", ["--config", str(place / "eslint.config.mjs"), "--max-warnings", "0", "."], frontend),
-        (
-            "stylelint",
-            [
-                "--config",
-                str(place / "stylelint.config.mjs"),
-                "--config-basedir",
-                str(place),
-                "--allow-empty-input",
-                "**/*.css",
-            ],
-            frontend,
-        ),
+        ("eslint", eslint_argv(place, *SOURCE), frontend),
+        ("stylelint", stylelint_argv(place, *STYLE), frontend),
     ]
     for name in ("package.json", "package-lock.json", "eslint.config.mjs", "stylelint.config.mjs"):
         assert (place / name).read_text() == (KIT / name).read_text()
@@ -103,7 +114,59 @@ def test_the_tools_are_installed_once_then_both_run_on_the_frontend_with_crissps
     assert lint(tmp_path, npm) == 0
     assert [tool for tool, _, _ in npm.calls] == ["eslint", "stylelint"]  # installed once
     assert (frontend / "package.json").read_text() == '{"name": "shop"}\n'  # the project's own files: untouched
-    assert sorted(p.name for p in frontend.iterdir()) == ["package.json"]
+    assert sorted(p.name for p in frontend.iterdir()) == ["package.json", "src"]
+
+
+def test_git_ignored_build_output_and_build_folders_are_never_linted(tmp_path, frontend):
+    """F-150: crissp's configs live in its cache, so their ignore patterns never matched a project's dist/ (stylelint
+    reads them from the config's folder): thousands of findings in minified bundles. Now the tools get the project's
+    own files only, as git lists them, without the build folders."""
+    git(tmp_path, "init", "-q")
+    for path in ("dist/assets/index.js", "dist/assets/index.css", "out/main.js", "node_modules/x/x.css", "build/b.js"):
+        (frontend / path).parent.mkdir(parents=True, exist_ok=True)
+        (frontend / path).write_text("var x\n")
+    (frontend / ".gitignore").write_text("dist/\nout/\n")
+    npm = Npm()
+    assert lint(tmp_path, npm) == 0
+    place = frontend_lint.place({"CRISSP_CACHE": str(tmp_path / "cache")})
+    assert npm.calls[1:] == [
+        ("eslint", eslint_argv(place, *SOURCE), frontend),
+        ("stylelint", stylelint_argv(place, *STYLE), frontend),
+    ]
+    for config in ("eslint.config.mjs", "stylelint.config.mjs"):
+        assert "dist" not in (KIT / config).read_text()  # no pattern that only seems to ignore it
+
+
+def test_a_frontend_without_code_or_styles_skips_that_tool_and_says_so(tmp_path, frontend, capsys):
+    (frontend / "src/main.tsx").unlink()
+    npm = Npm()
+    assert lint(tmp_path, npm) == 0
+    assert [tool for tool, _, _ in npm.calls] == ["npm", "stylelint"]
+    assert "no JavaScript or TypeScript to lint" in capsys.readouterr().out
+    (frontend / "src/app.css").unlink()
+    npm.calls.clear()
+    assert lint(tmp_path, npm) == 0 and npm.calls == []
+    assert "no CSS to lint" in capsys.readouterr().out
+
+
+def test_many_files_are_linted_in_batches_and_one_red_batch_makes_the_step_red(tmp_path, frontend, monkeypatch):
+    for n in range(30):
+        (frontend / f"src/file-{n:02}.js").write_text("export {};\n")
+    monkeypatch.setattr(frontend_lint, "LIMIT", 200)
+    npm = Npm()
+    assert lint(tmp_path, npm) == 0
+    eslint = [argv for tool, argv, _ in npm.calls if tool == "eslint"]
+    assert len(eslint) > 1
+    assert sorted(f for argv in eslint for f in argv[len(eslint_argv(Path("/p"))) :]) == sorted(
+        [*(f"src/file-{n:02}.js" for n in range(30)), *SOURCE]
+    )
+
+    class RedOnce(Npm):
+        def __call__(self, argv, cwd):
+            code = super().__call__(argv, cwd)
+            return 1 if Path(argv[0]).name == "eslint" and len(self.calls) == 2 else code
+
+    assert lint(tmp_path, RedOnce()) == 1
 
 
 def test_a_red_eslint_still_runs_stylelint_and_the_step_is_red(tmp_path, frontend):

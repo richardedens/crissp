@@ -2072,6 +2072,22 @@
    "tests": [
     "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
    ]
+  },
+  {
+   "id": "lint-skips-build-output",
+   "title": "F-150: lint and scans skip git-ignored build output",
+   "problem": "crissp's frontend lint passed its configs from crissp's cache, so stylelint's ignoreFiles and ESLint's ignores never matched a project's git-ignored dist/: thousands of findings in minified bundles. Semgrep and trivy fs looked into build folders too.",
+   "fix": "lib/sources.py lists the project's own files (git ls-files with the .gitignore, never a build folder) and frontend_lint.py hands ESLint and stylelint those files, in batches; Semgrep gets --exclude and trivy fs --skip-dirs for the build folders.",
+   "sources": [
+    "crissp/testsuite/lib/sources.py",
+    "crissp/testsuite/lib/frontend_lint.py",
+    "crissp/testsuite/lib/audit.py"
+   ],
+   "tests": [
+    "test_sources.py::test_only_the_projects_own_files_are_listed_never_its_build_output",
+    "test_frontend_lint.py::test_git_ignored_build_output_and_build_folders_are_never_linted",
+    "test_audit.py::test_unsafe_code_blocks_on_error_and_is_listed_on_warning"
+   ]
   }
  ],
  "gaps": [

@@ -2,6 +2,16 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.2.1 — unreleased
+
+What 0.2.0 showed on a real project: the frontend lint now works on a project that already has code.
+
+- **The lint and the scans skip build output (F-150).** crissp's frontend lint linted a git-ignored `dist/`
+  (thousands of findings in minified bundles): its ignore patterns were read from crissp's own cache, never from the
+  project. ESLint and stylelint now get the project's own files by name, as git lists them (every `.gitignore`
+  counts), and never a build folder (`dist`, `build`, `node_modules`, `coverage`, `.next`, `.nuxt`, `.svelte-kit`,
+  `.turbo`), even where nothing ignores it. Semgrep and `trivy fs` leave the build folders out as well.
+
 ## 0.2.0 — 2026-11-28
 
 The first minor release: crissp now lints and secures what it tests, shows where the work is in six stages, works

@@ -9,6 +9,8 @@ so another crissp's pins land beside them and never mix. Then ESLint (flat confi
 hooks, jsx-a11y, React's plugin only for react/no-danger; no warning allowed) and stylelint (its standard config, every
 *.css) run on the folder with crissp's configs. Both always run; the step is red when either is. The project's
 package.json, its node_modules and its files are never touched, and its own lint config is not read.
+The tools get the project's own files by name (lib/sources.py, F-150): what git lists (its .gitignore counts), never a
+build folder (dist, build, node_modules, .next, coverage, …). A tool with nothing to lint is skipped, and says so.
 Exit 0: both are clean; 1: a finding, no npm, no folder or a failed install; 2: wrong arguments.
 """
 
@@ -20,8 +22,14 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sources
+
 KIT = Path(__file__).resolve().parents[1] / "frontend-lint"
 FILES = ("package.json", "package-lock.json", "eslint.config.mjs", "stylelint.config.mjs")
+SCRIPTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts")  # what ESLint lints with crissp's config
+STYLES = (".css",)
+LIMIT = sources.LIMIT
 DONE = ".crissp-installed"  # written after npm ci succeeded: a failed install is tried again
 
 
@@ -80,22 +88,26 @@ def main(
     if not install(where, run, npm):
         return 1
     bin_ = where / "node_modules" / ".bin"
-    eslint = run(
-        [str(bin_ / "eslint"), "--config", str(where / "eslint.config.mjs"), "--max-warnings", "0", "."], folder
-    )
-    stylelint = run(
-        [
-            str(bin_ / "stylelint"),
-            "--config",
-            str(where / "stylelint.config.mjs"),
-            "--config-basedir",
-            str(where),
-            "--allow-empty-input",
-            "**/*.css",
-        ],
-        folder,
-    )
-    return 0 if eslint == 0 and stylelint == 0 else 1
+    eslint = [str(bin_ / "eslint"), "--config", str(where / "eslint.config.mjs"), "--max-warnings", "0"]
+    stylelint = [
+        str(bin_ / "stylelint"),
+        "--config",
+        str(where / "stylelint.config.mjs"),
+        "--config-basedir",
+        str(where),
+        "--allow-empty-input",
+    ]
+    green = True
+    for what, suffixes, argv in (
+        ("JavaScript or TypeScript", SCRIPTS, [*eslint, "--no-warn-ignored"]),
+        ("CSS", STYLES, stylelint),
+    ):
+        names = sources.files(folder, suffixes)
+        if not names:
+            print(f"frontend-lint: no {what} to lint in {folder}")
+        for batch in sources.batches(names, LIMIT):
+            green = run([*argv, *batch], folder) == 0 and green
+    return 0 if green else 1
 
 
 if __name__ == "__main__":  # pragma: no cover — run by the frontend-lint step (lib/steps.sh); main() is tested

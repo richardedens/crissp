@@ -22,7 +22,9 @@ configuration counts, as gitleaks reads it: .gitleaks.toml, .gitleaksignore (fin
 
 SAST is the pinned Semgrep, offline (metrics off, no registry), with crissp's rules (crissp/testsuite/sast: Python,
 JavaScript, TypeScript, JSX) and the rules folders the project names (sast_rules), on the code it names (sast). An
-ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts.
+ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts, and so does its .gitignore (Semgrep
+reads both); the build folders (lib/sources.py: dist, build, node_modules, …) are always left out, and trivy fs leaves
+them out too: their lock files are not the project's (F-150).
 
     python3 crissp/testsuite/lib/audit.py run       scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
     python3 crissp/testsuite/lib/audit.py secrets   the git history, into results/secrets.json, exit 1 on a secret
@@ -41,6 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import project
+import sources
 import tools
 
 BLOCKING = ("CRITICAL", "HIGH")
@@ -343,8 +346,15 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
     def trivy(sub: str) -> list[str]:
         return [trivy_bin, sub, "--quiet"]
 
+    unbuilt = [x for name in sources.BUILD for x in ("--skip-dirs", f"**/{name}")]  # F-150: no build folder's locks
     for app in fs if trivy_bin else []:
-        scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
+        scan(
+            f"trivy fs {app}",
+            [*trivy("fs"), "--scanners", "vuln", *unbuilt, "--format", "json", app],
+            root,
+            from_trivy,
+            app,
+        )
     for target in configs if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
     for image in found_images if trivy_bin else []:
@@ -483,9 +493,21 @@ def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> 
 
     if paths:
         configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
+        # F-150: never build output, also when the project's own .semgrepignore leaves Semgrep's defaults out
+        excludes = [x for name in sources.BUILD for x in ("--exclude", name)]
         _scanner(run, findings, problems, scanned)(
             f"semgrep {' '.join(paths)}",
-            semgrep("scan", *configs, "--json", "--metrics", "off", "--disable-version-check", "--quiet", *paths),
+            semgrep(
+                "scan",
+                *configs,
+                *excludes,
+                "--json",
+                "--metrics",
+                "off",
+                "--disable-version-check",
+                "--quiet",
+                *paths,
+            ),
             root,
             parse,
             "code",
