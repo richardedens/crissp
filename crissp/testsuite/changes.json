@@ -723,7 +723,7 @@
     }
    ],
    "tests": [
-    "test_cli.py::test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored",
+    "test_cli.py::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
     "test_package.py::test_init_makes_a_crissp_project_that_is_green"
    ]
   },

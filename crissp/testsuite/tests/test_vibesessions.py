@@ -54,6 +54,10 @@ def world(tmp_path: Path) -> tuple[Path, Path]:
     session(home, "v1", repo, [
         said("Make crissp Vibe compliant", 1),
         called("read_file", {"path": str(repo / "crissp" / "CLAUDE.md")}),
+        {"type": "core_input", "payload": {"input": {"command": {"type": "tool_results", "content": []}}}},
+        {"type": "projection_delta", "payload": {"delta": []}},
+        {"type": "action_result", "payload": {"result": {"result": {"parts": [
+            {"type": "tool_call", "name": "glob", "arguments_json": "not json"}]}}}},
         said("and the activity page", 2),
         called("bash", {"command": "make TOKEN=abc123secret\nmore"}, history=343_000),
     ], NOW - 30, title="Vibe compliance")

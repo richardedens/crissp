@@ -515,3 +515,14 @@ def test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server(tmp_p
     assert server["command"] == sys.executable
     assert server["args"] == ["-I", str(tmp_path / "eng/crissp/tool/server.py")]
     assert not any("vibe" in n for n in repair.needs(tmp_path / "eng"))
+
+
+def test_without_git_a_vibe_config_is_not_said_to_be_in_git(tmp_path, monkeypatch):
+    root = tmp_path / "p"
+    bring_in(root)
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+
+    def no_git(*args, **kwargs):
+        raise OSError("no git")
+    monkeypatch.setattr(repair.subprocess, "run", no_git)
+    assert repair.vibe_needs(root) == []

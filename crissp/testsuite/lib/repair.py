@@ -330,11 +330,9 @@ def fix_vibe_pin(root: Path, version: str | None) -> Repair | None:
 
 
 def only_crissp(text: str) -> bool:
-    """F-100: a .vibe/config.toml that holds nothing but the crissp server, as crissp wrote it: safe to write anew."""
-    try:
-        data = tomllib.loads(text)
-    except tomllib.TOMLDecodeError:
-        return False
+    """F-100: a .vibe/config.toml that holds nothing but the crissp server, as crissp wrote it: safe to write anew.
+    Asked only of a config vibe.pinned could read."""
+    data = tomllib.loads(text)
     servers = data.get("mcp_servers")
     return set(data) == {"mcp_servers"} and isinstance(servers, list) and len(servers) == 1 \
         and isinstance(servers[0], dict) and servers[0].get("name") == "crissp"
