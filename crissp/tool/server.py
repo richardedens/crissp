@@ -5,8 +5,8 @@ writes the same files people read (crissp/backlog/, VERSION, the release certifi
 than the repository says, and what it writes is plain Markdown in the backlog's own format, reviewed like any change.
 
 Tools
-- brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the number of open
-            findings. Small enough to load at the start of every session.
+- brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the
+            number of open findings. Small enough to load at the start of every session.
 - backlog   exactly what is asked: one finding, decision, epic, feature or PBI by its id (F-12, D-05, E8, E8-F1,
             E8-F1-01), the features and PBIs with a status, or the open findings or decisions.
 - finding   writes a new finding (the next F-number) into FINDINGS.md.
@@ -211,7 +211,8 @@ TOOLS = [
         "name": "run",
         "description": "Start a check of this repository: check (tests what changed since the last green state) or "
         "check-all (the full run; the product owner's to start unless they asked) in the background, then "
-        "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: check-plan (what check would run and how long), "
+        "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: "
+        "check-plan (what check would run and how long), "
         "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
         "waits). It never deploys and never starts a UX round: those stay with the product owner. Commit "
         "first: the checks test what is committed.",

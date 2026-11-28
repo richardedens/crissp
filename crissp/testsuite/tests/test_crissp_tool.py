@@ -226,8 +226,8 @@ def test_a_decision_is_asked_and_then_taken(tmp_path):
     ask = {"question": "Version scheme?", "options": "a) semver · b) dates", "recommendation": "**a**"}
     assert srv.decision(root, ask) == "D-05 written to crissp/backlog/DECISIONS.md"
     assert (
-        "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n| D-05 | Version scheme? | a) semver · b) dates | **a** |\n\n## Taken"
-        in path.read_text()
+        "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n"
+        "| D-05 | Version scheme? | a) semver · b) dates | **a** |\n\n## Taken" in path.read_text()
     )
     assert (
         srv.decision(root, {"id": "d-04", "decision": "A read-only ServiceAccount.", "date": "2026-10-24"})
@@ -280,7 +280,8 @@ def test_an_epic_gets_its_own_file_under_the_next_number(tmp_path):
         and max(map(len, text.splitlines())) <= 120
     )
     assert (
-        "| [E1-quality.md](E1-quality.md) | Quality |\n| [E2-repair-older-c-r-i-s-s-p-projects.md](E2-repair-older-c-r-i-s-s-p-projects.md)"
+        "| [E1-quality.md](E1-quality.md) | Quality |\n"
+        "| [E2-repair-older-c-r-i-s-s-p-projects.md](E2-repair-older-c-r-i-s-s-p-projects.md)"
         " | Repair: older C.R.I.S.S.P. projects! |\n\n## How" in (b / "README.md").read_text()
     )
     assert srv.backlog(root, {"id": "e2"}).splitlines()[-2:] == ["Features:", "none yet"]

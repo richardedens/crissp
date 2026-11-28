@@ -151,7 +151,7 @@ def _stand_in(monkeypatch, answers: dict[str, subprocess.CompletedProcess]) -> l
         if cmd[0] == "git":
             return real(cmd, **kw)
         calls.append(cmd)
-        name = "pylint" if "pylint" in cmd else "ruff"
+        name = "pylint" if "pylint" in cmd else "ruff format" if "format" in cmd else "ruff"
         return answers.get(name) or subprocess.CompletedProcess(cmd, 0, "", "")
 
     monkeypatch.setattr(pl.subprocess, "run", run)
@@ -195,6 +195,7 @@ def test_the_step_is_clean_or_names_every_finding(tmp_path, monkeypatch, capsys)
     assert pl.main({"CRISSP_ROOT": str(root)}) == 0
     assert "python-lint: clean" in capsys.readouterr().out
     assert calls[0] == [sys.executable, "-m", "ruff", "check", "--no-cache", "--quiet", "src", "crissp", "site"]
+    assert calls[1] == [sys.executable, "-m", "ruff", "format", "--check", "--no-cache", "src", "crissp", "site"]
     (root / "crissp/tool/server.py").write_text("import requests\n")
     _stand_in(monkeypatch, {"ruff": subprocess.CompletedProcess([], 1, "crissp/tool/server.py:1:1: F401 unused\n", "")})
     monkeypatch.chdir(root)
@@ -230,3 +231,19 @@ def test_an_editor_writes_files_the_way_the_checks_hold_them():
     assert int(every["max_line_length"]) == ruff["line-length"] and conf["*.py"]["indent_size"] == "4"
     assert conf["*.json"]["indent_size"] == "1" and conf["*.md"]["trim_trailing_whitespace"] == "false"
     assert impact.classify(".editorconfig", _conf()) == ("nothing", "")
+
+
+def test_the_python_has_one_layout_checked_and_blame_skips_the_layout_commit():
+    """F-97: crissp's Python had no layout standard (each file as its author typed it, lines up to 300 long). It was
+    formatted once with ruff format; the step checks the layout (ruff format --check) and the line length (E501, 130 for
+    a docstring or message), and git blame skips the layout commit (.git-blame-ignore-revs, GitHub reads it too)."""
+    lint = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
+    assert "E501" not in lint.get("ignore", []) and lint["pycodestyle"]["max-line-length"] == 130
+    assert pl.FORMAT == ("-m", "ruff", "format", "--check", "--no-cache")
+    revs = [line for line in (ROOT / ".git-blame-ignore-revs").read_text().splitlines() if line and line[0] != "#"]
+    assert revs and all(re.fullmatch(r"[0-9a-f]{40}", r) for r in revs)
+    for rev in revs:
+        subject = subprocess.run(
+            ["git", "log", "-1", "--format=%s", rev], cwd=ROOT, capture_output=True, text=True, check=False
+        ).stdout
+        assert subject in ("", "F-97: ruff format, once, over crissp's own Python (layout only)\n"), rev  # "": shallow

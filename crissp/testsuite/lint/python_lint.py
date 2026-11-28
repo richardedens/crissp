@@ -4,7 +4,7 @@
 
 Run in crissp's own checkout (CRISSP_ROOT, else the current directory). Three checks, each finding named:
 - ruff check over src/, crissp/ and site/, with the rules in pyproject.toml ([tool.ruff]; ruff pinned in
-  crissp/testsuite/requirements.txt)
+  crissp/testsuite/requirements.txt), and ruff format --check: the one layout (F-97)
 - the engine runs on the Python standard library only: an AST scan of every import (one inside a function too) in the
   runtime code fails on anything that is not the standard library, the crissp package or one of the engine's own
   modules. Playwright, a pinned tool, is allowed in ux_shoot.py alone: it imports it in the function that re-runs under
@@ -29,6 +29,7 @@ SKIP = {"__pycache__", "results", "tests", "package_tests", "pytest_plugin"}  # 
 EXCLUDED = ("crissp/testsuite/sast/tests/",)  # unsafe code on purpose, as pyproject.toml's extend-exclude says
 LAZY = {"crissp/uxsuite/ux_shoot.py": {"playwright"}}
 RUFF = ("-m", "ruff", "check", "--no-cache", "--quiet")
+FORMAT = ("-m", "ruff", "format", "--check", "--no-cache")  # prints "Would reformat: <file>"
 PYLINT = ("pylint", "--rcfile=pyproject.toml")
 
 
@@ -84,15 +85,19 @@ def duplicates(root: Path) -> list[str]:
 
 
 def check(root: Path) -> list[str]:
-    """Every finding: ruff's rules, imports outside the standard library, duplicate code."""
-    return tool("ruff", [sys.executable, *RUFF, *LINTED], root) + foreign_imports(root) + duplicates(root)
+    """Every finding: ruff's rules and layout, imports outside the standard library, duplicate code."""
+    rules = tool("ruff", [sys.executable, *RUFF, *LINTED], root)
+    layout = tool("ruff format", [sys.executable, *FORMAT, *LINTED], root)
+    return rules + layout + foreign_imports(root) + duplicates(root)
 
 
 def main(env: dict) -> int:
     root = Path(env.get("CRISSP_ROOT") or Path.cwd())
     problems = check(root)
     if not problems:
-        print("python-lint: clean (ruff with pyproject.toml's rules, the standard library only, no duplicate code)")
+        print(
+            "python-lint: clean (ruff's rules and layout from pyproject.toml, the standard library only, no duplicates)"
+        )
         return 0
     print(f"python-lint: {len(problems)} finding(s):")
     print("\n".join(f"  {p}" for p in problems))

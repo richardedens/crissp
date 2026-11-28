@@ -29,9 +29,10 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
                folder is added to the trusted list (never removed; a folder marked untrusted, or a file crissp does
                not know, is left as it is: lib/vibe.py); with no Vibe home only the config is made
 
-And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no docker-compose.yml (nothing runs for the UX suite to walk);
-a move whose place is taken. It never deletes, never overwrites what a project wrote (only the spots named above),
-never changes the backlog's content and never commits. The framework's own repository is left as it is.
+And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no
+docker-compose.yml (nothing runs for the UX suite to walk); a move whose place is taken. It never deletes, never
+overwrites what a project wrote (only the spots named above), never changes the backlog's content and never commits.
+The framework's own repository is left as it is.
 Exit 0: nothing left to say, or --yes put it in place; 1: something is out of place or needs you; 2: wrong arguments.
 """
 

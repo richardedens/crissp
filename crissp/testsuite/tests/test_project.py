@@ -198,7 +198,10 @@ def test_the_guards_speak_the_crissp_command_when_they_run_as_it():
     """F-04: run by the `crissp` command (CRISSP_COMMAND), a guard names `crissp check-all`, not a script path."""
     import io
 
-    said = "Run crissp/check-all.sh, then crissp/check.sh; crissp/deploy.sh --cluster; crissp/ux.sh --shoot w; crissp/test.sh --dashboard"
+    said = (
+        "Run crissp/check-all.sh, then crissp/check.sh; crissp/deploy.sh --cluster; crissp/ux.sh --shoot w; "
+        "crissp/test.sh --dashboard"
+    )
     assert project.speak(said, {}) == said  # in a repository that carries the scripts: as it is
     assert project.speak(said, {"CRISSP_COMMAND": "crissp"}) == (
         "Run crissp check-all, then crissp check; crissp deploy --cluster; crissp ux --shoot w; crissp dashboard"

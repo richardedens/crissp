@@ -2,8 +2,8 @@
 
     python3 crissp/testsuite/lib/gate.py                      check the last run against the baseline; raise the baseline where
                                                        coverage went up (the ratchet); exit 1 on any drop
-    python3 crissp/testsuite/lib/gate.py --suites backend     only the suites that ran (crissp/check.sh runs what a change touches);
-                                                       the others keep their baseline as it is
+    python3 crissp/testsuite/lib/gate.py --suites backend     only the suites that ran (crissp/check.sh runs what a
+                                                       change touches); the others keep their baseline as it is
     python3 crissp/testsuite/lib/gate.py --accept "reason"    accept the current numbers as the new baseline, also where they went
                                                        down (e.g. tested code removed); the reason is kept in the baseline
 
@@ -24,7 +24,8 @@ Rules
   The changed lines come from `git diff -U0 -M <commit>` against the checked-out tree, the code coverage measured (in
   crissp/check.sh and crissp/check-all.sh that is exactly HEAD: they only run on committed code).
 - Only a green run (or --accept with a reason) moves the baseline: its numbers, and (when every suite was checked) its
-  commit; a run that moves no number leaves the file as it is. A run of some suites keeps the commit, so the next diff rule looks back at least as far: stricter, never laxer.
+  commit; a run that moves no number leaves the file as it is. A run of some suites keeps the commit, so the next diff
+  rule looks back at least as far: stricter, never laxer.
 
 Writes results/gate.json (everything above, for whoever reads it) and results/gate.log (what it printed).
 """
@@ -308,8 +309,9 @@ def check(accept_reason: str | None = None, suites: list[str] | None = None) -> 
         if commit:
             moved["commit"] = commit  # the diff rule of the next run starts here
         # Only what moves is written: no baseline yet, an acceptance, a number that changed, or a commit the diff rule
-        # needs (none recorded yet, or one this checkout no longer knows). A run that moves no number keeps the file as it is (its older commit makes the next diff rule look back
-        # further: stricter, never laxer), so a green run never asks for a commit that only records a hash.
+        # needs (none recorded yet, or one this checkout no longer knows). A run that moves no number keeps the file as
+        # it is (its older commit makes the next diff rule look back further: stricter, never laxer), so a green run
+        # never asks for a commit that only records a hash.
         if (
             not BASELINE.exists()
             or accept_reason

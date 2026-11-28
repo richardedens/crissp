@@ -62,7 +62,8 @@ def _write(path: Path, text: str) -> Path:
 
 API_XML = """<testsuites><testsuite>
 <testcase classname="tests.test_billing" name="test_prorated" time="0.12345"/>
-<testcase classname="tests.test_billing" name="test_refused" time="0.5"><failure message="assert 403 == 200">long trace</failure></testcase>
+<testcase classname="tests.test_billing" name="test_refused" time="0.5">
+<failure message="assert 403 == 200">long trace</failure></testcase>
 <testcase classname="tests.test_billing" name="test_param[a]" time="0.1"><error message="boom"/></testcase>
 <testcase classname="tests.test_billing" name="test_later"><skipped message="not today"/></testcase>
 <testcase classname="tests.test_broken" name="test_x" time="1"/>
@@ -181,7 +182,8 @@ def test_coverage_per_file_and_in_total(collect):
 def test_the_code_of_a_fix_is_shown_from_its_symbol(collect):
     _write(
         collect.ROOT / "shop" / "x.py",
-        "import os\n\n\ndef fixed(a):\n    if a:\n        return (\n            1\n        )\n    return 2\n\n\ndef other():\n    pass\n",
+        "import os\n\n\ndef fixed(a):\n    if a:\n        return (\n            1\n        )\n    return 2\n\n\n"
+        "def other():\n    pass\n",
     )
     found = collect.locate("shop/x.py", "def fixed")
     assert (
@@ -516,7 +518,8 @@ def test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool
     _write(
         b / "E8-repair.md",
         "# E8 · Repair\n\nWhy: w\n\n## E8-F1 · Detect   [todo]\nWhy        y\n\n"
-        "### E8-F1-01 · Layout   [review] [S]\nWhy        z\nDepends    UX\n           proposal `home#v2` (approved 2026-11-05)\n\n## E8-F2 · Move   [todo]\nWhy        v\n",
+        "### E8-F1-01 · Layout   [review] [S]\nWhy        z\nDepends    UX\n"
+        "           proposal `home#v2` (approved 2026-11-05)\n\n## E8-F2 · Move   [todo]\nWhy        v\n",
     )
     _write(b / "done" / "E0-baseline.md", "# E0 · Baseline\n\n### E0-01 · All there   [done] [S]\n")
     _write(b / "notes.md", "not an epic\n")

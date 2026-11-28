@@ -291,7 +291,10 @@ def kpi(ring_: str, label: str, value: str, sub: str) -> str:
 
 
 def plain(label: str, value: str, sub: str) -> str:
-    return f'<div class="card kpi"><div class=l>{html.escape(label)}</div><div class=v>{value}</div><div class=s>{html.escape(sub)}</div></div>'
+    return (
+        f'<div class="card kpi"><div class=l>{html.escape(label)}</div><div class=v>{value}</div>'
+        f"<div class=s>{html.escape(sub)}</div></div>"
+    )
 
 
 def pct(a: float, b: float) -> float:
@@ -354,8 +357,10 @@ def bars(qs: list[dict], limit: int = 8) -> str:
     most = top[0]["tokens"]
     rows = "".join(
         f'<div title="{html.escape(words(q["tokens"]))} tokens · {len(q["trips"])} round trips"><p class=lbl><b>#{q["n"]}</b> '
-        f'{html.escape(q["asked"][:110])}</p><div class=row><div class=bar style="--c:var({"--amber" if q["start"] > LONG else "--green"})">'
-        f'<i style="width:{max(1, round(100 * q["tokens"] / most))}%"></i></div><span class=v>{words(q["tokens"])}</span></div></div>'
+        f"{html.escape(q['asked'][:110])}</p><div class=row>"
+        f'<div class=bar style="--c:var({"--amber" if q["start"] > LONG else "--green"})">'
+        f'<i style="width:{max(1, round(100 * q["tokens"] / most))}%"></i></div>'
+        f"<span class=v>{words(q['tokens'])}</span></div></div>"
         for q in top
     )
     return f'<div class="card bars">{rows}</div>'
@@ -395,7 +400,8 @@ def recs_list(recs: list[tuple[str, str]]) -> str:
     return (
         "<ol class=recs>"
         + "".join(
-            f"<li class=card><span class=n>{i}</span><div><h3>{html.escape(a)}</h3><p><b>Because:</b> {html.escape(f)}</p></div></li>"
+            f"<li class=card><span class=n>{i}</span><div><h3>{html.escape(a)}</h3>"
+            f"<p><b>Because:</b> {html.escape(f)}</p></div></li>"
             for i, (a, f) in enumerate(recs, 1)
         )
         + "</ol>"
@@ -420,7 +426,8 @@ def table(qs: list[dict]) -> str:
         f"<tr><td class=num>{q['n']}</td><td class=asked>{html.escape(q['asked'][:180])}"
         + (' <span class="badge missing">long history</span>' if q["start"] > LONG else "")
         + (' <span class="badge area">compacted</span>' if q["compacted"] else "")
-        + f"</td><td class=num>{words(q['tokens'])}</td><td class=num>{len(q['trips'])}</td><td class=num>{words(q['start'])}</td>"
+        + f"</td><td class=num>{words(q['tokens'])}</td><td class=num>{len(q['trips'])}</td>"
+        f"<td class=num>{words(q['start'])}</td>"
         f"<td class=muted>{html.escape(next(iter(q['grew_by']), '—'))}</td><td class=num>{len(q['changed'])}</td></tr>"
         for q in qs
     )
@@ -446,7 +453,8 @@ def proof(requests: list[dict], items: dict[str, list[str]], costs: dict[str, in
     ws = compare(requests, items, costs, listed)
     rows = "".join(
         f'<tr><td><b>{html.escape(w["name"])}</b><div class="muted small">{html.escape(w["what"])}</div></td>'
-        f"<td>{html.escape(w['since'][:10]) or 'the start'}</td><td class=num>{w['requests']}</td><td class=num>{words(w['median'])}</td>"
+        f"<td>{html.escape(w['since'][:10]) or 'the start'}</td><td class=num>{w['requests']}</td>"
+        f"<td class=num>{words(w['median'])}</td>"
         f"<td class=num>{words(w['start'])}</td><td class=num>{w['trips']:g}</td><td class=num>{w['long']}</td>"
         f"<td class=num>{f'{w["right"]} of {w["accepted"]}' if w['accepted'] else '—'}</td></tr>"
         for w in ws

@@ -27,7 +27,9 @@ import json, sys
 out, fails, steps = sys.argv[1], sys.argv[2], sys.argv[3:]
 json.dump({s: "failed" if s == fails else "passed" for s in steps}, open(out, "w"))
 PY
-if [ -n "${RUN_FAILS:-}" ]; then printf '✗ src/a.py:3: changed line not covered\\ncoverage gate: RED\\n' > "$R/gate.log"; exit 1; fi
+if [ -n "${RUN_FAILS:-}" ]; then
+  printf '✗ src/a.py:3: changed line not covered\\ncoverage gate: RED\\n' > "$R/gate.log"; exit 1
+fi
 rm -f "$R/gate.log"
 """.replace("%s", STEPS)
 SHOP = {

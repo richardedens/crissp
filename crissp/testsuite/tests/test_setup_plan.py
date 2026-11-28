@@ -42,7 +42,8 @@ def shop(tmp_path):
     app.mkdir(parents=True)
     (app / "requirements.txt").write_text("fastapi==1.0\n")
     (app / "requirements-dev.txt").write_text(
-        "-r requirements.txt  # the app\n# a comment\n-r ../../crissp/testsuite/requirements.txt\n--requirement requirements.txt\n"
+        "-r requirements.txt  # the app\n# a comment\n-r ../../crissp/testsuite/requirements.txt\n"
+        "--requirement requirements.txt\n"
     )
     (root / "app/frontend").mkdir(parents=True)
     (root / "app/frontend/package-lock.json").write_text("{}")

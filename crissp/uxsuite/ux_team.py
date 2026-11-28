@@ -348,7 +348,8 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 1. design — one designer agent (description "design") writes
    - {vdir}/proposal.json: {{"title", "summary" (three sentences), "focus_answer" (how the focus was handled),
      "changes": [{{"what", "why", "who_asked": [persona keys], "priority": "must|should|could"}}], "left_out":
-     [{{"what", "why"}}], "open_questions": [], "principles": [{{"rule", "how"}}] (per rule of rules.md, how the design meets it)}};
+     [{{"what", "why"}}], "open_questions": [], "principles": [{{"rule", "how"}}] (per rule of rules.md, how the design
+     meets it)}};
    - {vdir}/mockup.html: the walk's main screen as it would look after the changes: ONE self-contained HTML file (inline
      CSS and JS, no external URL, no web font), at the laptop size (1440 wide), in both themes (light by default, dark
      under @media (prefers-color-scheme: dark) and :root[data-theme="dark"]; every colour a token), in the product's own

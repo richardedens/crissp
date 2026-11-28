@@ -1451,6 +1451,31 @@
     "test_lint::test_the_step_lints_every_css_file_of_this_repository_with_stylelint",
     "test_lint::test_this_repository_has_a_lint_step_with_its_own_dev_only_tools"
    ]
+  },
+  {
+   "id": "one-python-layout",
+   "title": "crissp's Python has one layout, checked (F-97)",
+   "problem": "Nothing set or checked how crissp's Python is laid out: lines ran to 315 characters and E501 was off. Laid out, four test modules showed the same git helper and three guards the same script block.",
+   "fix": "ruff format ran once over src/, crissp/ and site/ in a commit of its own, listed in .git-blame-ignore-revs. python_lint.py adds ruff format --check; E501 is on (130 for a docstring or message, code at 120). project.script() and tests/gitrepo.py hold the copied blocks once; three multi-line lambdas became functions so the layout keeps their meaning.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "FORMAT = "
+    },
+    {
+     "file": "crissp/testsuite/lib/project.py",
+     "symbol": "def script("
+    },
+    {
+     "file": ".git-blame-ignore-revs",
+     "symbol": "F-97"
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_the_python_has_one_layout_checked_and_blame_skips_the_layout_commit",
+    "test_python_lint::test_the_step_is_clean_or_names_every_finding",
+    "test_project::test_a_guard_runs_as_a_script_speaking_and_exits_with_mains_answer"
+   ]
   }
  ],
  "gaps": [

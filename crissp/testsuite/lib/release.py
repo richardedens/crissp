@@ -1,7 +1,8 @@
 """The release certificate: nothing is deployed that was not entirely tested, exactly as it is.
 
-A full run (crissp/check-all.sh: every step of the project's suites, crissp/testsuite/suites.json) writes crissp/testsuite/results/release.json: the commit it tested,
-whether tracked code had uncommitted changes, whether the code changed while it ran, and every step's result.
+A full run (crissp/check-all.sh: every step of the project's suites, crissp/testsuite/suites.json) writes
+crissp/testsuite/results/release.json: the commit it tested, whether tracked code had uncommitted changes, whether
+the code changed while it ran, and every step's result.
 deploy.sh refuses unless that certificate is green, at most 7 days old, and about exactly the code being deployed: HEAD
 is the certified commit and nothing tracked is changed. The one difference allowed is the coverage baseline the run
 raises itself (crissp/testsuite/coverage-baseline.json).
@@ -11,11 +12,12 @@ raises itself (crissp/testsuite/coverage-baseline.json).
     python3 crissp/testsuite/lib/release.py finish           after the run: write release.json (a red run keeps the last
                                                       green one as release-previous.json, for its older commit only)
     python3 crissp/testsuite/lib/release.py check [--max-age-hours 168]   for deploy.sh: exit 1 with the reasons when not allowed
-    python3 crissp/testsuite/lib/release.py advance <ran.json>   after a green crissp/check.sh: move the certificate to HEAD, if allowed
+    python3 crissp/testsuite/lib/release.py advance <ran.json>   after a green crissp/check.sh: move the certificate
+                                                      to HEAD, if allowed
 
-crissp/check.sh tests only what changed since the certificate's commit (crissp/testsuite/lib/impact.py decides what that is) and
-then advances the certificate to this commit. The full run stays the foundation: a deploy needs the last full run to be
-at most 7 days old, and every change since covered by a green crissp/check.sh.
+crissp/check.sh tests only what changed since the certificate's commit (crissp/testsuite/lib/impact.py decides what
+that is) and then advances the certificate to this commit. The full run stays the foundation: a deploy needs the last
+full run to be at most 7 days old, and every change since covered by a green crissp/check.sh.
 """
 
 import hashlib
