@@ -348,7 +348,8 @@ def test_a_secret_in_the_history_blocks_and_its_value_is_never_kept_or_said(repo
     assert report["scanned"] == ["gitleaks git history"]
     said = json.dumps(report) + audit.render(report)
     assert "ghp_0123" not in said and "TOKEN =" not in said  # where it is, never what it is
-    assert "rotate" in audit.render(report) and ".gitleaksignore" in audit.render(report)
+    assert "rotate" in audit.render(report) and ".gitleaks.toml" in audit.render(report)
+    assert "never by its commit" in audit.render(report)  # a fingerprint misses in a shallow clone (F-51)
     (argv, cwd), = runner.calls
     assert argv[:2] == ["/cache/tools/gitleaks", "git"] and "--redact" in argv and cwd == repo
     assert argv[argv.index("--report-path") + 1] == "-" and argv[-1] == "."

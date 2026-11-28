@@ -1,3 +1,0 @@
-# gitleaks (crissp/testsuite/lib/audit.py secrets): findings that are no secret, by fingerprint, each with why.
-# A made-up value in a test of the cluster plan's secret rules (minLength): never a real key (it came in with 0.1.0).
-148cf913e018d7d526f4614a96d00fb7f5a33546:crissp/testsuite/tests/test_cluster_plan.py:generic-api-key:62

@@ -22,8 +22,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit
   and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
   It runs in `crissp check` for every change under `app/`. The project's own `.gitleaks.toml`, `.gitleaksignore` and
-  `gitleaks:allow` count; a finding that is no secret goes into `.gitleaksignore` by its fingerprint (from
-  `crissp/testsuite/results/secrets.json`). A step runs it as `audit secrets`.
+  `gitleaks:allow` count; a finding that is no secret is best allowed in `.gitleaks.toml` by its file
+  and value, since a `.gitleaksignore` fingerprint names a commit and misses in a shallow clone (F-51). A step runs it as `audit secrets`.
 - **Every project is audited in its full run (F-42).** `crissp init` now gives a project an `audit` step (full run
   only, once `app/` exists): pip-audit of `app/backend/requirements.txt`, npm audit of `app/frontend`, trivy for the
   dependencies, the Dockerfiles, the Helm chart, Terraform and the images the compose file and the chart name. A
