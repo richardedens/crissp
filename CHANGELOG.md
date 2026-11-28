@@ -4,6 +4,12 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Every project is audited in its full run (F-42).** `crissp init` now gives a project an `audit` step (full run
+  only, once `app/` exists): pip-audit of `app/backend/requirements.txt`, npm audit of `app/frontend`, trivy for the
+  dependencies, the Dockerfiles, the Helm chart, Terraform and the images the compose file and the chart name. A
+  place the project does not have yet is listed as "not there yet", not red (`"missing": "skip"` in `suites.json`'s
+  `audit`). Projects brought in earlier can copy the step and the `audit` section from the template. A step runs it
+  as `audit run`.
 - **The scanners are pinned, and checked before they run (F-42).** The audit no longer runs whatever `trivy` a machine
   has on its `PATH`: crissp fetches trivy 0.76.2 (and, for the new secrets step, gitleaks 8.30.1) once from the
   release, checks it against the SHA-256 crissp ships, and keeps it in its cache (`CRISSP_CACHE`, else

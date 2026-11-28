@@ -271,9 +271,38 @@ def test_an_audit_with_nothing_to_scan_is_a_problem_never_a_pass(tmp_path):
     assert audit.own_images(tmp_path, {"own_images": {"values": "missing.yaml", "parts": ["x"]}}) == []
 
 
-def test_this_repository_audits_its_pinned_tools():
+def test_this_repository_audits_its_pinned_tools_and_its_chart():
     conf = audit.project.load(LIB.parents[2])["audit"]
-    assert conf == {"pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt"]}
+    assert conf == {"pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt"],
+                    "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"]}
+
+
+SKIP = {**CONF, "missing": "skip"}
+
+
+def test_a_place_the_project_does_not_have_yet_is_said_not_red(repo):
+    """The template names the default places (D-02); a project that has only some of them is audited on those."""
+    (repo / "app/frontend/package-lock.json").unlink()
+    (repo / "app/backend/requirements.txt").unlink()
+    runner = Runner(CLEAN)
+    report = audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf={**SKIP, "fs": ["app/backend", "app/web"],
+                                                                                  "config": ["helm/shop", "helm/none"]})
+    assert report["problems"] == []
+    assert report["absent"] == ["app/backend/requirements.txt", "app/frontend/package-lock.json", "app/web", "helm/none"]
+    assert "pip-audit" not in " ".join(report["scanned"]) and "trivy fs app/backend" in report["scanned"]
+    assert "not there yet, not scanned: app/backend/requirements.txt" in audit.render(report)
+
+
+def test_a_project_with_none_of_the_places_yet_has_nothing_to_audit_and_is_green(tmp_path):
+    runner = Runner(CLEAN)
+    report = audit.run_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf=SKIP)
+    assert report["problems"] == [] and report["scanned"] == [] and runner.calls == []
+    assert audit.render(report).splitlines()[-1] == "Nothing to audit yet: none of the places suites.json names is here."
+
+
+def test_without_skip_a_missing_place_stays_a_problem(repo):
+    report = audit.run_all(repo, Runner(CLEAN), TODAY, accepted={"accepted": []}, conf={"fs": ["app/web"]})
+    assert report["problems"] == ["trivy fs app/web: app/web is not there"] and report["absent"] == []
 
 
 def test_the_real_runner_returns_code_and_output(tmp_path):
@@ -292,7 +321,7 @@ def test_the_accepted_risks_file_in_the_repository_is_valid_and_names_no_one_s_p
 
 def test_the_report_shows_problems_and_what_was_accepted_and_why():
     found, _ = audit.apply_accepted(audit.from_trivy(TRIVY, "image"), {"accepted": [risk()]}, TODAY)
-    text = audit.render({"scanned": ["trivy image x"], "not_scanned": [], "problems": ["npm audit app/frontend: no package-lock.json"],
+    text = audit.render({"scanned": ["trivy image x"], "not_scanned": [], "absent": [], "problems": ["npm audit app/frontend: no package-lock.json"],
                          "findings": found, "blocking": [f for f in found if f["blocks"]]})
     assert "PROBLEM  npm audit app/frontend: no package-lock.json" in text
     assert "accepted: the product owner until 2026-12-01: the TLS code" in text

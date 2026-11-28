@@ -128,6 +128,17 @@ def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
     assert rc.read_text() == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
 
 
+def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
+    """A project's step names `audit run` (or secrets, sast): the engine's lib/audit.py, wherever crissp is installed."""
+    (tmp_path / "crissp/testsuite").mkdir(parents=True)
+    (tmp_path / "crissp/testsuite/suites.json").write_text('{"audit": {"missing": "skip", "fs": ["app/backend"]}}')
+    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "CRISSP_ROOT": str(tmp_path)}
+    done = subprocess.run(["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "not there yet, not scanned: app/backend" in done.stdout
+    assert (tmp_path / "crissp/testsuite/results/audit.json").is_file()
+
+
 def test_without_py_it_runs_the_pinned_tools_with_uv(tmp_path):
     bin_ = tmp_path / "bin"
     bin_.mkdir()

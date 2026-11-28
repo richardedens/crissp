@@ -38,15 +38,30 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
     assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
-                                                              "frontend-lint"]
+                                                              "frontend-lint", "audit"]
     assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
-                                                         "frontend": "app/frontend", "frontend-lint": "app/frontend"}
+                                                         "frontend": "app/frontend", "frontend-lint": "app/frontend",
+                                                         "audit": "."}
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [("app/backend/", ["backend", "backend-lint"]),
                                                                 ("app/frontend/", ["frontend", "frontend-lint"])]
     lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
     assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
+
+
+def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path):
+    """F-42: CVEs in the dependencies and images, misconfigurations in the Dockerfiles, the chart and Terraform; a place
+    the project does not have yet is listed, not red."""
+    conf, root = configured(tmp_path)
+    step = next(s for s in conf["steps"] if s["key"] == "audit")
+    assert step["run"] == "audit run" and step["full_only"] and step["when"] == "app"
+    assert conf["audit"] == {"missing": "skip", "pip": ["app/backend/requirements.txt"], "npm": ["app/frontend"],
+                             "fs": ["app/backend", "app/frontend"], "dockerfiles": ["app/*/Dockerfile"],
+                             "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
+                             "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
+                             "own_images": {"values": "crissp/deploy/helm/app/values.yaml",
+                                            "parts": ["backend", "frontend"]}}
 
 
 def test_the_ux_suite_walks_the_local_stack_the_deploy_template_names():

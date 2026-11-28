@@ -2,6 +2,7 @@
 that project's full run is green. Built from this checkout with uv, installed into a throwaway venv, used in a
 throwaway folder: nothing here touches this repository or the network beyond what uv needs to build."""
 
+import importlib.util
 import json
 import os
 import shutil
@@ -21,6 +22,19 @@ def run(cmd, cwd, env=None, check=True):
     if check and done.returncode != 0:
         raise AssertionError(f"{cmd} → {done.returncode}\n{done.stdout}\n{done.stderr}")
     return done
+
+
+def stand_in_scanners(cache: Path) -> None:
+    """The pinned scanners (lib/tools.py) as stand-ins in the crissp cache: the audit and the secrets scan run their
+    real code in the project, but nothing is downloaded and no image is pulled."""
+    spec = importlib.util.spec_from_file_location("tools_pins", REPO / "crissp/testsuite/lib/tools.py")
+    tools = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tools)
+    for name, answer in (("trivy", '{"Results": []}'), ("gitleaks", "[]")):
+        binary = cache / "tools" / f"{name}-{tools.TOOLS[name]['version']}" / name
+        binary.parent.mkdir(parents=True)
+        binary.write_text(f"#!/bin/sh\necho \"$*\" >> {cache}/{name}.calls\necho '{answer}'\n")
+        binary.chmod(0o755)
 
 
 @pytest.fixture(scope="module")
@@ -73,6 +87,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
            "GIT_COMMITTER_NAME": "Example", "GIT_COMMITTER_EMAIL": "example@example.org"}
     env.pop("CRISSP_ROOT", None)
     env["VIBE_HOME"] = str(tmp_path / "vibe-home")  # F-24: no Vibe here, init writes the config and skips the trust
+    env["CRISSP_CACHE"] = str(tmp_path / "cache")
+    stand_in_scanners(tmp_path / "cache")
     said = run([str(crissp), "init", "--yes", "--product", "Example", "--owner", "the product owner"], project, env).stdout
     assert (project / ".git").is_dir() and "git init" in said
     for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", ".vibe/config.toml",
@@ -116,6 +132,9 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     if (os.cpu_count() or 1) >= 3:  # E1-F1-02: CPUs to spare, so the backend's two files ran on two workers
         assert "2 workers)" in said, said
     assert (project / "crissp" / "testsuite" / "results").is_dir()
+    audited = json.loads((project / "crissp/testsuite/results/audit.json").read_text())  # F-42: every project is audited
+    assert "trivy config crissp/deploy/helm/app" in audited["scanned"] and "trivy fs app/backend" in audited["scanned"]
+    assert "app/backend/requirements.txt" in audited["absent"]  # a place the tiny product has not got yet
     assert "Green: crissp deploy may go." in said and "crissp/" + "check" not in said and ".sh" not in said, said
     # F-06: the first full run says plainly what is left: commit the baseline it wrote, then crissp check
     assert "This was the first full run" in said and "git add crissp/testsuite/coverage-baseline.json" in said, said

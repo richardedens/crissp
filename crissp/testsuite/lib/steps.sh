@@ -9,6 +9,13 @@
 #       then combine): the gate sees the same numbers on every machine. With WORKERS above 1 (a parallel step, lib/run.py:
 #       what this machine gives it) the tests spread over that many pytest-xdist workers, a file on one (--dist loadfile).
 #       With CRISSP_PLUGINS (lib/run.py) it loads crissp_timing: every test as it finishes, per worker, for /workers.
+#
+#   audit run | secrets | sast
+#       crissp's security scans for the project (lib/audit.py, next to this file wherever crissp is installed): run is
+#       the CVE and misconfiguration audit, secrets the git history, sast the code. Each writes results/<scan>.json
+#       and is red on what blocks; suites.json `audit` says what each scans.
+CRISSP_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+audit() { python3 "$CRISSP_LIB/audit.py" "$@"; }
 py() {
   if [ -n "${PY:-}" ]; then "$PY" "$@"; else uv run --quiet --no-project --with-requirements "$TOOLS" python "$@"; fi
 }

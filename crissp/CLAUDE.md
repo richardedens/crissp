@@ -47,7 +47,8 @@ This project's steps (`crissp/testsuite/suites.json`):
   installed (otherwise a visible "skipped"), and the chart's structure tests.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
-- `audit`: pip-audit of the pinned tools (full run only).
+- `audit`: pip-audit of the pinned tools and trivy config of the deploy chart and Terraform (full run only; trivy is
+  pinned and checksum-checked, `crissp/testsuite/lib/tools.py`).
 
 What `crissp/check.sh` runs per change:
 

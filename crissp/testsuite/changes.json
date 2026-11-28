@@ -820,6 +820,35 @@
     "test_audit::test_trivy_is_the_pinned_one_never_the_one_on_the_path",
     "test_audit::test_a_trivy_that_cannot_be_had_is_a_problem_and_the_rest_still_scans"
    ]
+  },
+  {
+   "id": "audit-in-every-project",
+   "title": "A project brought in with crissp init had no audit, and crissp's own audit skipped its chart (F-42, E6-F1-02)",
+   "problem": "The template's suites.json had no audit step and no audit section, so a project's dependencies, images, Dockerfiles, chart and Terraform were never scanned. crissp's own audit ran pip-audit only. And an audit that named a place the project did not have yet could only fail on it.",
+   "fix": "The template gets a full-run audit step (`audit run`, a new steps.sh helper that runs the engine's lib/audit.py) once app/ exists, and an audit section naming the default places (D-02): the backend's requirements, the frontend's lock, both folders for trivy fs, the Dockerfiles, the chart, Terraform, the compose file and the chart's images. `missing: skip` lists a place that is not there yet instead of failing; with none there the audit is green and says so. crissp's suites.json adds trivy config on crissp/deploy/helm/app and crissp/deploy/terraform.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def run_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "audit()"
+    },
+    {
+     "file": "crissp/template/crissp/testsuite/suites.json",
+     "symbol": "\"audit\""
+    }
+   ],
+   "tests": [
+    "test_audit::test_a_place_the_project_does_not_have_yet_is_said_not_red",
+    "test_audit::test_a_project_with_none_of_the_places_yet_has_nothing_to_audit_and_is_green",
+    "test_audit::test_without_skip_a_missing_place_stays_a_problem",
+    "test_audit::test_this_repository_audits_its_pinned_tools_and_its_chart",
+    "test_template::test_every_project_is_audited_in_its_full_run_on_the_default_places",
+    "test_run::test_audit_runs_the_engines_security_scans_for_the_project",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
   }
  ],
  "gaps": [

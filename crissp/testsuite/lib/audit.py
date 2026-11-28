@@ -5,6 +5,8 @@ The audit step runs the scanners the project names (crissp/testsuite/suites.json
 - pip        requirements files, resolved with every transitive package, then pip-audit (PyPI advisories, OSV). PyPI
              gives no severity, so every finding blocks. `python`: the Python they are resolved for (default 3.14).
 - npm        folders with a package-lock.json: npm audit, every package. High and critical block; the rest is listed.
+- missing    "skip": a place that is not there (yet) is listed as absent, not a problem (the template names the
+             default places, D-02); otherwise a missing place is a problem.
 - fs         folders whose lock files trivy fs scans; config: what trivy config checks (a chart, Terraform), together
              with the `dockerfiles` (globs); images: files whose image: lines name images (a compose file, chart
              values), scanned with trivy image together with every Dockerfile's FROM. own_images: {values, parts} the
@@ -180,8 +182,21 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         findings.extend(parse(data, target))
         scanned.append(label)
 
+    skip = conf.get("missing") == "skip"
+    absent: list[str] = []
+
+    def there(label: str, path: str) -> bool:
+        """A place the audit names: there, or listed as absent (missing: skip), or a problem."""
+        if (root / path).exists():
+            return True
+        if skip:
+            absent.append(path)
+        else:
+            problems.append(f"{label}: {path} is not there")
+        return False
+
     python = str(conf.get("python") or PYTHON)
-    for req in conf.get("pip", []):
+    for req in [r for r in conf.get("pip", []) if there(f"pip-audit {r}", r)]:
         # resolved first (every transitive package, pinned), then audited as is: no throwaway environment, no pip run
         with tempfile.TemporaryDirectory(prefix="audit-") as tmp:
             resolved = str(Path(tmp) / "resolved.txt")
@@ -195,12 +210,16 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
     for app in conf.get("npm", []):
         if (root / app / "package-lock.json").is_file():
             scan(f"npm audit {app}", ["npm", "audit", "--json"], root / app, from_npm_audit, app)
+        elif skip:
+            absent.append(f"{app}/package-lock.json")
         else:
             problems.append(f"npm audit {app}: no package-lock.json to audit")
-
-    trivy_scans = [*conf.get("fs", []), *dockerfiles(root, conf), *conf.get("config", []), *images(root, conf)]
+    fs = [a for a in conf.get("fs", []) if there(f"trivy fs {a}", a)]
+    configs = [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
+               *(c for c in conf.get("config", []) if there(f"trivy config {c}", c))]
+    found_images = images(root, conf)
     trivy_bin = None
-    if trivy_scans:
+    if fs or configs or found_images:
         try:
             trivy_bin = binary("trivy")
         except tools.ToolError as e:
@@ -209,16 +228,17 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
     def trivy(sub: str) -> list[str]:
         return [trivy_bin, sub, "--quiet"]
 
-    for app in conf.get("fs", []) if trivy_bin else []:
+    for app in fs if trivy_bin else []:
         scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
-    for target in [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)), *conf.get("config", [])] if trivy_bin else []:
+    for target in configs if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
-    for image in images(root, conf) if trivy_bin else []:
+    for image in found_images if trivy_bin else []:
         scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
-    if not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
+    if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
     findings, invalid = apply_accepted(findings, accepted, on)
-    return {"date": on.isoformat(), "scanned": scanned, "not_scanned": own_images(root, conf), "problems": problems + invalid,
+    return {"date": on.isoformat(), "scanned": scanned, "not_scanned": own_images(root, conf), "absent": absent,
+            "problems": problems + invalid,
             "findings": findings,
             "blocking": [f for f in findings if f["blocks"]]}
 
@@ -227,6 +247,8 @@ def render(report: dict) -> str:
     lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
     for image in report["not_scanned"]:
         lines.append(f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above")
+    for path in report.get("absent", []):
+        lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:
         lines.append(f"PROBLEM  {p}")
     for f in report["blocking"]:
@@ -239,6 +261,8 @@ def render(report: dict) -> str:
     if report["blocking"] or report["problems"]:
         lines.append("Not green: update the package or image to the fixed version, or accept it for a while with a "
                      "reason in crissp/testsuite/accepted-risks.json (at most 90 days).")
+    elif not report["scanned"]:
+        lines.append("Nothing to audit yet: none of the places suites.json names is here.")
     else:
         lines.append(f"No known vulnerability blocks ({len(listed)} listed).")
     return "\n".join(lines)

@@ -17,7 +17,7 @@ pinned test tools.
 | `shared` | the product's shared ground (`{match, why}`): a change there needs the full run |
 | `notes` | what needs no test, besides Markdown, the backlog and `docs/` |
 | `setup` | `venvs` (a part's `.venv` from its `requirements-dev.txt`), `npm` (a part's `node_modules`), `needs` (`{command, hint}`: never installed, the hint says how) |
-| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python` |
+| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python`; `missing: "skip"` lists a place that is not there yet instead of failing on it (the template names the default places) |
 | `texts` | the dashboard's texts for the product (`e2e`, `journeys`) |
 
 A step's command gets `CRISSP_ROOT`, `RESULTS`, `STEP`, `JUNIT`, `COVERAGE_JSON`, `COVERAGE_FILE`, `TOOLS` and the
@@ -110,7 +110,13 @@ stale), a part's `node_modules`; it asks for `uv` and for what `setup.needs` nam
 The scanners the product names, decided from their JSON, never their exit codes: pip-audit on resolved requirements
 (every finding blocks: PyPI gives no severity), npm audit (high and critical block), trivy fs, config and image (high
 and critical block when a fix exists). A scanner that cannot run is a problem, never a pass. `accepted-risks.json`
-accepts a finding for at most 90 days, with why and by whom.
+accepts a finding for at most 90 days, with why and by whom. A project's own `.trivyignore` is read by trivy as usual.
+A project's step runs it as `audit run` (a helper of `lib/steps.sh`); the template has it as a full-run step.
+
+trivy (and gitleaks, below) are pinned in `lib/tools.py`: one version, fetched once from its release for this system
+(Linux or macOS, x86_64 or arm64), checked against the SHA-256 written there and kept in the crissp cache
+(`CRISSP_CACHE`, else `XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`). A download that differs is refused. The version
+on a machine's `PATH` is never used. `python3 crissp/testsuite/lib/tools.py path trivy` says where it is.
 
 ## The dashboard (dashboard/, lib/collect.py, lib/serve.py)
 

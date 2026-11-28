@@ -145,6 +145,10 @@
   "pip": [
    "crissp/testsuite/requirements.txt",
    "crissp/deploy/requirements.txt"
+  ],
+  "config": [
+   "crissp/deploy/helm/app",
+   "crissp/deploy/terraform"
   ]
  },
  "texts": {}
