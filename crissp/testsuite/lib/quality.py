@@ -50,7 +50,7 @@ class QualityError(Exception):
 
 def runner(argv: list[str], cwd: Path) -> tuple[int, str, str]:
     try:
-        done = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, check=False)  # noqa: S603 — fixed argv
+        done = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, check=False)  # a fixed argv
     except FileNotFoundError as e:
         return 127, "", str(e)
     return done.returncode, done.stdout, done.stderr
@@ -70,7 +70,7 @@ def files(root: Path, conf: dict) -> list[str]:
     if not here:
         return []
     if (root / ".git").exists():
-        out = subprocess.run(["git", "ls-files", "-z", "--", *here], cwd=root, capture_output=True, text=True,  # noqa: S607
+        out = subprocess.run(["git", "ls-files", "-z", "--", *here], cwd=root, capture_output=True, text=True,
                              check=False).stdout
         found = [f for f in out.split("\0") if f]
     else:

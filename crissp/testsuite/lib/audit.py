@@ -318,7 +318,7 @@ LOCAL = re.compile(r"^(https?://)(localhost|127\.0\.0\.1)(?=[:/]|$)")
 def reachable(url: str) -> bool:
     """Whether the app answers at all: any HTTP status is an answer; a refused connection is not."""
     try:
-        with urllib.request.urlopen(url, timeout=5):  # noqa: S310 — the project's own local URL, from suites.json
+        with urllib.request.urlopen(url, timeout=5):  # the project's own local URL, from suites.json
             return True
     except urllib.error.HTTPError:
         return True
@@ -347,7 +347,7 @@ def from_zap(data: dict, target: str, fail: set[str]) -> list[dict]:
 def _zap(root: Path, run, target: str, rules: Path | None, platform: str) -> tuple[dict | None, str]:
     """One ZAP baseline of one target: its JSON report, or None and why."""
     with tempfile.TemporaryDirectory(prefix="crissp-zap-") as work:
-        os.chmod(work, 0o777)  # noqa: S103 — ZAP runs as its own user in the container and writes its report here
+        os.chmod(work, 0o777)  # ZAP runs as its own user in the container and writes its report here
         network = ["--network", "host"] if platform.startswith("linux") else []
         seen = target if network else LOCAL.sub(r"\1host.docker.internal", target)
         args = ["-t", seen, "-J", "zap.json", "-I"]

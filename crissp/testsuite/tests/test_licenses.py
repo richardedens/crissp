@@ -146,14 +146,14 @@ def test_a_place_that_is_not_there_is_absent_or_a_problem_and_an_unpinned_line_i
     (tmp_path / "app/backend").mkdir(parents=True)
     (tmp_path / "app/backend/requirements.txt").write_text("fastapi>=0.100\n")
     report, _ = audit.licenses_all(tmp_path, uv, TODAY, NONE, {"pip": conf["pip"]}, lookup)
-    assert report["problems"] == ["app/backend/requirements.txt: fastapi>=0.100 is not pinned (name==version): its "
-                                  "licence cannot be known"]
+    assert report["problems"] == [("app/backend/requirements.txt: fastapi>=0.100 is not pinned (name==version): its "
+                                  "licence cannot be known")]
 
 
 def test_requirements_are_resolved_with_every_transitive_package_first(shop):
     report, _ = audit.licenses_all(shop, unresolvable, TODAY, NONE, {"pip": CONF["pip"]}, lookup)
-    assert report["problems"] == ["app/backend/requirements.txt: could not resolve the requirements (exit 1): No "
-                                  "solution found: fastapi==0.1 and fastapi==0.2"]
+    assert report["problems"] == [("app/backend/requirements.txt: could not resolve the requirements (exit 1): No "
+                                  "solution found: fastapi==0.1 and fastapi==0.2")]
     assert report["scanned"] == []
 
 
@@ -162,8 +162,8 @@ def test_pypi_that_cannot_answer_is_a_problem_never_a_pass(shop):
         raise OSError("network unreachable")
 
     report, _ = audit.licenses_all(shop, uv, TODAY, NONE, {"pip": CONF["pip"]}, offline)
-    assert report["problems"] == ["app/backend/requirements.txt: the licences could not be read from PyPI: "
-                                  "network unreachable"]
+    assert report["problems"] == [("app/backend/requirements.txt: the licences could not be read from PyPI: "
+                                  "network unreachable")]
 
 
 def test_a_clean_report_says_where_the_sbom_is(shop):

@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "0af0a91d2e8eebc04784386a0d4545af69f278b0",
+ "commit": "f2bfb69ffbc2ffc98ea90a32b0e10dc03a2b0558",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -62,6 +62,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/pytest_plugin/crissp_timing.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/quality.py": {
      "branch": 100.0,
      "line": 100.0
     },
