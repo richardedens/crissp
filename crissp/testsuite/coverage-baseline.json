@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "de59846a37154a0c2ab40ca5331c5b28b1ea9d65",
+ "commit": "16852f19f12c2c360c2e2445d670b771c7e7cc0a",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -30,6 +30,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/gate.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/hook.py": {
      "branch": 100.0,
      "line": 100.0
     },
