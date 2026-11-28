@@ -744,8 +744,78 @@
    ]
   },
   {
+   "id": "mcp-reaps-and-waits",
+   "title": "A check started with run stayed a zombie, and status could not wait (F-31)",
+   "problem": "The crissp MCP server started check.sh and check-all.sh but never waited for them: a finished check stayed a zombie, which `kill -0 <pid>` still finds alive, so an agent that waited on the pid run returned hung until its own timeout. status only gave a snapshot, so waiting meant polling.",
+   "fix": "Every child the server starts is reaped by a thread the moment it ends. status takes wait (and timeout, default 300 s, at most 3600 s): it answers once the lock is free and no check started with run still runs; the dashboard is no run. run's answer and the tool descriptions say to wait with status, not on the pid.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def background("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def running("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def status("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_a_finished_check_is_reaped_at_once",
+    "test_crissp_tool::test_status_waits_until_the_run_has_ended",
+    "test_crissp_tool::test_a_check_runs_in_the_background_and_status_follows_it"
+   ]
+  },
+  {
+   "id": "dashboard-current-and-findings",
+   "title": "The dashboard could stay behind, and findings and decisions were not on it (F-32)",
+   "problem": "The live server rebuilt the dashboard's data when a watched file was newer than data.js; a change made while collect.py ran was older than the data.js it then wrote, so it was never picked up until the next change. A failed rebuild was only said in the server's log while the page still said live. The board showed epics, features and PBIs only: a new finding or an open decision was nowhere on the dashboard.",
+   "fix": "Live compares with the newest of what it watches as it was when the rebuild began, so a change during a rebuild triggers the next one. The stamp carries the reason a rebuild failed and the page shows 'not current' with it. collect.py adds the open findings and decisions (through the crissp tool's parser) and the board lists them above the lanes. The dashboard tool says the open page keeps itself current.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def stamp("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def _backlog("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function findingsView("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function decisionsView("
+    }
+   ],
+   "tests": [
+    "test_serve::test_a_change_made_while_the_data_is_rebuilt_is_not_missed",
+    "test_serve::test_a_failed_rebuild_is_said_on_the_page",
+    "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
+    "test_crissp_tool::test_the_dashboard_is_served_and_its_address_answered"
+   ]
+  },
+  {
+   "id": "workers-command-portable-test",
+   "title": "The workers' command reader is covered on every platform (F-33)",
+   "problem": "workers._command's last line ran only on macOS (sysctl, vm_stat), so on Linux, where CI runs, lib/workers.py was at 99.5% and the coverage gate was red.",
+   "fix": "The test of the real sources also runs the current Python as the command: one that prints and one that exits 3, so the output and the None for a failure are both proven on any platform.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "_command"
+    }
+   ],
+   "tests": [
+    "test_workers.py::test_the_real_sources_answer_on_this_machine"
+   ]
+  },
+  {
    "id": "frontend-lint-own-tools",
-   "title": "The frontend is linted with crissp's own pinned tools (F-31)",
+   "title": "The frontend is linted with crissp's own pinned tools (F-34)",
    "problem": "The template's frontend-lint step ran the frontend's own lint script (npm run --silent lint), but crissp offered no tools or configs for it: a project's frontend lint was missing or assembled by hand, at versions that drift between projects.",
    "fix": "crissp/testsuite/frontend-lint/ pins ESLint 9.39.5, @eslint/js, typescript-eslint 8.72.2 with TypeScript 6.0.3, eslint-plugin-react-hooks 7.1.1, eslint-plugin-jsx-a11y 6.10.2, eslint-plugin-react 7.37.5 (only react/no-danger), globals, stylelint 17.16.0 and stylelint-config-standard 40.0.0, with the lockfile and the two configs. lib/frontend_lint.py installs them once per toolkit with npm ci into crissp's cache and runs both on the step's folder with crissp's configs; the project's package.json and files are never touched. The template step runs it (steps.sh's frontend_lint), and the wheel carries the toolkit.",
    "sources": [

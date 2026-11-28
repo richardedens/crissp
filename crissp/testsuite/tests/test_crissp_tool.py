@@ -357,7 +357,8 @@ def test_a_check_runs_in_the_background_and_status_follows_it(tmp_path):
              **{"check-all": 'echo "Coverage gate: RED"; exit 1'})
     assert srv.status(tmp_path) == "Lock: free\nNothing started with run yet."
     started = srv.run(tmp_path, {"what": "check"})
-    assert started.startswith("check started (pid ") and "log: crissp/testsuite/results/mcp/check.log" in started
+    assert started.startswith("check started: crissp/check.sh (pid ") and "log: crissp/testsuite/results/mcp/check.log" in started
+    assert "Wait for its result with status (wait: true), not on the pid" in started  # F-31: the pid is no way to wait
     text = _until(lambda: (lambda t: t if "finished" in t else None)(srv.status(tmp_path)))
     assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
     assert "[crissp] exit" not in text  # the exit marker is read, not shown
@@ -391,6 +392,59 @@ def test_one_run_at_a_time_and_a_run_that_died_is_said(tmp_path):
     (mcp / "runs.json").write_text(json.dumps({"check": {"pid": srv.os.getpid(), "started": "13:00", "log": "crissp/testsuite/results/mcp/check.log"}}))
     assert "check · started 13:00 · running" in srv.status(tmp_path)
 
+
+
+def _pid(root: Path, key: str) -> int:
+    return json.loads((root / "crissp/testsuite/results/mcp/runs.json").read_text())[key]["pid"]
+
+
+def test_a_finished_check_is_reaped_at_once(tmp_path):
+    """F-31: the server waits for every check it started, so a finished one is no zombie that `kill -0 <pid>` still
+    finds alive (an agent that waited on the pid hung until its own timeout)."""
+    _scripts(tmp_path, check="exit 0")
+    srv.run(tmp_path, {"what": "check"})
+    pid = _pid(tmp_path, "check")
+    _until(lambda: "finished, exit 0" in srv.status(tmp_path))
+    assert _until(lambda: not srv.alive(pid), seconds=3)  # unreaped, it stays a zombie: alive for kill -0, forever
+
+
+def test_status_waits_until_the_run_has_ended(tmp_path, monkeypatch):
+    """F-31: status (wait: true) answers once the run has ended, so nobody has to poll or wait on a pid."""
+    monkeypatch.setattr(srv, "WAIT_POLL", 0.02)
+    _scripts(tmp_path, check='sleep 0.4; echo "Green: crissp/deploy.sh may go."')
+    srv.run(tmp_path, {"what": "check"})
+    text = srv.status(tmp_path, {"wait": True, "timeout": 10})
+    assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
+    _scripts(tmp_path, check="sleep 5")
+    srv.run(tmp_path, {"what": "check"})
+    text = srv.status(tmp_path, {"wait": True, "timeout": 0.2})
+    assert text.startswith("Still running after 0.2s; ask status (wait: true) again.\nLock: free") and "· running ·" in text
+    srv.os.kill(_pid(tmp_path, "check"), 15)
+    # the dashboard is served until it is stopped: no run to wait for
+    mcp = tmp_path / "crissp/testsuite/results/mcp"
+    (mcp / "runs.json").write_text(json.dumps({"dashboard": {"pid": srv.os.getpid(), "started": "13:00", "log": "crissp/testsuite/results/mcp/dashboard.log"}}))
+    (mcp / "dashboard.log").write_text("Dashboard: http://127.0.0.1:8766/dashboard/\n")
+    assert srv.running(tmp_path) is False and "dashboard · started 13:00 · running" in srv.status(tmp_path, {"wait": True, "timeout": 5})
+    # a run from the terminal holds the lock: waited for until it lets go
+    lock = tmp_path / "crissp/testsuite/results/.run.lock"
+    lock.mkdir()
+    (lock / "pid").write_text(str(srv.os.getpid()))
+    srv.threading.Timer(0.2, lambda: (lock / "pid").unlink()).start()
+    start = srv.time.monotonic()
+    assert srv.status(tmp_path, {"wait": True}).startswith("Lock: free") and srv.time.monotonic() - start >= 0.2
+    monkeypatch.setattr(srv, "WAIT_MAX", 0.1)  # a timeout above the most is held to it
+    (lock / "pid").write_text(str(srv.os.getpid()))
+    assert srv.status(tmp_path, {"wait": True, "timeout": 99}).startswith("Still running after 0.1s")
+    assert srv.status(tmp_path, {"wait": False, "timeout": 99}).startswith("Lock: ")  # without wait: at once
+    for wrong in ({"wait": "yes"}, {"wait": True, "timeout": -1}, {"wait": True, "timeout": "5"}, {"wait": True, "timeout": True}):
+        with pytest.raises(ValueError):
+            srv.status(tmp_path, wrong)
+    answer = srv.call(tmp_path, "status", {"wait": "yes"})
+    assert answer["isError"] and answer["content"][0]["text"] == "wait is true or false"
+    schema = next(t for t in srv.TOOLS if t["name"] == "status")["inputSchema"]["properties"]
+    assert schema["wait"]["type"] == "boolean" and schema["timeout"]["type"] == "number"
+    assert "not its pid" in next(t for t in srv.TOOLS if t["name"] == "status")["description"]
+    assert "never wait on the pid" in next(t for t in srv.TOOLS if t["name"] == "run")["description"]
 
 def _serve(directory: Path):
     """A real local web server on a free port, serving directory (the dashboard's own folder in the real thing)."""
@@ -434,7 +488,7 @@ def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch)
     url = f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
     try:
         _scripts(tmp_path, test=f'echo "dashboard data: 3 tests"; echo "Dashboard: {url}   (Ctrl-C to stop)"; sleep 30')
-        assert srv.dashboard(tmp_path) == f"Dashboard: {url} (data rebuilt from the last runs)"
+        assert srv.dashboard(tmp_path) == f"Dashboard: {url} (data rebuilt from the last runs; the open page keeps itself current)"
         pid = json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"]
         assert srv.alive(pid)  # it keeps serving after the answer
         srv.os.killpg(pid, 15)
@@ -450,7 +504,7 @@ def test_the_ux_view_is_the_same_server_opened_on_the_ux_suite(tmp_path):
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
         _scripts(tmp_path, test=f'[ "$1" = --ux ] || exit 9; echo "Dashboard: {base}/ux/"; sleep 30')
-        assert srv.dashboard(tmp_path, {"view": "ux"}) == f"Dashboard: {base}/ux/ (data rebuilt from the last runs)"
+        assert srv.dashboard(tmp_path, {"view": "ux"}) == f"Dashboard: {base}/ux/ (data rebuilt from the last runs; the open page keeps itself current)"
         srv.os.killpg(json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"], 15)
     finally:
         httpd.shutdown()

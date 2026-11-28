@@ -1,4 +1,4 @@
-"""F-31: a project's frontend is linted with crissp's own tools (lib/frontend_lint.py, frontend-lint/): ESLint and
+"""F-34: a project's frontend is linted with crissp's own tools (lib/frontend_lint.py, frontend-lint/): ESLint and
 stylelint pinned at exact versions with their lockfile, installed once per toolkit into crissp's cache with npm ci, and
 run with crissp's configs on the frontend's folder. The project's package.json and its files stay untouched. npm and the
 tools are stand-ins here: no test reaches the network."""

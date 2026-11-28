@@ -1,4 +1,4 @@
-"""A project's frontend, linted with crissp's own tools (F-31): the template's frontend-lint step (`frontend_lint`).
+"""A project's frontend, linted with crissp's own tools (F-34): the template's frontend-lint step (`frontend_lint`).
 
     python3 crissp/testsuite/lib/frontend_lint.py [<folder>]     the folder: the step's own (app/frontend), else here
 

@@ -6,12 +6,22 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
-  `app/frontend/`. It lints with crissp's own tools (F-31), so a frontend needs no lint setup of its own: ESLint
+  `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint
   9.39.5 with `@eslint/js`, typescript-eslint 8.72.2 (TypeScript 6.0.3), eslint-plugin-react-hooks 7.1.1,
   eslint-plugin-jsx-a11y 6.10.2 and eslint-plugin-react 7.37.5 (only `react/no-danger`), and stylelint 17.16.0 with
   stylelint-config-standard 40.0.0. They are pinned with their lockfile in crissp, installed once into crissp's cache
   (`~/.cache/crissp`) with `npm ci`, and never touch the project's `package.json`. It needs Node.js (`npm`).
   `crissp repair` gives projects with no steps the same default.
+- **The dashboard no longer misses a change, and the board shows the open decisions and findings (F-32).** The open
+  page already rebuilt its data when the backlog, `changes.json` or a run's results changed, but a change made while a
+  rebuild ran was skipped until the next one; now it is picked up. When a rebuild fails, the page says "not current"
+  with the reason instead of "live". The Backlog board lists the open decisions and the findings (newest first, with
+  how many are not fixed yet) above the lanes.
+- **A check started with `run` no longer stays a zombie, and `status` can wait (F-31).** The crissp MCP server now
+  reaps every check it starts the moment it ends; before, a finished check stayed a zombie that `kill -0 <pid>` still
+  found alive, so an agent waiting on the pid hung until its own timeout. `status` takes `wait: true` (and `timeout`,
+  default 300 s, at most 3600 s) and answers as soon as the run has ended, with its exit code and the end of its log.
+  `run` now says to wait with `status`, not on the pid.
 - **`crissp init` onboards Mistral Vibe as well as Claude Code (F-24).** A new project also gets `.vibe/config.toml` —
   the same crissp MCP server, pinned `uvx crissp==<version> mcp` like `.mcp.json`.
   When Vibe is installed (`VIBE_HOME`, else `~/.vibe`), init also adds the project folder to `trusted_folders.toml`,

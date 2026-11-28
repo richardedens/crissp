@@ -21,8 +21,11 @@ and moved as they are until they are regrouped.
 - run       starts a check: check (what changed) or check-all (the full run, the product owner's to start unless they ask)
             in the background, or answers at once: check-plan, deploy-plan, ux-status (what the UX team does and
             waits for). Never a deploy: that stays in the product owner's terminal; never a UX round: those cost tokens
-            and are the product owner's to ask for (crissp/ux.sh).
-- status    how the checks started with run are doing: running or finished, the exit code, the last lines of the log.
+            and are the product owner's to ask for (crissp/ux.sh). The server reaps every check it started the moment
+            it ends (F-31: no zombie); wait for the result with status, never on the pid.
+- status    how the checks started with run are doing: running or finished, the exit code, the last lines of the log;
+            with wait, it answers once the run has ended (the lock is free and no check it started still runs), or when
+            the timeout passes (F-31).
 - dashboard builds the Tests dashboard's data and serves it with the UX suite (crissp/test.sh --dashboard, one local
             server); answers the address of the view asked for (tests or ux).
 The writers are for the main session: agents never edit the backlog (crissp/AGENTS.md).
@@ -39,6 +42,7 @@ import re
 import subprocess
 import sys
 import textwrap
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -61,6 +65,9 @@ VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the o
 PLAN_TIMEOUT = 120  # seconds a plan may take
 DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
 EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.M)
+WAIT = 300  # status with wait: seconds it waits by default (F-31) …
+WAIT_MAX = 3600  # … and at most
+WAIT_POLL = 0.5  # how often it looks while it waits
 
 TOOLS = [
     {"name": "brief",
@@ -118,7 +125,7 @@ TOOLS = [
     {"name": "run",
      "description": "Start a check of this repository: check (tests what changed since the last green state) or "
                     "check-all (the full run; the product owner's to start unless they asked) in the background, then "
-                    "follow it with status; or get an answer at once: check-plan (what check would run and how long), "
+                    "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: check-plan (what check would run and how long), "
                     "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
                     "waits). It never deploys and never starts a UX round: those stay with the product owner. Commit "
                     "first: the checks test what is committed.",
@@ -126,13 +133,18 @@ TOOLS = [
          "what": {"type": "string", "enum": list(RUNS)}}}},
     {"name": "status",
      "description": "How the checks started with run are doing: running or finished, the exit code, the last lines of "
-                    "their log, and whether a run holds the lock.",
-     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+                    "their log, and whether a run holds the lock. With wait: true it answers once the run has ended "
+                    "(the lock is free and no check started with run still runs), or when timeout seconds have passed; "
+                    "that is the way to wait for a check, not its pid.",
+     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
+         "wait": {"type": "boolean", "description": "wait until the run has ended (default false: answer at once)"},
+         "timeout": {"type": "number", "description": f"with wait: seconds to wait at most (default {WAIT}, at most {WAIT_MAX})"}}}},
     {"name": "dashboard",
      "description": "Build the Tests dashboard's data from the last runs and serve it with the UX suite on 127.0.0.1 "
                     "(crissp/test.sh --dashboard: one local server); answers the address of the view asked for: tests "
-                    "(what the runs proved, the backlog board; the default) or ux (rounds, advice, designs, verdicts). "
-                    "Never runs a test.",
+                    "(what the runs proved, the backlog board with the open decisions and findings; the default) or ux "
+                    "(rounds, advice, designs, verdicts). The open page keeps itself current: a changed backlog, change "
+                    "or run result rebuilds its data. Never runs a test.",
      "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
          "view": {"type": "string", "enum": list(VIEWS), "description": "tests (default) or ux"}}}},
 ]
@@ -459,6 +471,8 @@ def background(root: Path, key: str, argv: list[str]) -> int:
     with open(out / f"{key}.log", "w") as log:
         proc = subprocess.Popen(["/bin/sh", "-c", '"$0" "$@"; echo "[crissp] exit $?"', *argv], cwd=root, stdout=log,
                                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+    # reaped the moment it ends (F-31): an unreaped child stays a zombie, which `kill -0 <pid>` still finds alive
+    threading.Thread(target=proc.wait, name=f"reap-{key}", daemon=True).start()
     runs = json.loads(read(out / "runs.json") or "{}")
     runs[key] = {"pid": proc.pid, "started": datetime.datetime.now().strftime("%H:%M:%S"), "log": f"crissp/testsuite/results/mcp/{key}.log"}
     write(out / "runs.json", json.dumps(runs, indent=2) + "\n")
@@ -491,11 +505,36 @@ def run(root: Path, args: dict) -> str:
     if busy:
         raise ValueError(f"a run is in progress: {busy}. One run at a time; status follows it.")
     pid = background(root, what, [str(path), *argv])
-    return f"{what} started (pid {pid}): crissp/{name}. Follow it with status; log: crissp/testsuite/results/mcp/{what}.log"
+    return (f"{what} started: crissp/{name} (pid {pid}, only to stop it). Wait for its result with status (wait: true), "
+            f"not on the pid; log: crissp/testsuite/results/mcp/{what}.log")
 
 
-def status(root: Path) -> str:
-    runs = json.loads(read(results(root) / "mcp" / "runs.json") or "{}")
+def started(root: Path) -> dict:
+    return json.loads(read(results(root) / "mcp" / "runs.json") or "{}")
+
+
+def running(root: Path) -> bool:
+    """A run is on: the lock is held, or a check started with run has not said its exit code yet and still lives. The
+    dashboard is no run: it is served until it is stopped."""
+    return bool(held(root)) or any(key != "dashboard" and not EXIT.search(read(root / r["log"])) and alive(r["pid"])
+                                   for key, r in started(root).items())
+
+
+def status(root: Path, args: dict | None = None) -> str:
+    args = args or {}
+    wait, timeout = args.get("wait", False), args.get("timeout", WAIT)
+    if not isinstance(wait, bool):
+        raise ValueError("wait is true or false")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout < 0:
+        raise ValueError(f"timeout is a number of seconds (default {WAIT}, at most {WAIT_MAX})")
+    if wait:
+        timeout = min(timeout, WAIT_MAX)
+        deadline = time.monotonic() + timeout
+        while running(root):
+            if time.monotonic() >= deadline:
+                return f"Still running after {timeout:g}s; ask status (wait: true) again.\n" + status(root)
+            time.sleep(WAIT_POLL)
+    runs = started(root)
     lines = [f"Lock: {held(root) or 'free'}"]
     for key, r in runs.items():
         log = read(root / r["log"])
@@ -535,7 +574,7 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         found = re.search(r"Dashboard: (\S+)", text)
         # what the script says is checked: it says so before the server is up (the Tests page answers for both views)
         if found and served(re.sub(r"/ux/$", "/dashboard/", found.group(1)), root):
-            return f"Dashboard: {found.group(1)} (data rebuilt from the last runs)"
+            return f"Dashboard: {found.group(1)} (data rebuilt from the last runs; the open page keeps itself current)"
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])
         time.sleep(0.2)
@@ -562,7 +601,7 @@ def call(root: Path, name: str, args: dict) -> dict:
         elif name == "run":
             text = run(root, args)
         elif name == "status":
-            text = status(root)
+            text = status(root, args)
         elif name == "dashboard":
             text = dashboard(root, args)
         else:
@@ -583,8 +622,8 @@ def handle(root: Path, msg: dict) -> dict | None:
                   "instructions": "The way of working of this repository. Call brief at the start; ask backlog for "
                                   "F-/D-/E- ids instead of reading crissp/backlog files; write findings, decisions, "
                                   "epics, features and PBIs with finding, decision, epic, feature and item instead of "
-                                  "editing them; start the checks with run, follow them with status, show the "
-                                  "dashboard with dashboard. Deploying stays in the product owner's terminal."}
+                                  "editing them; start the checks with run, wait for them with status (wait: true), "
+                                  "show the dashboard with dashboard. Deploying stays in the product owner's terminal."}
     elif method == "tools/list":
         result = {"tools": TOOLS}
     elif method == "tools/call":

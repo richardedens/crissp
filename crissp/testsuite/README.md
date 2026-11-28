@@ -121,8 +121,13 @@ accepts a finding for at most 90 days, with why and by whom.
 `crissp/test.sh --dashboard` builds the data (`results/data.js`, generated, not in git) and serves the page with the UX
 suite on 127.0.0.1 only: `/dashboard/` the Tests, `/ux/` the UX suite, `/look/` the shared look (crissp/look: the
 tokens, the Figtree font, the theme, the water), `/results/` the run output. Nothing else of the repository. The page
-asks for a stamp every few seconds and reloads when the backlog, `changes.json` or a run's results changed. It never
-runs a test. Dark by default, light when chosen (remembered per viewer).
+asks for a stamp every few seconds and reloads when the backlog, `changes.json` or a run's results changed; a change
+made while the data was being rebuilt is picked up by the next ask, and a rebuild that failed is said next to the stamp
+("not current", with the reason) instead of "live". It never runs a test. Dark by default, light when chosen
+(remembered per viewer).
+
+**The board's decisions and findings**: above the lanes, the open decisions (`DECISIONS.md`, not yet taken) and the
+findings (`FINDINGS.md`, newest first, with how many are not fixed yet), read with the crissp tool's own parser.
 
 **/activity** (`dashboard/activity.html`, its data `/dashboard/activity.json` from `lib/activity.py`): what this
 repository's Claude Code sessions do now, read from their transcripts (the ones written in the last half hour): per

@@ -126,6 +126,9 @@ def test_the_real_sources_answer_on_this_machine():
     m = workers.machine()
     assert m["cpus"] >= 1 and isinstance(m["cpu_from"], str)
     assert workers._command(["a-command-that-does-not-exist-anywhere"]) is None
+    # a command that is there answers its output on every system (Linux reads /proc and runs none of its own)
+    assert workers._command([sys.executable, "-c", "print('here')"]) == "here\n"
+    assert workers._command([sys.executable, "-c", "raise SystemExit(3)"]) is None
 
 
 # E1-F1-04: the /workers page's data, from what crissp_timing wrote (results/timing), with stand-in processes and clock

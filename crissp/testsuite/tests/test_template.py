@@ -45,7 +45,7 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
                                                                 ("app/frontend/", ["frontend", "frontend-lint"])]
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
-    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-31: crissp's own tools, the project's files
+    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-34: crissp's own tools, the project's files
     assert lint["run"] == "frontend_lint" and lint["when"] == "app/frontend/package.json"  # untouched
 
 
