@@ -2070,7 +2070,7 @@
     ".github/workflows/pages.yml"
    ],
    "tests": [
-    "crissp/testsuite/tests/test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
+    "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
    ]
   }
  ],
