@@ -25,7 +25,10 @@ TOOL = ENGINE.parents[1] / "tool" / "server.py"  # the crissp tool, beside this 
 UX_MARK = re.compile(r"UX\s+proposal\s+`([^`]+)`")
 SPECIAL = ("e2e", "journeys")  # steps the dashboard shows on their own tabs, not among the unit tests
 # F-41: how linters say how many problems they found: ruff and Biome, ESLint and Stylelint, shellcheck -f gcc (a line each)
-LINT_COUNTS = (re.compile(r"^Found (\d+) errors?\b", re.MULTILINE), re.compile(r"^\u2716 (\d+) problems?\b", re.MULTILINE))
+LINT_COUNTS = (
+    re.compile(r"^Found (\d+) errors?\b", re.MULTILINE),
+    re.compile(r"^\u2716 (\d+) problems?\b", re.MULTILINE),
+)
 LINT_LINE = re.compile(r"^\S+:\d+:\d+: (?:error|warning|note|style|info):", re.MULTILINE)
 
 # Set by configure() from the project: where it is, its configuration, and per step (label, test folders, its folder).
@@ -82,7 +85,7 @@ def tests_of(key: str) -> list[dict]:
         return []
     docs: dict[str, dict] = {}
     out = []
-    for case in ET.parse(path).getroot().iter("testcase"):
+    for case in ET.parse(path).getroot().iter("testcase"):  # noqa: S314 - pytest wrote it, in this run's results
         module, file = _test_file(key, case.get("classname", ""))
         if module not in docs:
             docs[module] = _docs(file)
@@ -93,9 +96,22 @@ def tests_of(key: str) -> list[dict]:
                 status = {"failure": "failed", "error": "failed", "skipped": "skipped"}[tag]
                 detail = ((el.get("message") or "") + "\n" + (el.text or "")).strip()[-4000:]
         doc, line = docs[module].get(case.get("name"), ("", 0))
-        out.append({"suite": key, "module": module, "name": case.get("name"), "id": f"{module}::{case.get('name')}", "status": status,
-                    "time": round(float(case.get("time") or 0), 3), "doc": doc, "moduleDoc": docs[module].get("__module__", ("", 1))[0],
-                    "file": _where(file), "abs": str(file), "line": line, "detail": detail})
+        out.append(
+            {
+                "suite": key,
+                "module": module,
+                "name": case.get("name"),
+                "id": f"{module}::{case.get('name')}",
+                "status": status,
+                "time": round(float(case.get("time") or 0), 3),
+                "doc": doc,
+                "moduleDoc": docs[module].get("__module__", ("", 1))[0],
+                "file": _where(file),
+                "abs": str(file),
+                "line": line,
+                "detail": detail,
+            }
+        )
     return out
 
 
@@ -109,17 +125,34 @@ def coverage(key: str) -> dict | None:
     for name, f in data["files"].items():
         s = f["summary"]
         full = (Path(name) if Path(name).is_absolute() else base / name).resolve()
-        files.append({"file": _where(full), "abs": str(full), "statements": s["num_statements"], "covered": s["covered_lines"],
-                      "missing": s["missing_lines"], "linePercent": _p(s["covered_lines"], s["num_statements"]),
-                      "branches": s.get("num_branches", 0), "branchesCovered": s.get("covered_branches", 0),
-                      "branchPercent": _p(s.get("covered_branches", 0), s.get("num_branches", 0)),
-                      "percent": round(s["percent_covered"], 1), "missingLines": f.get("missing_lines", []),
-                      "missingBranches": f.get("missing_branches", [])})
+        files.append(
+            {
+                "file": _where(full),
+                "abs": str(full),
+                "statements": s["num_statements"],
+                "covered": s["covered_lines"],
+                "missing": s["missing_lines"],
+                "linePercent": _p(s["covered_lines"], s["num_statements"]),
+                "branches": s.get("num_branches", 0),
+                "branchesCovered": s.get("covered_branches", 0),
+                "branchPercent": _p(s.get("covered_branches", 0), s.get("num_branches", 0)),
+                "percent": round(s["percent_covered"], 1),
+                "missingLines": f.get("missing_lines", []),
+                "missingBranches": f.get("missing_branches", []),
+            }
+        )
     t = data["totals"]
-    return {"percent": round(t["percent_covered"], 1), "statements": t["num_statements"], "covered": t["covered_lines"],
-            "linePercent": _p(t["covered_lines"], t["num_statements"]), "branches": t.get("num_branches", 0),
-            "branchesCovered": t.get("covered_branches", 0), "branchPercent": _p(t.get("covered_branches", 0), t.get("num_branches", 0)),
-            "full": sum(1 for f in files if f["percent"] == 100), "files": sorted(files, key=lambda x: x["file"])}
+    return {
+        "percent": round(t["percent_covered"], 1),
+        "statements": t["num_statements"],
+        "covered": t["covered_lines"],
+        "linePercent": _p(t["covered_lines"], t["num_statements"]),
+        "branches": t.get("num_branches", 0),
+        "branchesCovered": t.get("covered_branches", 0),
+        "branchPercent": _p(t.get("covered_branches", 0), t.get("num_branches", 0)),
+        "full": sum(1 for f in files if f["percent"] == 100),
+        "files": sorted(files, key=lambda x: x["file"]),
+    }
 
 
 def _p(a: int, b: int) -> float:
@@ -139,8 +172,15 @@ def locate(file: str, symbol: str) -> dict:
     path = ROOT / file
     if path.is_dir():
         files = sorted(p.relative_to(path).as_posix() for p in path.rglob("*") if p.is_file())
-        return {"file": file, "symbol": symbol, "line": 0, "found": True, "folder": True, "code": "\n".join(files[:40]),
-                "abs": str(path)}
+        return {
+            "file": file,
+            "symbol": symbol,
+            "line": 0,
+            "found": True,
+            "folder": True,
+            "code": "\n".join(files[:40]),
+            "abs": str(path),
+        }
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -152,10 +192,22 @@ def locate(file: str, symbol: str) -> dict:
     end = at + 1
     while end < len(lines) and end - at < 36:  # the block that starts at the symbol: until the indentation falls back
         text = lines[end]
-        if text.strip() and len(text) - len(text.lstrip()) <= indent and not text.lstrip().startswith((")", "}", "]")) and end - at > 2:
+        if (
+            text.strip()
+            and len(text) - len(text.lstrip()) <= indent
+            and not text.lstrip().startswith((")", "}", "]"))
+            and end - at > 2
+        ):
             break
         end += 1
-    return {"file": file, "symbol": symbol, "line": at + 1, "found": True, "code": "\n".join(lines[at:end]).rstrip(), "abs": str(path)}
+    return {
+        "file": file,
+        "symbol": symbol,
+        "line": at + 1,
+        "found": True,
+        "code": "\n".join(lines[at:end]).rstrip(),
+        "abs": str(path),
+    }
 
 
 def _journeys() -> list[dict]:
@@ -166,9 +218,22 @@ def _journeys() -> list[dict]:
         doc = json.loads(path.read_text(encoding="utf-8"))
         base = f"../results/journeys/{doc['id']}/{doc['lang']}/"
         failure = RESULTS / "journeys-run" / doc["id"] / doc["lang"] / "failure.png"
-        doc.update(base=base, failure=f"../results/journeys-run/{doc['id']}/{doc['lang']}/failure.png" if doc["status"] != "verified" and failure.exists() else None)
+        doc.update(
+            base=base,
+            failure=f"../results/journeys-run/{doc['id']}/{doc['lang']}/failure.png"
+            if doc["status"] != "verified" and failure.exists()
+            else None,
+        )
         out.append(doc)
-    return sorted(out, key=lambda d: (("beginner", "professional", "advanced", "architect").index(d["level"]), d["order"], d["id"], d["lang"]))
+    return sorted(
+        out,
+        key=lambda d: (
+            ("beginner", "professional", "advanced", "architect").index(d["level"]),
+            d["order"],
+            d["id"],
+            d["lang"],
+        ),
+    )
 
 
 def _capabilities(by_ref: dict[str, list[dict]], threats: dict, journeys: list[dict] | None = None) -> list[dict]:
@@ -189,21 +254,36 @@ def _capabilities(by_ref: dict[str, list[dict]], threats: dict, journeys: list[d
         docs = documenting.get(cap["id"], {})
         statuses = set().union(*docs.values()) if docs else set()
         failed = [t["id"] for t in tests if t["status"] == "failed"]
-        applying = [x["id"] for b in threats.get("boundaries", []) for x in b["threats"]
-                    if any(fnmatch.fnmatch(cap["id"], pattern) for pattern in x.get("applies", []))]
-        out.append({**cap, "testCount": len(cap["tests"]), "failed": failed,
-                    "tested": "failed" if failed else "passed" if cap["tests"] else "untested",
-                    "journeys": sorted(docs), "threats": applying,
-                    "documented": "missing" if not docs else "passed" if statuses == {"verified"} else "failed"})
+        applying = [
+            x["id"]
+            for b in threats.get("boundaries", [])
+            for x in b["threats"]
+            if any(fnmatch.fnmatch(cap["id"], pattern) for pattern in x.get("applies", []))
+        ]
+        out.append(
+            {
+                **cap,
+                "testCount": len(cap["tests"]),
+                "failed": failed,
+                "tested": "failed" if failed else "passed" if cap["tests"] else "untested",
+                "journeys": sorted(docs),
+                "threats": applying,
+                "documented": "missing" if not docs else "passed" if statuses == {"verified"} else "failed",
+            }
+        )
     return out
 
 
 def _steps() -> list[dict]:
     """The steps of the last run with their logs: steps.json as a list, or steps.jsonl plus each step's log."""
-    listed = json.loads((RESULTS / "steps.json").read_text(encoding="utf-8")) if (RESULTS / "steps.json").exists() else []
+    listed = (
+        json.loads((RESULTS / "steps.json").read_text(encoding="utf-8")) if (RESULTS / "steps.json").exists() else []
+    )
     if isinstance(listed, list):
         return listed
-    lines = (RESULTS / "steps.jsonl").read_text(encoding="utf-8").splitlines() if (RESULTS / "steps.jsonl").exists() else []
+    lines = (
+        (RESULTS / "steps.jsonl").read_text(encoding="utf-8").splitlines() if (RESULTS / "steps.jsonl").exists() else []
+    )
     steps = [json.loads(line) for line in lines if line.strip()]
     for s in steps:
         log = RESULTS / f"{s['key']}.log"
@@ -216,9 +296,15 @@ def is_lint(key: str) -> bool:
     return key == "lint" or key.endswith("-lint")
 
 
-SECURITY = ("audit", "secrets", "sast", "dast", "licenses")  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations,
+SECURITY = (
+    "audit",
+    "secrets",
+    "sast",
+    "dast",
+    "licenses",
+)  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations,
 # secrets, unsafe code, the running app, licences)
-QUALITY = "quality"  # F-110: lib/quality.py, complexity and duplication, on a tile of its own
+QUALITY = "quality"  # F-150: lib/quality.py, complexity and duplication, on a tile of its own
 BLOCKING_LINE = re.compile(r"^BLOCKING\b", re.MULTILINE)
 
 
@@ -259,9 +345,15 @@ def _not_tests(steps: list[dict], keep, count, field: str) -> list[dict]:
         if keep(key):
             step = ran.get(key)
             status = step.get("status", "not run") if step else "not run"
-            out.append({"key": key, "label": label, "status": status,
-                        field: count(step.get("log", ""), status) if step else None,
-                        "seconds": step.get("seconds") if step else None})
+            out.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "status": status,
+                    field: count(step.get("log", ""), status) if step else None,
+                    "seconds": step.get("seconds") if step else None,
+                }
+            )
     return out
 
 
@@ -298,18 +390,36 @@ def _backlog() -> dict | None:
         if not m:
             continue
         epic = m.group(1)
-        epics.append({"id": epic, "title": m.group(2).strip(), "file": str(f.relative_to(ROOT)), "done": f.parent.name == "done",
-                      "features": [{**ft, "pbis": [i for i in items if i["id"].startswith(ft["id"] + "-")]}
-                                   for ft in features if ft["id"].startswith(epic + "-F")],
-                      "items": [i for i in items if re.fullmatch(rf"{epic}-\d+", i["id"])]})
+        epics.append(
+            {
+                "id": epic,
+                "title": m.group(2).strip(),
+                "file": str(f.relative_to(ROOT)),
+                "done": f.parent.name == "done",
+                "features": [
+                    {**ft, "pbis": [i for i in items if i["id"].startswith(ft["id"] + "-")]}
+                    for ft in features
+                    if ft["id"].startswith(epic + "-F")
+                ],
+                "items": [i for i in items if re.fullmatch(rf"{epic}-\d+", i["id"])],
+            }
+        )
     cells = lambda r, n: (r["cells"] + [""] * n)[:n]  # noqa: E731  a short row still has every column
-    findings = [dict(zip(("seen", "observation", "goes_to"), cells(r, 3)), id=r["id"], file=r["file"])
-                for r in crissp.open_findings(ROOT)]  # F-32: on the board, not only in the tool
-    decisions = [dict(zip(("question", "options", "recommendation"), cells(r, 3)), id=r["id"], file=r["file"])
-                 for r in crissp.open_decisions(ROOT)]
-    return {"epics": epics, "statuses": list(crissp.STATUSES),
-            "recent": movement.recent(moved, {i["id"]: i["title"] for i in items}),
-            "findings": findings, "decisions": decisions}
+    findings = [
+        dict(zip(("seen", "observation", "goes_to"), cells(r, 3), strict=False), id=r["id"], file=r["file"])
+        for r in crissp.open_findings(ROOT)
+    ]  # F-32: on the board, not only in the tool
+    decisions = [
+        dict(zip(("question", "options", "recommendation"), cells(r, 3), strict=False), id=r["id"], file=r["file"])
+        for r in crissp.open_decisions(ROOT)
+    ]
+    return {
+        "epics": epics,
+        "statuses": list(crissp.STATUSES),
+        "recent": movement.recent(moved, {i["id"]: i["title"] for i in items}),
+        "findings": findings,
+        "decisions": decisions,
+    }
 
 
 def _ref(ref: str) -> str:
@@ -341,45 +451,110 @@ def main(root: Path | None = None) -> int:
             if "[" in t["id"]:  # a parametrised test also answers to its base name
                 by_ref.setdefault(t["id"].split("[", 1)[0], []).append(t)
     suite = ROOT / "crissp" / "testsuite"
-    manifest = json.loads((suite / "changes.json").read_text(encoding="utf-8")) if (suite / "changes.json").exists() else {"changes": []}
+    manifest = (
+        json.loads((suite / "changes.json").read_text(encoding="utf-8"))
+        if (suite / "changes.json").exists()
+        else {"changes": []}
+    )
     shot_dir = RESULTS / "e2e" / "shots"
     shots = sorted(p.name for p in shot_dir.glob("*.png")) if shot_dir.exists() else []
     changes = []
     for c in manifest["changes"]:
-        proof = [{"ref": ref, "tests": [t["id"] for t in by_ref.get(_ref(ref), [])], "status": _status(by_ref.get(_ref(ref), []))}
-                 for ref in c["tests"]]
-        proof += [{"ref": ref, "tests": [t["id"] for t in by_ref.get("e2e:" + ref, [])], "status": _status(by_ref.get("e2e:" + ref, [])), "e2e": True}
-                  for ref in c.get("e2e", [])]
+        proof = [
+            {
+                "ref": ref,
+                "tests": [t["id"] for t in by_ref.get(_ref(ref), [])],
+                "status": _status(by_ref.get(_ref(ref), [])),
+            }
+            for ref in c["tests"]
+        ]
+        proof += [
+            {
+                "ref": ref,
+                "tests": [t["id"] for t in by_ref.get("e2e:" + ref, [])],
+                "status": _status(by_ref.get("e2e:" + ref, [])),
+                "e2e": True,
+            }
+            for ref in c.get("e2e", [])
+        ]
         statuses = {p["status"] for p in proof}
         verdict = "failed" if "failed" in statuses else "missing" if ("missing" in statuses or not proof) else "passed"
-        changes.append({**c, "sources": [locate(**source(s)) for s in c.get("sources", [])], "proof": proof, "verdict": verdict,
-                        "screenshots": [s + ".png" for s in c.get("screenshots", []) if s + ".png" in shots]})
+        changes.append(
+            {
+                **c,
+                "sources": [locate(**source(s)) for s in c.get("sources", [])],
+                "proof": proof,
+                "verdict": verdict,
+                "screenshots": [s + ".png" for s in c.get("screenshots", []) if s + ".png" in shots],
+            }
+        )
     steps = _steps()
     gate = json.loads((RESULTS / "gate.json").read_text(encoding="utf-8")) if (RESULTS / "gate.json").exists() else None
-    quality = json.loads((RESULTS / "quality.json").read_text(encoding="utf-8")) if (RESULTS / "quality.json").exists() else None
-    threats = json.loads((suite / "threats.json").read_text(encoding="utf-8")) if (suite / "threats.json").exists() else {"boundaries": []}
+    quality = (
+        json.loads((RESULTS / "quality.json").read_text(encoding="utf-8"))
+        if (RESULTS / "quality.json").exists()
+        else None
+    )
+    threats = (
+        json.loads((suite / "threats.json").read_text(encoding="utf-8"))
+        if (suite / "threats.json").exists()
+        else {"boundaries": []}
+    )
     for boundary in threats["boundaries"]:
         for threat in boundary["threats"]:
-            proof = [{"ref": ref, "tests": [x["id"] for x in by_ref.get(ref, [])], "status": _status(by_ref.get(ref, []))} for ref in threat["tests"]]
+            proof = [
+                {"ref": ref, "tests": [x["id"] for x in by_ref.get(ref, [])], "status": _status(by_ref.get(ref, []))}
+                for ref in threat["tests"]
+            ]
             statuses = {p["status"] for p in proof}
             threat["proof"] = proof
-            threat["status"] = ("untested" if not proof else "failed" if "failed" in statuses else "missing" if "missing" in statuses else "passed")
+            threat["status"] = (
+                "untested"
+                if not proof
+                else "failed"
+                if "failed" in statuses
+                else "missing"
+                if "missing" in statuses
+                else "passed"
+            )
 
     def summary(k: str) -> dict:
         mine = [t for t in tests if t["suite"] == k]
-        return {"label": SUITES[k][0], "tests": len(mine), "passed": sum(t["status"] == "passed" for t in mine),
-                "failed": sum(t["status"] == "failed" for t in mine), "skipped": sum(t["status"] == "skipped" for t in mine),
-                "time": round(sum(t["time"] for t in mine), 1)}
+        return {
+            "label": SUITES[k][0],
+            "tests": len(mine),
+            "passed": sum(t["status"] == "passed" for t in mine),
+            "failed": sum(t["status"] == "failed" for t in mine),
+            "skipped": sum(t["status"] == "skipped" for t in mine),
+            "time": round(sum(t["time"] for t in mine), 1),
+        }
 
     journeys = _journeys()
     capabilities = _capabilities(by_ref, threats, journeys)
-    data = {"generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"), "root": str(ROOT), "steps": steps, "suites": {k: summary(k) for k in SUITES if not not_tests(k)},
-            "lint": _not_tests(steps, is_lint, lint_problems, "problems"),
-            "security": _not_tests(steps, is_security, blocking_findings, "blocking"),
-            "tests": tests, "coverage": {k: coverage(k) for k in COVERAGE}, "changes": changes, "gaps": manifest.get("gaps", []), "gate": gate, "quality": quality, "threats": threats, "capabilities": capabilities,
-            "journeys": journeys, "screenshots": shots, "backlog": _backlog(), **_product()}
+    data = {
+        "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "root": str(ROOT),
+        "steps": steps,
+        "suites": {k: summary(k) for k in SUITES if not not_tests(k)},
+        "lint": _not_tests(steps, is_lint, lint_problems, "problems"),
+        "security": _not_tests(steps, is_security, blocking_findings, "blocking"),
+        "tests": tests,
+        "coverage": {k: coverage(k) for k in COVERAGE},
+        "changes": changes,
+        "gaps": manifest.get("gaps", []),
+        "gate": gate,
+        "quality": quality,
+        "threats": threats,
+        "capabilities": capabilities,
+        "journeys": journeys,
+        "screenshots": shots,
+        "backlog": _backlog(),
+        **_product(),
+    }
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "data.js").write_text("window.SUITE = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n", encoding="utf-8")
+    (RESULTS / "data.js").write_text(
+        "window.SUITE = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n", encoding="utf-8"
+    )
     failed = sum(t["status"] == "failed" for t in tests) + sum(s.get("status") == "failed" for s in steps)
     unresolved = [f"{c['id']}: {s['file']} · {s['symbol']}" for c in changes for s in c["sources"] if not s["found"]]
     print(f"dashboard data: {len(tests)} tests, {len(changes)} changes, {failed} failures")

@@ -57,8 +57,13 @@ def install(where: Path, run: Callable[[list[str], Path], int], npm: str) -> boo
     return True
 
 
-def main(argv: list[str], env: dict, run: Callable[[list[str], Path], int] = call,
-         which: Callable[[str], str | None] = shutil.which, cwd: Path | None = None) -> int:
+def main(
+    argv: list[str],
+    env: dict,
+    run: Callable[[list[str], Path], int] = call,
+    which: Callable[[str], str | None] = shutil.which,
+    cwd: Path | None = None,
+) -> int:
     if len(argv) > 1:
         print("usage: frontend_lint.py [<folder>]")
         return 2
@@ -75,10 +80,21 @@ def main(argv: list[str], env: dict, run: Callable[[list[str], Path], int] = cal
     if not install(where, run, npm):
         return 1
     bin_ = where / "node_modules" / ".bin"
-    eslint = run([str(bin_ / "eslint"), "--config", str(where / "eslint.config.mjs"), "--max-warnings", "0", "."],
-                 folder)
-    stylelint = run([str(bin_ / "stylelint"), "--config", str(where / "stylelint.config.mjs"), "--config-basedir",
-                     str(where), "--allow-empty-input", "**/*.css"], folder)
+    eslint = run(
+        [str(bin_ / "eslint"), "--config", str(where / "eslint.config.mjs"), "--max-warnings", "0", "."], folder
+    )
+    stylelint = run(
+        [
+            str(bin_ / "stylelint"),
+            "--config",
+            str(where / "stylelint.config.mjs"),
+            "--config-basedir",
+            str(where),
+            "--allow-empty-input",
+            "**/*.css",
+        ],
+        folder,
+    )
     return 0 if eslint == 0 and stylelint == 0 else 1
 
 

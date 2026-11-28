@@ -37,10 +37,9 @@ def select(every: list[dict], quick: bool, wanted: list[str]) -> list[dict]:
     unknown = [w for w in wanted if w not in known]
     if unknown:
         raise ValueError(f"unknown step {', '.join(unknown)} (known: {' '.join(known) or 'none'})")
-    if wanted:
-        chosen = [s for s in every if s["key"] in wanted]
-    else:
-        chosen = [s for s in every if not (quick and s["full_only"])]
+    chosen = (
+        [s for s in every if s["key"] in wanted] if wanted else [s for s in every if not (quick and s["full_only"])]
+    )
     ran = {s["key"] for s in chosen}
     return [{**s, "suites": [k for k in s["suites"] if k in ran]} if s["key"] == project.GATE else s for s in chosen]
 
@@ -48,13 +47,24 @@ def select(every: list[dict], quick: bool, wanted: list[str]) -> list[dict]:
 def env_for(step: dict, root: Path, results: Path) -> dict:
     """What a step's command gets: where to write, the pinned tools, the helpers, what coverage measures."""
     key = step["key"]
-    env = {**os.environ, "CRISSP_ROOT": str(root), "RESULTS": str(results), "STEP": key, "TOOLS": str(TOOLS),
-           "JUNIT": str(results / f"{key}.xml"), "COVERAGE_JSON": str(results / f"coverage-{key}.json"),
-           "COVERAGE_FILE": str(results / f".coverage-{key}"), "BASH_ENV": str(HELPERS),
-           "CRISSP_TIMING_DIR": str(results / "timing"), "CRISSP_PLUGINS": str(PLUGINS)}
-    for name, value in (("COVERAGE_SOURCES", ",".join(str(root / s) for s in step["sources"])),
-                        ("COVERAGE_OMIT", ",".join(step["omit"])),
-                        ("COVERAGE_FAIL_UNDER", "" if step["fail_under"] is None else f"{step['fail_under']:g}")):
+    env = {
+        **os.environ,
+        "CRISSP_ROOT": str(root),
+        "RESULTS": str(results),
+        "STEP": key,
+        "TOOLS": str(TOOLS),
+        "JUNIT": str(results / f"{key}.xml"),
+        "COVERAGE_JSON": str(results / f"coverage-{key}.json"),
+        "COVERAGE_FILE": str(results / f".coverage-{key}"),
+        "BASH_ENV": str(HELPERS),
+        "CRISSP_TIMING_DIR": str(results / "timing"),
+        "CRISSP_PLUGINS": str(PLUGINS),
+    }
+    for name, value in (
+        ("COVERAGE_SOURCES", ",".join(str(root / s) for s in step["sources"])),
+        ("COVERAGE_OMIT", ",".join(step["omit"])),
+        ("COVERAGE_FAIL_UNDER", "" if step["fail_under"] is None else f"{step['fail_under']:g}"),
+    ):
         if value:
             env[name] = value
         else:
@@ -69,7 +79,11 @@ def env_for(step: dict, root: Path, results: Path) -> dict:
 
 def command(step: dict) -> list[str]:
     if step["key"] == project.GATE:
-        return [sys.executable, str(ENGINE / "gate.py"), *(["--suites", ",".join(step["suites"])] if step["suites"] else [])]
+        return [
+            sys.executable,
+            str(ENGINE / "gate.py"),
+            *(["--suites", ",".join(step["suites"])] if step["suites"] else []),
+        ]
     return ["bash", "-c", step["run"]]
 
 
@@ -82,8 +96,14 @@ def run_step(step: dict, root: Path, results: Path, runner=subprocess.run, clock
             log.write(f"no folder {step['dir']} in the project\n")
             status = "failed"
         else:
-            done = runner(command(step), cwd=folder, env=env_for(step, root, results), stdout=log,
-                          stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+            done = runner(
+                command(step),
+                cwd=folder,
+                env=env_for(step, root, results),
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+            )
             status = "passed" if done.returncode == 0 else "failed"
     row = {"key": step["key"], "label": step["label"], "status": status, "seconds": round(clock() - start)}
     return {**row, "workers": step["workers"], "workers_why": step["workers_why"]} if step.get("workers") else row
@@ -92,8 +112,13 @@ def run_step(step: dict, root: Path, results: Path, runner=subprocess.run, clock
 def clear(chosen: list[dict], results: Path) -> None:
     """The results of the previous run of these steps (only files this run writes itself)."""
     for s in chosen:
-        for name in (f"{s['key']}.log", f"{s['key']}.xml", f"coverage-{s['key']}.json", f".coverage-{s['key']}",
-                     f"coverage-{s['key']}.rc"):
+        for name in (
+            f"{s['key']}.log",
+            f"{s['key']}.xml",
+            f"coverage-{s['key']}.json",
+            f".coverage-{s['key']}",
+            f"coverage-{s['key']}.rc",
+        ):
             (results / name).unlink(missing_ok=True)
         for part in results.glob(f".coverage-{s['key']}.*"):  # a parallel step's workers' data a stopped run left
             part.unlink()

@@ -20,3 +20,12 @@ def test_the_site_names_no_version_by_hand_and_the_build_fills_in_version(tmp_pa
     subprocess.run(["bash", str(site / "build.sh")], check=True, capture_output=True)
     built = (site / "_site" / "index.html").read_text(encoding="utf-8")
     assert "C.R.I.S.S.P. 9.8.7 for Shop" in built and "{{VERSION}}" not in built
+
+
+def test_the_site_is_rebuilt_when_anything_it_is_built_from_changes():
+    """F-141: the Pages workflow only ran on site/, the images and the look, so the bump to 0.2.0 (only VERSION changed)
+    left the site saying 0.1.10. Every file build.sh reads must be in the workflow's paths."""
+    flow = (REPO / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    paths = re.search(r"paths: \[(.*)\]", flow).group(1)
+    for read in ('"VERSION"', '"site/**"', '"docs/images/**"', '"crissp/look/**"'):
+        assert read in paths, read

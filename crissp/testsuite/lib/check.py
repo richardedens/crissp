@@ -30,8 +30,10 @@ import release  # noqa: E402
 import workers  # noqa: E402
 
 GENERATED = ":(exclude)crissp/testsuite/coverage-baseline.json"
-NOT_GIT = ("Not a git checkout: crissp/check.sh tests what changed since the last green commit, and there are no commits "
-           "here. Run git init and commit (crissp/check-all.sh runs every step without one, for proof).")
+NOT_GIT = (
+    "Not a git checkout: crissp/check.sh tests what changed since the last green commit, and there are no commits "
+    "here. Run git init and commit (crissp/check-all.sh runs every step without one, for proof)."
+)
 GREEN = "Green: crissp/deploy.sh may go."
 
 
@@ -121,10 +123,15 @@ def say_plan(p: dict, since: str, out, spread_over: list[str] = ()) -> None:
         print("  Workers: " + ", ".join(spread_over), file=out)
     print(f"  About {p['minutes']} min.", file=out)
     for s in p.get("split", []):
-        took = f"took {s['minutes']} min last time" if s["measured"] else f"takes about {s['minutes']} min (suites.json)"
-        print(f"  Advice: {s['label']} {took}, and every change in its part runs all of it. Split that part into smaller "
-              "ones (several backends or frontends, CRISSP.md: Several parts), so crissp/check.sh runs only the one "
-              "that changed.", file=out)
+        took = (
+            f"took {s['minutes']} min last time" if s["measured"] else f"takes about {s['minutes']} min (suites.json)"
+        )
+        print(
+            f"  Advice: {s['label']} {took}, and every change in its part runs all of it. Split that part into smaller "
+            "ones (several backends or frontends, CRISSP.md: Several parts), so crissp/check.sh runs only the one "
+            "that changed.",
+            file=out,
+        )
 
 
 def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None) -> int:
@@ -147,7 +154,10 @@ def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None)
             return 2
         loose = uncommitted(root)
         if loose:
-            print("Commit your changes first: crissp/check.sh tests what is committed (that is what gets deployed).", file=err)
+            print(
+                "Commit your changes first: crissp/check.sh tests what is committed (that is what gets deployed).",
+                file=err,
+            )
             print("\n".join(loose[:10]), file=err)
             return 2
         if not plan_only and run([script("setup.sh")], cwd=root).returncode != 0:
@@ -165,7 +175,7 @@ def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None)
         if plan_only:
             return 0
         ok = True
-        for check in p["light"]:  # the one light check: the release notes
+        for _check in p["light"]:  # the one light check: the release notes
             problems = impact.check_release_notes(root)
             print(f"▸ {'Release notes (VERSION, CHANGELOG.md)':<44}" + ("FAILED" if problems else "passed"), file=out)
             for line in problems:
@@ -179,8 +189,11 @@ def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None)
                 for line in [x for x in gate_log.read_text().splitlines() if x.startswith("✗")][:40]:
                     print(line, file=out)
         if not ok:
-            print("Not green: fix what failed above (logs in crissp/testsuite/results), commit, and run crissp/check.sh "
-                  "again.", file=out)
+            print(
+                "Not green: fix what failed above (logs in crissp/testsuite/results), commit, and run crissp/check.sh "
+                "again.",
+                file=out,
+            )
             return 1
         why = release.advance({**p, "passed": True}, root, results)
         for line in why:
@@ -203,21 +216,33 @@ def everything(root: Path, run=subprocess.run, out=None, err=None) -> int:
         return 4
     try:
         if not is_checkout(root):
-            print("Not a git checkout: this run proves the tree as it is, but writes no release certificate (run git init "
-                  "and commit for one).", file=err)
+            print(
+                "Not a git checkout: this run proves the tree as it is, but writes no release certificate (run git init "
+                "and commit for one).",
+                file=err,
+            )
             if run([script("setup.sh")], cwd=root).returncode != 0:
                 return 1
             status = run([script("run.sh")], cwd=root).returncode
-            print("Every step passed (no certificate: not a git checkout)." if status == 0
-                  else "Not green: fix what failed above (logs in crissp/testsuite/results).", file=out)
+            print(
+                "Every step passed (no certificate: not a git checkout)."
+                if status == 0
+                else "Not green: fix what failed above (logs in crissp/testsuite/results).",
+                file=out,
+            )
             return status
         if git(root, "rev-parse", "--verify", "-q", "HEAD").returncode != 0:
-            print("No commit yet: commit first. The run is only valid for committed code (that is what gets deployed).",
-                  file=err)
+            print(
+                "No commit yet: commit first. The run is only valid for committed code (that is what gets deployed).",
+                file=err,
+            )
             return 2
         loose = uncommitted(root)
         if loose:
-            print("Commit your changes first: the run is only valid for committed code (that is what gets deployed).", file=err)
+            print(
+                "Commit your changes first: the run is only valid for committed code (that is what gets deployed).",
+                file=err,
+            )
             print("\n".join(loose[:10]), file=err)
             return 2
         if run([script("setup.sh")], cwd=root).returncode != 0:
@@ -232,18 +257,29 @@ def everything(root: Path, run=subprocess.run, out=None, err=None) -> int:
             print(f"  - {line}", file=out)
         if why:
             print("Release gate: not green.", file=out)
-            print("Not green: fix what failed above (logs in crissp/testsuite/results), commit, and run crissp/check-all.sh "
-                  "again.", file=out)
+            print(
+                "Not green: fix what failed above (logs in crissp/testsuite/results), commit, and run crissp/check-all.sh "
+                "again.",
+                file=out,
+            )
         else:
             print(f"Release gate: green for this commit.\n{GREEN}", file=out)
             state = git(root, "status", "--porcelain", "--", "crissp/testsuite/coverage-baseline.json").stdout
-            if state.startswith("??"):  # F-06: a new project's first full run wrote the baseline; say what is left, plainly
-                print("This was the first full run: it wrote the coverage baseline. Commit it, then crissp/check.sh moves "
-                      "the certificate to that commit:\n  git add crissp/testsuite/coverage-baseline.json && git commit -m "
-                      "\"Coverage baseline\" && crissp/check.sh", file=out)
+            if state.startswith(
+                "??"
+            ):  # F-06: a new project's first full run wrote the baseline; say what is left, plainly
+                print(
+                    "This was the first full run: it wrote the coverage baseline. Commit it, then crissp/check.sh moves "
+                    "the certificate to that commit:\n  git add crissp/testsuite/coverage-baseline.json && git commit -m "
+                    '"Coverage baseline" && crissp/check.sh',
+                    file=out,
+                )
             elif state.strip():
-                print("The coverage baseline went up: commit crissp/testsuite/coverage-baseline.json (crissp/check.sh then "
-                      "moves the certificate to that commit).", file=out)
+                print(
+                    "The coverage baseline went up: commit crissp/testsuite/coverage-baseline.json (crissp/check.sh then "
+                    "moves the certificate to that commit).",
+                    file=out,
+                )
         return status
     finally:
         lock.free()
@@ -261,5 +297,4 @@ def main(argv: list[str], root: Path | None = None) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover — run by crissp/check.sh and check-all.sh; main() is tested
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
-    sys.exit(main(sys.argv))
+    project.script(main)

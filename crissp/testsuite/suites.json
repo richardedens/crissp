@@ -13,7 +13,8 @@
    "sources": [
     "crissp/testsuite/lib",
     "crissp/tool",
-    "crissp/uxsuite"
+    "crissp/uxsuite",
+    "crissp/testsuite/lint"
    ],
    "omit": [
     "*/tests/*"
@@ -27,9 +28,9 @@
   },
   {
    "key": "python-lint",
-   "label": "Lint of crissp's own Python (the pinned ruff, pyproject.toml [tool.ruff])",
+   "label": "Lint of crissp's own Python (ruff's rules and layout, standard library only, no duplicate code)",
    "dir": ".",
-   "run": "py -m ruff check --no-cache src crissp site",
+   "run": "py crissp/testsuite/lint/python_lint.py",
    "seconds": 5,
    "tests": []
   },
@@ -46,7 +47,7 @@
   },
   {
    "key": "lint",
-   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript",
+   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript, stylelint on the CSS",
    "dir": ".",
    "run": "crissp/testsuite/lint/lint.sh",
    "seconds": 10,
@@ -110,6 +111,23 @@
    ]
   },
   {
+   "match": "crissp/testsuite/lint/python_lint.py",
+   "steps": [
+    "tools",
+    "python-lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/lint/requirements.txt",
+   "steps": [
+    "lint",
+    "python-lint",
+    "secrets"
+   ]
+  },
+  {
    "match": "crissp/testsuite/lint/",
    "steps": [
     "lint",
@@ -154,6 +172,15 @@
     "secrets",
     "sast",
     "quality"
+   ]
+  },
+  {
+   "match": "crissp/uxsuite/measure.js",
+   "steps": [
+    "tools",
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
@@ -329,5 +356,8 @@
    ]
   }
  },
- "texts": {}
+ "texts": {},
+ "notes": [
+  ".editorconfig"
+ ]
 }

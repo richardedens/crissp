@@ -1,4 +1,4 @@
-"""The UX suite from the terminal: cli.main (list, status, round, propose, shoot) and crissp/ux.sh around it."""
+"""The UX suite from the terminal: cli.main (list, status, round, propose, shoot, map, discover) and crissp/ux.sh around it."""
 
 import json
 import os
@@ -8,10 +8,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import REPO, ROUND, add_shots, finish, make_product, product, ux_team  # noqa: F401
+from ux_kit import REPO, ROUND, add_shots, finish, make_product, product, ux_config, ux_team  # noqa: F401
 
 # isort: split
 import cli  # ux_kit put the uxsuite on sys.path
+import ux_map
 
 
 def test_list_names_the_team_and_the_walks(product, capsys):
@@ -53,8 +54,28 @@ def test_shoot_says_what_the_browser_did(product, capsys):
     def browser(cmd, **kw):
         (Path(cmd[-1]).parent / "shots.json").write_text("[]")
         return subprocess.CompletedProcess(cmd, 0, "", "")
+
     assert cli.main(["shoot", "first-visit"], product, run=browser) == 0
     assert "first-visit: 0 screenshot(s)" in capsys.readouterr().out
+
+
+def test_map_says_what_the_crawl_found(product, capsys):
+    def browser(cmd, **kw):
+        (Path(cmd[-1]).parent / "crawl.json").write_text(
+            json.dumps([{"path": "/", "title": "Home", "device": "laptop", "file": "", "from": None, "links": []}])
+        )
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    assert cli.main(["map"], product, run=browser) == 0
+    assert capsys.readouterr().out.startswith("1 screen(s) in 1 area(s), 0 gap(s)")
+
+
+def test_discover_asks_for_a_discovery_round(product, capsys):
+    assert cli.main(["discover"], product) == 1 and "map the product first" in capsys.readouterr().err
+    add_shots(product)
+    ux_map.build(product, ux_config.load(product))
+    assert cli.main(["discover"], product) == 0
+    assert capsys.readouterr().out == "Started: discovery 1 of product (results/discovery/product).\n"
 
 
 def test_a_wrong_command_shows_the_help(product, capsys):
@@ -70,16 +91,29 @@ def _copy_suite(tmp_path) -> Path:
     root = tmp_path / "copy"
     (root / "crissp").mkdir(parents=True)
     shutil.copy(REPO / "crissp" / "ux.sh", root / "crissp" / "ux.sh")
-    shutil.copytree(REPO / "crissp" / "uxsuite", root / "crissp" / "uxsuite",
-                    ignore=shutil.ignore_patterns("results", "tests", "__pycache__"))
-    shutil.copytree(REPO / "crissp" / "testsuite" / "lib", root / "crissp" / "testsuite" / "lib",  # the engine's shared module
-                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(
+        REPO / "crissp" / "uxsuite",
+        root / "crissp" / "uxsuite",
+        ignore=shutil.ignore_patterns("results", "tests", "__pycache__"),
+    )
+    shutil.copytree(
+        REPO / "crissp" / "testsuite" / "lib",
+        root / "crissp" / "testsuite" / "lib",  # the engine's shared module
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     return root
 
 
 def sh(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([str(root / "crissp" / "ux.sh"), *args], cwd=root, capture_output=True, text=True, timeout=60,
-                          check=False, env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""})  # the copy, never the project a run came from
+    return subprocess.run(
+        [str(root / "crissp" / "ux.sh"), *args],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""},
+    )  # the copy, never the project a run came from
 
 
 def test_ux_sh_lists_reports_and_refuses_what_it_does_not_know(tmp_path):
@@ -104,7 +138,10 @@ def test_ux_sh_without_an_argument_opens_the_suite_in_the_dashboard(tmp_path):
 
 def test_list_marks_a_persona_that_is_off(product, capsys):
     import ux_cards
-    ux_cards.save_persona(product, {"key": "phone", "name": "Mo", "role": "student", "device": "mobile",
-                                    "brief": "Uses a thumb.", "on": False})
+
+    ux_cards.save_persona(
+        product,
+        {"key": "phone", "name": "Mo", "role": "student", "device": "mobile", "brief": "Uses a thumb.", "on": False},
+    )
     assert cli.main(["list"], product) == 0
     assert "phone      Mo, student (mobile) — off" in capsys.readouterr().out

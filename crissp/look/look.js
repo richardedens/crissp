@@ -14,8 +14,9 @@
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   /* E3-F1-01: the one list of sections, in this order on every page of the dashboard server. A page has
      <nav class="sections" aria-label="Sections" data-current="<key>"></nav> and nothing in it; this fills and marks it.
-     The board is the Tests page on its Backlog tab (#board), so there Backlog is the open section. */
-  const SECTIONS = [["tests", "Tests", "/dashboard/"], ["backlog", "Backlog", "/dashboard/#board"], ["ux", "UX", "/ux/"],
+     The board is the Tests page on its Backlog tab (#board), so there Backlog is the open section. Stages first
+     (F-130): where the work is in Discover, Plan, Build, Verify, Review and Release. */
+  const SECTIONS = [["stages", "Stages", "/dashboard/stages.html"], ["tests", "Tests", "/dashboard/"], ["backlog", "Backlog", "/dashboard/#board"], ["ux", "UX", "/ux/"],
     ["workers", "Workers", "/dashboard/workers.html"], ["activity", "Activity", "/dashboard/activity.html"],
     ["sessions", "Sessions", "/results/sessions/index.html"]];
   let named = null;  // the product, once a page named it: the title follows the open section ("Shop · Backlog")

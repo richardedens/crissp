@@ -48,8 +48,23 @@ CONFIG = Path("crissp/testsuite/suites.json")
 KEY = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 GATE = "gate"
 GATE_LABEL = "Coverage gate (may only go up)"
-STEP_KEYS = {"key", "label", "dir", "run", "seconds", "coverage", "gate", "sources", "omit", "fail_under", "tests",
-             "full_only", "when", "parallel", "memory_mb"}
+STEP_KEYS = {
+    "key",
+    "label",
+    "dir",
+    "run",
+    "seconds",
+    "coverage",
+    "gate",
+    "sources",
+    "omit",
+    "fail_under",
+    "tests",
+    "full_only",
+    "when",
+    "parallel",
+    "memory_mb",
+}
 TOP_KEYS = {"product", "monogram", "steps", "paths", "shared", "notes", "setup", "audit", "texts", "$comment"}
 
 
@@ -59,8 +74,14 @@ class ConfigError(ValueError):
 
 # The guards' doors as scripts (a repository that carries the framework) and as the crissp command (an installed crissp:
 # the project has no crissp/*.sh of its own). The crissp command sets CRISSP_COMMAND; then every message names the command.
-DOORS = (("crissp/check-all.sh", "crissp check-all"), ("crissp/check.sh", "crissp check"), ("crissp/deploy.sh", "crissp deploy"),
-         ("crissp/test.sh --dashboard", "crissp dashboard"), ("crissp/test.sh --ux", "crissp ux"), ("crissp/ux.sh", "crissp ux"))
+DOORS = (
+    ("crissp/check-all.sh", "crissp check-all"),
+    ("crissp/check.sh", "crissp check"),
+    ("crissp/deploy.sh", "crissp deploy"),
+    ("crissp/test.sh --dashboard", "crissp dashboard"),
+    ("crissp/test.sh --ux", "crissp ux"),
+    ("crissp/ux.sh", "crissp ux"),
+)
 
 
 def speak(text: str, env=None) -> str:
@@ -85,6 +106,12 @@ class Speaking:
 
     def __getattr__(self, name):  # flush, isatty, fileno, …: the stream's own
         return getattr(self._stream, name)
+
+
+def script(main) -> None:
+    """Run a guard as a script: stdout and stderr speak the names a person can type (F-04), the exit is main's."""
+    sys.stdout, sys.stderr = Speaking(sys.stdout), Speaking(sys.stderr)
+    sys.exit(main(sys.argv))
 
 
 def root(env=None) -> Path:
@@ -121,8 +148,9 @@ def _step(raw, n: int) -> dict:
     if not isinstance(seconds, int) or isinstance(seconds, bool) or seconds < 1:
         raise ConfigError(f"{where}: seconds must be a whole number of at least 1")
     fail_under = raw.get("fail_under")
-    if fail_under is not None and (not isinstance(fail_under, (int, float)) or isinstance(fail_under, bool)
-                                   or not 0 <= fail_under <= 100):
+    if fail_under is not None and (
+        not isinstance(fail_under, (int, float)) or isinstance(fail_under, bool) or not 0 <= fail_under <= 100
+    ):
         raise ConfigError(f"{where}: fail_under must be a percentage from 0 to 100")
     memory_mb = raw.get("memory_mb", 256)
     if not isinstance(memory_mb, int) or isinstance(memory_mb, bool) or memory_mb < 1:
@@ -130,12 +158,21 @@ def _step(raw, n: int) -> dict:
     for flag in ("coverage", "gate", "full_only", "parallel"):
         if not isinstance(raw.get(flag, False), bool):
             raise ConfigError(f"{where}: {flag} must be true or false")
-    step = {"key": key, "label": raw["label"].strip(), "dir": str(raw.get("dir") or "."), "run": raw["run"].strip(),
-            "seconds": seconds, "gate": raw.get("gate", False), "full_only": raw.get("full_only", False),
-            "parallel": raw.get("parallel", False), "memory_mb": memory_mb,
-            "sources": _texts(raw.get("sources", []), f"{where}: sources"),
-            "omit": _texts(raw.get("omit", []), f"{where}: omit"), "fail_under": fail_under,
-            "when": raw.get("when") if isinstance(raw.get("when"), str) else None}
+    step = {
+        "key": key,
+        "label": raw["label"].strip(),
+        "dir": str(raw.get("dir") or "."),
+        "run": raw["run"].strip(),
+        "seconds": seconds,
+        "gate": raw.get("gate", False),
+        "full_only": raw.get("full_only", False),
+        "parallel": raw.get("parallel", False),
+        "memory_mb": memory_mb,
+        "sources": _texts(raw.get("sources", []), f"{where}: sources"),
+        "omit": _texts(raw.get("omit", []), f"{where}: omit"),
+        "fail_under": fail_under,
+        "when": raw.get("when") if isinstance(raw.get("when"), str) else None,
+    }
     step["coverage"] = raw.get("coverage", False) or step["gate"]
     if step["coverage"] and not step["sources"]:
         raise ConfigError(f"{where}: a step that measures coverage names its sources")
@@ -161,8 +198,11 @@ def parse(data) -> dict:
     unknown = sorted(set(data) - TOP_KEYS)
     if unknown:
         raise ConfigError(f"suites.json: unknown field(s) {', '.join(unknown)}")
-    steps = [_step(raw, n) for n, raw in enumerate(data.get("steps", []))] if isinstance(data.get("steps", []), list) \
+    steps = (
+        [_step(raw, n) for n, raw in enumerate(data.get("steps", []))]
+        if isinstance(data.get("steps", []), list)
         else None
+    )
     if steps is None:
         raise ConfigError("suites.json: steps must be a list")
     keys = [s["key"] for s in steps]
@@ -180,13 +220,16 @@ def parse(data) -> dict:
     shared = _rules(data.get("shared", []), "shared", "why")
     for rule in shared:
         if not isinstance(rule["why"], str) or not rule["why"].strip():
-            raise ConfigError(f"suites.json: shared {rule['match']}: why must say why a change there needs the full run")
+            raise ConfigError(
+                f"suites.json: shared {rule['match']}: why must say why a change there needs the full run"
+            )
     setup = data.get("setup", {})
     if not isinstance(setup, dict):
         raise ConfigError("suites.json: setup must be an object")
     needs = setup.get("needs", [])
-    if not isinstance(needs, list) or not all(isinstance(x, dict) and isinstance(x.get("command"), str)
-                                              and isinstance(x.get("hint"), str) for x in needs):
+    if not isinstance(needs, list) or not all(
+        isinstance(x, dict) and isinstance(x.get("command"), str) and isinstance(x.get("hint"), str) for x in needs
+    ):
         raise ConfigError("suites.json: setup.needs must be a list of {command, hint}")
     audit = data.get("audit")
     if audit is not None and not isinstance(audit, dict):
@@ -195,12 +238,21 @@ def parse(data) -> dict:
     if not isinstance(texts, dict):
         raise ConfigError("suites.json: texts must be an object")
     product = data.get("product")
-    return {"product": product.strip() if isinstance(product, str) and product.strip() else None,
-            "monogram": data.get("monogram") if isinstance(data.get("monogram"), str) else None,
-            "steps": steps, "paths": paths, "shared": shared, "notes": _texts(data.get("notes", []), "suites.json: notes"),
-            "setup": {"venvs": _texts(setup.get("venvs", []), "suites.json: setup.venvs"),
-                      "npm": _texts(setup.get("npm", []), "suites.json: setup.npm"), "needs": needs},
-            "audit": audit, "texts": texts}
+    return {
+        "product": product.strip() if isinstance(product, str) and product.strip() else None,
+        "monogram": data.get("monogram") if isinstance(data.get("monogram"), str) else None,
+        "steps": steps,
+        "paths": paths,
+        "shared": shared,
+        "notes": _texts(data.get("notes", []), "suites.json: notes"),
+        "setup": {
+            "venvs": _texts(setup.get("venvs", []), "suites.json: setup.venvs"),
+            "npm": _texts(setup.get("npm", []), "suites.json: setup.npm"),
+            "needs": needs,
+        },
+        "audit": audit,
+        "texts": texts,
+    }
 
 
 def load(project: Path) -> dict:
@@ -209,8 +261,10 @@ def load(project: Path) -> dict:
     try:
         data = json.loads(path.read_text())
     except OSError:
-        raise ConfigError(f"{CONFIG} is missing: describe the product's parts there "
-                          "(crissp/template/crissp/testsuite/suites.json is a start)") from None
+        raise ConfigError(
+            f"{CONFIG} is missing: describe the product's parts there "
+            "(crissp/template/crissp/testsuite/suites.json is a start)"
+        ) from None
     except json.JSONDecodeError as e:
         raise ConfigError(f"{CONFIG} is not valid JSON: {e}") from None
     conf = parse(data)
@@ -220,9 +274,24 @@ def load(project: Path) -> dict:
 
 
 def gate_step(gated: list[str]) -> dict:
-    return {"key": GATE, "label": GATE_LABEL, "dir": ".", "run": "", "seconds": 2, "gate": False, "coverage": False,
-            "full_only": False, "parallel": False, "memory_mb": 256, "sources": [], "omit": [], "fail_under": None, "tests": [], "when": None,
-            "suites": gated}
+    return {
+        "key": GATE,
+        "label": GATE_LABEL,
+        "dir": ".",
+        "run": "",
+        "seconds": 2,
+        "gate": False,
+        "coverage": False,
+        "full_only": False,
+        "parallel": False,
+        "memory_mb": 256,
+        "sources": [],
+        "omit": [],
+        "fail_under": None,
+        "tests": [],
+        "when": None,
+        "suites": gated,
+    }
 
 
 def steps(conf: dict, project: Path) -> list[dict]:
@@ -233,7 +302,7 @@ def steps(conf: dict, project: Path) -> list[dict]:
     if not gated:
         return present
     last = max(i for i, s in enumerate(present) if s["gate"])
-    return present[: last + 1] + [gate_step(gated)] + present[last + 1:]
+    return [*present[: last + 1], gate_step(gated), *present[last + 1 :]]
 
 
 def main(argv: list[str]) -> int:

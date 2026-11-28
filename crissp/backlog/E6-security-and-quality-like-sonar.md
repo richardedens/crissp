@@ -63,7 +63,7 @@ Why        Complexity and duplication are not measured; a quality gate that only
            keeps old code from blocking.
 
 ### E6-F4-01 · Complexity and duplication, held by a ratchet                             [review] [M]
-Why        nothing measured how complex or copied the code is (F-110)
+Why        nothing measured how complex or copied the code is (F-150)
 What       lib/quality.py: the pinned lizard's cyclomatic complexity per function, crissp's own copy count across
            languages, a baseline that only goes down; a quality step in crissp and the template, and a Code quality tile
 Done when  a new complex function, a more complex one or more duplicated lines fail the step; a green run lowers the
@@ -76,7 +76,7 @@ Why        A passive OWASP ZAP baseline against the app docker-compose starts on
            flags and leaks the code scans cannot see.
 
 ### E6-F5-01 · The passive ZAP baseline against the running app                          [review] [M]
-Why        nothing scanned the running app (F-111)
+Why        nothing scanned the running app (F-151)
 What       audit dast: zap-baseline.py in the pinned ZAP image against audit.dast.targets, compose started and stopped
            when the app is down, the project's rules file; HIGH and FAIL rules block
 Done when  a high risk or a FAIL rule blocks the full run; an app that does not answer is a problem
@@ -87,7 +87,7 @@ Depends    —
 Why        A CycloneDX SBOM with every release and a licence check of the dependencies.
 
 ### E6-F6-01 · Licences checked and an SBOM per run                                      [review] [M]
-Why        no licence check, no SBOM (F-112)
+Why        no licence check, no SBOM (F-152)
 What       audit licenses: npm lock files and resolved pip requirements, licences from the lock file or PyPI, a policy
            (forbidden and copyleft block, allow and block per project), a CycloneDX 1.6 SBOM
 Done when  a GPL or AGPL dependency the product ships blocks; results/sbom.cdx.json lists every component

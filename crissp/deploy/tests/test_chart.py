@@ -10,8 +10,14 @@ import yaml
 from conftest import CHART, HELM, one, pods, render
 
 REDIRECTS = ["www.shop.test", "shop-other.test"]
-SETS = ("product=shop", "image.repository=registry.test/team/shop", "image.version=1.2.3", "host=shop.test",
-        "redirectHosts={www.shop.test,shop-other.test}", "imagePullSecrets[0].name=pull")
+SETS = (
+    "product=shop",
+    "image.repository=registry.test/team/shop",
+    "image.version=1.2.3",
+    "host=shop.test",
+    "redirectHosts={www.shop.test,shop-other.test}",
+    "imagePullSecrets[0].name=pull",
+)
 
 
 @pytest.fixture(scope="module")
@@ -30,6 +36,7 @@ def kinds(docs):
 
 # ------------------------------------------------------------------------------------------------ lint and parts
 
+
 @pytest.mark.parametrize("extra", [[], ["-f", str(CHART / "ci" / "backend-only-values.yaml")]])
 def test_helm_lint_passes(extra):
     done = subprocess.run([HELM, "lint", str(CHART), *extra], capture_output=True, text=True, check=False)
@@ -37,13 +44,28 @@ def test_helm_lint_passes(extra):
 
 
 def test_the_chart_holds_every_part(docs):
-    for wanted in ("Deployment/shop-backend", "Deployment/shop-frontend", "StatefulSet/shop-postgresql",
-                   "Service/shop-backend", "Service/shop-frontend", "Service/shop-postgresql",
-                   "Secret/shop-secret", "ConfigMap/shop-config", "CronJob/shop-backup",
-                   "PersistentVolumeClaim/shop-backup", "Ingress/shop", "Ingress/shop-redirect",
-                   "Middleware/shop-headers", "Middleware/shop-body-size", "Middleware/shop-ratelimit",
-                   "Middleware/shop-redirect", "NetworkPolicy/shop-app", "NetworkPolicy/shop-postgresql",
-                   "NetworkPolicy/shop-backup", "NetworkPolicy/shop-backend-egress"):
+    for wanted in (
+        "Deployment/shop-backend",
+        "Deployment/shop-frontend",
+        "StatefulSet/shop-postgresql",
+        "Service/shop-backend",
+        "Service/shop-frontend",
+        "Service/shop-postgresql",
+        "Secret/shop-secret",
+        "ConfigMap/shop-config",
+        "CronJob/shop-backup",
+        "PersistentVolumeClaim/shop-backup",
+        "Ingress/shop",
+        "Ingress/shop-redirect",
+        "Middleware/shop-headers",
+        "Middleware/shop-body-size",
+        "Middleware/shop-ratelimit",
+        "Middleware/shop-redirect",
+        "NetworkPolicy/shop-app",
+        "NetworkPolicy/shop-postgresql",
+        "NetworkPolicy/shop-backup",
+        "NetworkPolicy/shop-backend-egress",
+    ):
         assert wanted in kinds(docs), wanted
 
 
@@ -55,8 +77,9 @@ def test_the_example_values_render_and_name_no_real_host(example):
 def test_a_product_with_only_a_backend_and_no_database():
     docs = render(values=[CHART / "ci" / "backend-only-values.yaml"])
     names = kinds(docs)
-    assert "Deployment/shop-backend" in names and not any("frontend" in n or "postgresql" in n or "backup" in n
-                                                          for n in names)
+    assert "Deployment/shop-backend" in names and not any(
+        "frontend" in n or "postgresql" in n or "backup" in n for n in names
+    )
     (rule,) = one(docs, "Ingress", "shop")["spec"]["rules"]
     assert [(p["path"], p["backend"]["service"]["name"]) for p in rule["http"]["paths"]] == [("/", "shop-backend")]
     assert one(docs, "NetworkPolicy", "shop-app")["spec"]["podSelector"]["matchExpressions"][0]["values"] == ["backend"]
@@ -84,6 +107,7 @@ def test_no_part_at_all_is_refused():
 
 # ------------------------------------------------------------------------------------------------ Traefik
 
+
 def test_the_product_is_served_by_traefik_on_its_host_with_a_certificate(docs):
     ing = one(docs, "Ingress", "shop")
     assert ing["spec"]["ingressClassName"] == "traefik"
@@ -94,8 +118,11 @@ def test_the_product_is_served_by_traefik_on_its_host_with_a_certificate(docs):
     routes = {p["path"]: (p["pathType"], p["backend"]["service"]["name"]) for p in rule["http"]["paths"]}
     assert routes == {"/api": ("Prefix", "shop-backend"), "/": ("Prefix", "shop-frontend")}
     middlewares = ing["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"].split(",")
-    assert middlewares == ["shop-shop-headers@kubernetescrd", "shop-shop-body-size@kubernetescrd",
-                           "shop-shop-ratelimit@kubernetescrd"]
+    assert middlewares == [
+        "shop-shop-headers@kubernetescrd",
+        "shop-shop-body-size@kubernetescrd",
+        "shop-shop-ratelimit@kubernetescrd",
+    ]
 
 
 def test_the_backend_path_and_the_issuer_follow_the_values():
@@ -109,8 +136,10 @@ def test_the_other_domains_go_to_the_host_permanently(docs):
     ing = one(docs, "Ingress", "shop-redirect")
     assert [r["host"] for r in ing["spec"]["rules"]] == REDIRECTS
     assert ing["spec"]["tls"] == [{"hosts": REDIRECTS, "secretName": "shop-redirect-tls"}]  # never blocks the host's
-    assert ing["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] == \
-        "shop-shop-redirect@kubernetescrd"
+    assert (
+        ing["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"]
+        == "shop-shop-redirect@kubernetescrd"
+    )
     redirect = one(docs, "Middleware", "shop-redirect")["spec"]["redirectRegex"]
     assert redirect == {"regex": "^https?://[^/]+(.*)$", "replacement": "https://shop.test${1}", "permanent": True}
     assert not [d for d in render("redirectHosts=null") if "redirect" in d["metadata"]["name"]]
@@ -122,17 +151,25 @@ def test_security_headers_upload_limit_and_rate_limit_are_traefik_middlewares(do
     assert headers["contentSecurityPolicy"].startswith("default-src 'self'")
     assert headers["referrerPolicy"] == "strict-origin-when-cross-origin"
     assert one(docs, "Middleware", "shop-body-size")["spec"] == {"buffering": {"maxRequestBodyBytes": 2097152}}
-    assert one(docs, "Middleware", "shop-ratelimit")["spec"] == {"rateLimit": {"average": 20, "period": "1s", "burst": 100}}
-    off = render(*SETS, "ingress.securityHeaders.enabled=false", "ingress.maxRequestBodyBytes=0", "ingress.rateLimit=null")
+    assert one(docs, "Middleware", "shop-ratelimit")["spec"] == {
+        "rateLimit": {"average": 20, "period": "1s", "burst": 100}
+    }
+    off = render(
+        *SETS, "ingress.securityHeaders.enabled=false", "ingress.maxRequestBodyBytes=0", "ingress.rateLimit=null"
+    )
     assert not [d for d in off if d["kind"] == "Middleware" and d["metadata"]["name"] != "shop-redirect"]
-    assert "traefik.ingress.kubernetes.io/router.middlewares" not in one(off, "Ingress", "shop")["metadata"]["annotations"]
+    assert (
+        "traefik.ingress.kubernetes.io/router.middlewares" not in one(off, "Ingress", "shop")["metadata"]["annotations"]
+    )
     assert not [d for d in render(*SETS, "ingress.enabled=false") if d["kind"] in ("Ingress", "Middleware")]
 
 
 # ------------------------------------------------------------------------------------------------ security
 
-@pytest.mark.parametrize("variant", [(), ("backend.enabled=false",), ("frontend.enabled=false",),
-                                     ("database.enabled=false",)])
+
+@pytest.mark.parametrize(
+    "variant", [(), ("backend.enabled=false",), ("frontend.enabled=false",), ("database.enabled=false",)]
+)
 def test_every_container_is_non_root_read_only_capped_and_probed(variant):
     docs = render(*SETS, *variant)
     seen = 0
@@ -154,7 +191,10 @@ def test_every_container_is_non_root_read_only_capped_and_probed(variant):
 
 
 def test_every_writable_folder_is_its_own_mount(docs):
-    for name, wanted in (("shop-frontend", {"/tmp", "/var/cache/nginx", "/etc/nginx/conf.d"}), ("shop-backend", {"/tmp"})):
+    for name, wanted in (
+        ("shop-frontend", {"/tmp", "/var/cache/nginx", "/etc/nginx/conf.d"}),
+        ("shop-backend", {"/tmp"}),
+    ):
         (c,) = one(docs, "Deployment", name)["spec"]["template"]["spec"]["containers"]
         assert {m["mountPath"] for m in c["volumeMounts"]} == wanted
     pg = one(docs, "StatefulSet", "shop-postgresql")["spec"]["template"]["spec"]["containers"][0]
@@ -169,7 +209,9 @@ def test_the_images_ports_and_probes_come_from_the_values(docs):
         assert pod["imagePullSecrets"] == [{"name": "pull"}]
     other = render(*SETS, "backend.port=9000", "backend.health=/healthz", "frontend.port=8081")
     (b,) = one(other, "Deployment", "shop-backend")["spec"]["template"]["spec"]["containers"]
-    assert b["ports"] == [{"name": "http", "containerPort": 9000}] and b["readinessProbe"]["httpGet"]["path"] == "/healthz"
+    assert (
+        b["ports"] == [{"name": "http", "containerPort": 9000}] and b["readinessProbe"]["httpGet"]["path"] == "/healthz"
+    )
     rule = one(other, "NetworkPolicy", "shop-app")["spec"]["ingress"][0]
     assert sorted(p["port"] for p in rule["ports"]) == [8081, 9000]
 
@@ -181,6 +223,7 @@ def test_every_resource_carries_the_product_s_labels(docs):
 
 
 # ------------------------------------------------------------------------------------------------ the database
+
 
 def test_the_backend_finds_postgresql_through_the_secret(docs):
     (c,) = one(docs, "Deployment", "shop-backend")["spec"]["template"]["spec"]["containers"]
@@ -200,11 +243,15 @@ def test_postgresql_keeps_its_data_and_is_backed_up_every_night(docs):
     assert backup["spec"]["schedule"] == "45 2 * * *" and backup["spec"]["concurrencyPolicy"] == "Forbid"
     script = backup["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["args"][0]
     assert "pg_dump -Fc" in script and "KEEP_DAYS" in script and ".partial" in script
-    assert one(docs, "PersistentVolumeClaim", "shop-backup")["metadata"]["annotations"]["helm.sh/resource-policy"] == "keep"
+    assert (
+        one(docs, "PersistentVolumeClaim", "shop-backup")["metadata"]["annotations"]["helm.sh/resource-policy"]
+        == "keep"
+    )
     assert "CronJob/shop-backup" not in kinds(render(*SETS, "backup.enabled=false"))
 
 
 # ------------------------------------------------------------------------------------------------ secrets
+
 
 def test_no_secret_value_is_in_the_chart_and_given_ones_are_encoded():
     values = yaml.safe_load((CHART / "values.yaml").read_text())
@@ -219,7 +266,9 @@ def test_no_secret_value_is_in_the_chart_and_given_ones_are_encoded():
 def test_a_changed_secret_rolls_the_backend():
     def checksum(*s):
         return one(render(*SETS, *s), "Deployment", "shop-backend")["spec"]["template"]["metadata"]["annotations"][
-            "checksum/secret"]
+            "checksum/secret"
+        ]
+
     assert checksum("secrets.A=1") != checksum("secrets.A=2")
 
 
@@ -230,10 +279,12 @@ def test_the_settings_go_to_the_configmap(docs):
 
 # ------------------------------------------------------------------------------------------------ network policies
 
+
 def test_only_the_ingress_controller_reaches_the_parts_and_only_backend_and_backup_reach_postgresql(docs):
     app = one(docs, "NetworkPolicy", "shop-app")
     assert app["spec"]["podSelector"]["matchExpressions"] == [
-        {"key": "app.kubernetes.io/component", "operator": "In", "values": ["backend", "frontend"]}]
+        {"key": "app.kubernetes.io/component", "operator": "In", "values": ["backend", "frontend"]}
+    ]
     assert app["spec"]["policyTypes"] == ["Ingress", "Egress"]
     (rule,) = app["spec"]["ingress"]
     assert rule["from"] == [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "traefik"}}}]
@@ -241,17 +292,21 @@ def test_only_the_ingress_controller_reaches_the_parts_and_only_backend_and_back
     assert sorted(p["port"] for r in app["spec"]["egress"] for p in r["ports"]) == [53, 53, 5432]
     pg = one(docs, "NetworkPolicy", "shop-postgresql")
     assert pg["spec"]["ingress"][0]["from"][0]["podSelector"]["matchExpressions"] == [
-        {"key": "app.kubernetes.io/component", "operator": "In", "values": ["backend", "backup"]}]
+        {"key": "app.kubernetes.io/component", "operator": "In", "values": ["backend", "backup"]}
+    ]
     assert pg["spec"]["egress"] == []
     backup = one(docs, "NetworkPolicy", "shop-backup")
-    assert backup["spec"]["ingress"] == [] and sorted(p["port"] for r in backup["spec"]["egress"] for p in r["ports"]) == [
-        53, 53, 5432]
+    assert backup["spec"]["ingress"] == [] and sorted(
+        p["port"] for r in backup["spec"]["egress"] for p in r["ports"]
+    ) == [53, 53, 5432]
 
 
 def test_the_backend_s_way_out_skips_the_private_ranges(docs):
     out = one(docs, "NetworkPolicy", "shop-backend-egress")
     (rule,) = out["spec"]["egress"]
-    assert rule["to"] == [{"ipBlock": {"cidr": "0.0.0.0/0", "except": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]}}]
+    assert rule["to"] == [
+        {"ipBlock": {"cidr": "0.0.0.0/0", "except": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]}}
+    ]
     assert [p["port"] for p in rule["ports"]] == [443]
     assert "NetworkPolicy/shop-backend-egress" not in kinds(render(*SETS, "networkPolicy.backendEgress.ports=null"))
 
@@ -266,8 +321,12 @@ def test_a_frontend_that_proxies_may_reach_the_backend_and_a_default_deny_can_be
 
 
 def test_every_workload_is_covered_by_a_network_policy(docs):
-    components = {d["spec"]["template"]["metadata"]["labels"]["app.kubernetes.io/component"] if "template" in d["spec"]
-                  else "backup" for d, _ in pods(docs)}
+    components = {
+        d["spec"]["template"]["metadata"]["labels"]["app.kubernetes.io/component"]
+        if "template" in d["spec"]
+        else "backup"
+        for d, _ in pods(docs)
+    }
     covered = set()
     for np in (d for d in docs if d["kind"] == "NetworkPolicy"):
         sel = np["spec"]["podSelector"]
@@ -279,6 +338,7 @@ def test_every_workload_is_covered_by_a_network_policy(docs):
 
 # ------------------------------------------------------------------------------------------------ values documented
 
+
 def test_every_value_is_documented_in_values_yaml_and_the_readme():
     text = (CHART / "values.yaml").read_text()
     lines = text.splitlines()
@@ -287,6 +347,8 @@ def test_every_value_is_documented_in_values_yaml_and_the_readme():
         m = re.match(r"^([A-Za-z]\w*):", line)
         if m:
             above = lines[i - 1]  # a comment, or the key it is grouped with (host, then redirectHosts)
-            assert above.startswith("#") or re.match(r"^[A-Za-z]\w*:", above), f"{m.group(1)} has no comment in values.yaml"
+            assert above.startswith("#") or re.match(r"^[A-Za-z]\w*:", above), (
+                f"{m.group(1)} has no comment in values.yaml"
+            )
             assert re.search(rf"^#.*\b{m.group(1)}:", text, re.MULTILINE), f"{m.group(1)}: no comment says what it is"
             assert f"`{m.group(1)}" in readme, f"{m.group(1)} is not in crissp/deploy/README.md"

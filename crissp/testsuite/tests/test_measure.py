@@ -4,6 +4,7 @@ right from the backlog's history in git, and every recommendation names the meas
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -25,8 +26,21 @@ ms = _load("measure")
 
 def _r(mid, hist, out=0, *uses, ts="2026-10-23T09:00:00Z", cwd=None):
     """One record of an API response: its id, the history it was sent with, and the tools it used."""
-    return {"type": "assistant", "timestamp": ts, "cwd": cwd, "message": {"id": mid, "content": list(uses), "usage": {
-        "input_tokens": 0, "cache_read_input_tokens": hist, "cache_creation_input_tokens": 0, "output_tokens": out}}}
+    return {
+        "type": "assistant",
+        "timestamp": ts,
+        "cwd": cwd,
+        "message": {
+            "id": mid,
+            "content": list(uses),
+            "usage": {
+                "input_tokens": 0,
+                "cache_read_input_tokens": hist,
+                "cache_creation_input_tokens": 0,
+                "output_tokens": out,
+            },
+        },
+    }
 
 
 def _u(text, ts="2026-10-23T08:00:00Z"):
@@ -44,20 +58,23 @@ def _write(path: Path, records):
 
 def _session(repo: Path, projects: Path) -> Path:
     path = ms.sv.project_dir(repo, projects) / "s1.jsonl"
-    _write(path, [
-        _r("m0", 5, 1),  # before any prompt: not a request
-        _u("build the thing", "2026-10-23T08:00:00Z"),
-        _r("m1", 400_000, 10, _tool("Bash", {"command": "ls"}), _tool("Agent", {"description": "helper"}, "ag")),
-        _r("m1", 400_000, 10, _tool("Read", {"file_path": f"{repo}/a.py"})),  # same response, another record
-        _r("m2", 450_000, 20, _tool("Write", {"file_path": f"{repo}/a.py"}), cwd=str(repo)),
-        _r("m3", 30_000, 5),  # compacted
-        _u("<task-notification><summary>done</summary></task-notification>"),
-        _u("and a question", "2026-10-23T10:00:00Z"),
-        _r("m4", 31_000, 3),
-        _r("m4", 31_000, 3),  # the same response again, without tools: counted once
-        {"type": "user", "isSidechain": True, "message": {"content": "agent talk"}},
-        _u("unanswered", "2026-10-23T11:00:00Z"),
-    ])
+    _write(
+        path,
+        [
+            _r("m0", 5, 1),  # before any prompt: not a request
+            _u("build the thing", "2026-10-23T08:00:00Z"),
+            _r("m1", 400_000, 10, _tool("Bash", {"command": "ls"}), _tool("Agent", {"description": "helper"}, "ag")),
+            _r("m1", 400_000, 10, _tool("Read", {"file_path": f"{repo}/a.py"})),  # same response, another record
+            _r("m2", 450_000, 20, _tool("Write", {"file_path": f"{repo}/a.py"}), cwd=str(repo)),
+            _r("m3", 30_000, 5),  # compacted
+            _u("<task-notification><summary>done</summary></task-notification>"),
+            _u("and a question", "2026-10-23T10:00:00Z"),
+            _r("m4", 31_000, 3),
+            _r("m4", 31_000, 3),  # the same response again, without tools: counted once
+            {"type": "user", "isSidechain": True, "message": {"content": "agent talk"}},
+            _u("unanswered", "2026-10-23T11:00:00Z"),
+        ],
+    )
     sub = path.with_suffix("") / "subagents"
     _write(sub / "h.jsonl", [_r("h1", 100, 7)])
     (sub / "h.meta.json").write_text(json.dumps({"description": "helper", "toolUseId": "ag"}))
@@ -83,8 +100,9 @@ def test_numbers_read_as_people_say_them():
 
 
 def _git(repo: Path, *args):
-    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True,
-                   capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True, capture_output=True
+    )
 
 
 def _commit(repo: Path, msg: str, epic: str, date: str):
@@ -92,8 +110,11 @@ def _commit(repo: Path, msg: str, epic: str, date: str):
     (repo / "backlog" / "E1-x.md").write_text(epic)
     (repo / "backlog" / "notes.txt").write_text(msg)
     _git(repo, "add", "-A")
-    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", msg],
-                   check=True, env={"GIT_COMMITTER_DATE": date, "GIT_AUTHOR_DATE": date, "PATH": "/usr/bin:/bin"})
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", msg],
+        check=True,
+        env={"GIT_COMMITTER_DATE": date, "GIT_AUTHOR_DATE": date, "PATH": "/usr/bin:/bin"},
+    )
 
 
 def test_first_time_right_comes_from_the_backlog_in_git(tmp_path):
@@ -103,15 +124,23 @@ def test_first_time_right_comes_from_the_backlog_in_git(tmp_path):
     assert ms.item_history(repo) == {} and ms.commits(repo) == []
     item = "### E1-0{n} · Thing [{s}] [S]\n"
     _commit(repo, "start", item.format(n=1, s="doing") + item.format(n=2, s="doing"), "2026-10-23T08:30:00+00:00")
-    _commit(repo, "E1-01: built", item.format(n=1, s="review") + item.format(n=2, s="review"), "2026-10-23T09:30:00+00:00")
-    _commit(repo, "E1-02: again", item.format(n=1, s="review") + item.format(n=2, s="doing"), "2026-10-23T10:30:00+00:00")
+    _commit(
+        repo, "E1-01: built", item.format(n=1, s="review") + item.format(n=2, s="review"), "2026-10-23T09:30:00+00:00"
+    )
+    _commit(
+        repo, "E1-02: again", item.format(n=1, s="review") + item.format(n=2, s="doing"), "2026-10-23T10:30:00+00:00"
+    )
     _commit(repo, "accept", item.format(n=1, s="done") + item.format(n=2, s="review"), "2026-10-23T11:30:00+00:00")
     _commit(repo, "accept 2", item.format(n=1, s="done") + item.format(n=2, s="done"), "2026-10-23T12:30:00+00:00")
     history = ms.item_history(repo)
     assert history == {"E1-01": ["doing", "review", "done"], "E1-02": ["doing", "review", "doing", "review", "done"]}
     assert ms.first_time_right(history["E1-01"]) is True and ms.first_time_right(history["E1-02"]) is False
     assert ms.first_time_right(["doing", "done"]) is None and ms.first_time_right(["review"]) is None
-    asked = [{"at": "2026-10-23T09:00:00Z", "tokens": 100}, {"at": "2026-10-23T10:00:00Z", "tokens": 5}, {"at": None, "tokens": 9}]
+    asked = [
+        {"at": "2026-10-23T09:00:00Z", "tokens": 100},
+        {"at": "2026-10-23T10:00:00Z", "tokens": 5},
+        {"at": None, "tokens": 9},
+    ]
     assert ms.item_costs(repo, asked) == {"E1-01": 100, "E1-02": 5}
     assert ms.git(tmp_path / "nowhere", "log") == ""
 
@@ -119,9 +148,14 @@ def test_first_time_right_comes_from_the_backlog_in_git(tmp_path):
 def test_ways_of_working_are_read_with_their_start(tmp_path):
     assert ms.ways(tmp_path) == [{"name": "How we worked so far", "since": "", "what": ""}]
     (tmp_path / "crissp" / "testsuite").mkdir(parents=True)
-    (tmp_path / "crissp" / "testsuite" / "ways-of-working.json").write_text(json.dumps([
-        {"name": "New", "since": "2026-11-01", "what": "one session per feature"},
-        {"name": "Old", "since": "2026-10-01", "what": "one long session"}]))
+    (tmp_path / "crissp" / "testsuite" / "ways-of-working.json").write_text(
+        json.dumps(
+            [
+                {"name": "New", "since": "2026-11-01", "what": "one session per feature"},
+                {"name": "Old", "since": "2026-10-01", "what": "one long session"},
+            ]
+        )
+    )
     listed = ms.ways(tmp_path)
     assert [w["name"] for w in listed] == ["Old", "New"]
     assert ms.way_of("2026-11-02T00:00:00Z", listed) == "New" and ms.way_of("2026-10-02", listed) == "Old"
@@ -131,27 +165,50 @@ def test_ways_of_working_are_read_with_their_start(tmp_path):
 def test_ways_are_compared_on_cost_and_first_time_right():
     listed = [{"name": "Old", "since": "2026-10-01", "what": ""}, {"name": "New", "since": "2026-11-01", "what": ""}]
     q = lambda at, tokens, start, trips: {"at": at, "tokens": tokens, "start": start, "trips": [{}] * trips}  # noqa: E731
-    asked = [q("2026-10-05", 1000, 400_000, 3), q("2026-10-06", 3000, 500_000, 5), q("2026-11-05", 100, 20_000, 1),
-             q("2026-11-06", 0, 0, 0)]
+    asked = [
+        q("2026-10-05", 1000, 400_000, 3),
+        q("2026-10-06", 3000, 500_000, 5),
+        q("2026-11-05", 100, 20_000, 1),
+        q("2026-11-06", 0, 0, 0),
+    ]
     old, new = ms.compare(asked, {"E1-01": ["review", "done"], "E1-02": ["doing"]}, {"E1-01": 50}, listed)
     assert (old["requests"], old["median"], old["start"], old["trips"], old["long"]) == (2, 2000, 450_000, 4, 2)
-    assert (new["requests"], new["median"], new["long"], old["accepted"], old["right"], old["per_item"]) == (1, 100, 0, 1, 1, 50)
+    assert (new["requests"], new["median"], new["long"], old["accepted"], old["right"], old["per_item"]) == (
+        1,
+        100,
+        0,
+        1,
+        1,
+        50,
+    )
     empty = ms.compare([], {}, {}, listed[:1])[0]
     assert (empty["median"], empty["start"], empty["trips"], empty["per_item"]) == (0, 0, 0, 0)
 
 
 def test_every_recommendation_names_its_measurement():
     trips = lambda n, tools=("Bash",): [{"tools": list(tools)}] * n  # noqa: E731
-    asked = [{"start": 400_000, "tokens": 9_000_000, "trips": trips(30), "grew_by": {"Bash + Read": 1000}},
-             {"start": 10, "tokens": 5, "trips": trips(1), "grew_by": {}}]
+    asked = [
+        {"start": 400_000, "tokens": 9_000_000, "trips": trips(30), "grew_by": {"Bash + Read": 1000}},
+        {"start": 10, "tokens": 5, "trips": trips(1), "grew_by": {}},
+    ]
     recs = dict(ms.recommendations(asked, {}, [{"name": "only"}]))
-    assert "1 of 2 requests carried a history longer than 300 thousand" in recs["Start a new session for each feature or question."]
+    assert (
+        "1 of 2 requests carried a history longer than 300 thousand"
+        in recs["Start a new session for each feature or question."]
+    )
     assert "(the most: 30)" in recs["Agree the plan first, then let Claude batch its steps."]
     assert any("Bash added the most" in f for f in recs.values())
-    assert "No backlog item has gone from review to done" in recs[
-        "Commit each item on its own and move it to review, so first time right can be measured."]
-    shots = dict(ms.recommendations([{"start": 1, "tokens": 1, "trips": trips(1), "grew_by": {"mcp__claude-in-chrome__computer": 9}}],
-                                    {"E1-01": ["review", "done"]}, [{"name": "a"}, {"name": "b"}]))
+    assert (
+        "No backlog item has gone from review to done"
+        in recs["Commit each item on its own and move it to review, so first time right can be measured."]
+    )
+    shots = dict(
+        ms.recommendations(
+            [{"start": 1, "tokens": 1, "trips": trips(1), "grew_by": {"mcp__claude-in-chrome__computer": 9}}],
+            {"E1-01": ["review", "done"]},
+            [{"name": "a"}, {"name": "b"}],
+        )
+    )
     assert list(shots) == ["Take browser screenshots small, and only when they decide something."]
     other = ms.recommendations([{"start": 1, "tokens": 1, "trips": trips(1), "grew_by": {"WebFetch": 9}}], {}, [{}, {}])
     assert other[0][0] == "Look at what WebFetch returns: it adds the most to the history."
@@ -180,8 +237,14 @@ def test_the_report_and_the_details_read_in_plain_english(tmp_path, monkeypatch)
     detail = (tmp_path / "out" / "s1.html").read_text()
     assert "Measured from Claude Code's record of this session: <code>" in detail and "MB · last written" in detail
     assert '<a href="#timeline">Timeline and numbers</a>' in detail and "section class=stab id=tab-advice" in detail
-    assert '<span class="badge missing">long history</span>' in detail and '<span class="badge area">compacted</span>' in detail
-    assert '<span class="badge passed">loaded at the start</span>' in detail and '<span class="badge missing">never read</span>' in detail
+    assert (
+        '<span class="badge missing">long history</span>' in detail
+        and '<span class="badge area">compacted</span>' in detail
+    )
+    assert (
+        '<span class="badge passed">loaded at the start</span>' in detail
+        and '<span class="badge missing">never read</span>' in detail
+    )
     assert "dashed line: where a long history starts" in detail and "class=pipe" in detail
     assert json.loads((tmp_path / "out" / "summary.json").read_text())["sessions"] == 1
 
@@ -208,11 +271,11 @@ def test_main_builds_it_and_runs_as_a_script(tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out.strip() == str(tmp_path / "o" / "index.html")
     assert ms.main(["--bogus"]) == 2 and ms.main(["--out"]) == 2
     import runpy
+
     monkeypatch.setattr(sys, "argv", ["measure.py", "--bogus"])
     with pytest.raises(SystemExit) as stop:
         runpy.run_path(str(LIB / "measure.py"), run_name="__main__")
     assert stop.value.code == 2
-
 
 
 def test_a_backlog_file_saved_in_another_encoding_in_history_is_still_read(tmp_path):
@@ -238,11 +301,16 @@ DASHBOARD = ("measure.py", "serve.py", "sessionview.py", "collect.py")
 def test_the_dashboard_names_utf_8_wherever_it_reads_or_writes_text():
     """E2-F1-01 (F-16): the locale never decides how the dashboard reads or writes a file (a Latin-1 locale failed on ◐)."""
     import ast
+
     loose = []
     for name in DASHBOARD:
         for node in ast.walk(ast.parse((LIB / name).read_text(encoding="utf-8"))):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                    and node.func.attr in ("read_text", "write_text") and not any(k.arg == "encoding" for k in node.keywords)):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("read_text", "write_text")
+                and not any(k.arg == "encoding" for k in node.keywords)
+            ):
                 loose.append(f"{name}:{node.lineno} {node.func.attr}")
     assert loose == []
 
@@ -250,15 +318,41 @@ def test_the_dashboard_names_utf_8_wherever_it_reads_or_writes_text():
 def test_the_pages_build_under_a_latin_1_locale(tmp_path):
     """E2-F1-01: the sessions page under LC_ALL=en_US.ISO8859-1 (where the machine has that locale)."""
     env = {"PATH": os.environ["PATH"], "LC_ALL": "en_US.ISO8859-1", "PYTHONUTF8": "0", "HOME": str(tmp_path)}
-    probe = subprocess.run([sys.executable, "-c", "import locale; print(locale.getencoding())"], env=env,
-                           capture_output=True, text=True, check=False)
+    probe = subprocess.run(
+        [sys.executable, "-c", "import locale; print(locale.getencoding())"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if "8859" not in probe.stdout:
         pytest.skip("this machine has no Latin-1 locale")
     repo = tmp_path / "repo"
     repo.mkdir()
     _session(repo, tmp_path / "p")
-    done = subprocess.run([sys.executable, str(LIB / "measure.py"), "--projects", str(tmp_path / "p"), "--out",
-                           str(tmp_path / "o")], cwd=repo, env={**env, "CRISSP_ROOT": str(repo)}, capture_output=True,
-                          text=True, check=False)
+    done = subprocess.run(
+        [sys.executable, str(LIB / "measure.py"), "--projects", str(tmp_path / "p"), "--out", str(tmp_path / "o")],
+        cwd=repo,
+        env={**env, "CRISSP_ROOT": str(repo)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr
     assert "◐" in (tmp_path / "o" / "index.html").read_text(encoding="utf-8")
+
+
+def test_the_session_pages_css_and_script_live_in_files_a_linter_reads():
+    """F-94: the Claude session pages' stylesheet and tab script were Python strings (sessionview.STYLE, measure.EXTRA,
+    measure.TABS_JS), out of reach of ESLint and any CSS tool. They live in the dashboard's folder, read as UTF-8 when
+    the page is made, and the pages still carry them inline (self-contained)."""
+    m, sv = ms, ms.sv
+    dashboard = Path(sv.__file__).resolve().parents[1] / "dashboard"
+    assert (dashboard / "sessions.css").read_text(encoding="utf-8") == sv.STYLE
+    assert (dashboard / "measure.css").read_text(encoding="utf-8") == m.EXTRA
+    assert (dashboard / "session-tabs.js").read_text(encoding="utf-8") == m.TABS_JS
+    page = m.shell("t", "s", "<p>b</p>", m.TABS_JS)
+    assert m.EXTRA in page and m.TABS_JS in page and sv.STYLE in sv.page("t", "<p>b</p>")
+    for module in (sv, m):
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        assert not re.search(r'"""\s*[.:#\[*a-z][^"\n]*\{[a-z-]+:', source), f"{module.__name__} holds CSS"

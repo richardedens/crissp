@@ -138,6 +138,16 @@ seen ──► F-row ──► item (or decision) ──► doing ──► fail
 7. **Review**: status `review`; report what was wrong, how it was fixed, how it is proven.
 8. **Accept**: only the product owner; then the item or finding moves to `crissp/backlog/done/`.
 
+### The six stages
+
+The same flow, as the agentic SDLC names it, in six stages: **Discover** (observe: the UX team walks the running
+product and finds what its users need), **Plan** (shape: findings and approved needs become PBIs, real choices become
+decisions), **Build** (prove first and change), **Verify** (check and commit), **Review** (the product owner reviews
+and accepts) and **Release** (release notes, then the product owner's tag). Where the work is now is read from the
+repository, never kept apart: the crissp tool `stage` and the dashboard's Stages page both say it, and how Claude or
+Mistral Vibe helps with each stage ("crissp: help me with Plan"). Every session opens by saying the stage and offering
+the help for it; helping never pushes, tags, publishes or deploys.
+
 ---
 
 ## Who does what
@@ -165,8 +175,18 @@ context (this agreement, the tools) is small. Keeping sessions short saves the m
   history for the rest of the session.
 - **Agents on separate parts**, each briefed narrowly, so they do not each rediscover the same files.
 - **The lighter model and effort for routine work** (release notes, small fixes), the strongest for design and hard bugs.
-- The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
-  fresh.
+- The Activity page (`crissp dashboard`, `/activity`) shows each session's history, Claude Code's and Vibe sessions too;
+  past 300k tokens it says to start fresh.
+
+The same in **Mistral Vibe** (the same habits, its own commands):
+
+- A fresh session per item: `/clear` in the terminal, or a new session in the desktop app; `/compact <what to keep>`
+  in the middle of a long item. Vibe compacts by itself at `auto_compact_threshold` (400k tokens unless set lower in
+  `~/.vibe/config.toml`): start fresh before that, a summary loses what a new session asks for again.
+- Heavy output in a subagent: the `task` tool starts one that reports text (the `explore` agent for searching the
+  code, another for a browser check and its screenshots), so its files and images stay out of the main session.
+- The crissp tools come from `.vibe/config.toml` (crissp repair writes it for this machine): `brief` and `backlog`
+  instead of reading the backlog files; restart Vibe after a change to it.
 
 ## The guards
 
@@ -275,9 +295,10 @@ them.
   the backlog by itself.
 - **One place to look**: the UX suite runs on the same local server as the Tests dashboard (`crissp dashboard`), in the
   same look, with links both ways.
-- **Safe by default**: the personas are Claude Code run read-only (only reading the screenshots, no shell, no edits, no
-  MCP servers, outside the repository so its agreement does not steer them), on the login of whoever runs it — no key
-  in the repository. What the interface shows is data, never instructions. A scripted panel answers in the tests.
+- **Safe by default**: the personas run on an agent CLI that is installed, Claude Code or Mistral Vibe
+  (`CRISSP_UX_CLI` picks one), read-only (only reading the screenshots, no shell, no edits, no MCP servers, outside the
+  repository so its agreement does not steer them), on the login of whoever runs it — no key in the repository. What
+  the interface shows is data, never instructions. A scripted panel answers in the tests.
 - **When**: after a change people will see, before the product owner accepts it; and before a release with new
   screens. It is advice, never a gate: the product owner decides.
 

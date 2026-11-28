@@ -59,8 +59,15 @@ def pytest_configure(config):
         return
     _out["path"] = path
     workers = os.environ.get("WORKERS", "")
-    _write({"kind": "start", "at": time.time(), "pid": os.getpid(), "workers": int(workers) if workers.isdigit() else 1,
-            "why": os.environ.get("WORKERS_WHY") or ""})
+    _write(
+        {
+            "kind": "start",
+            "at": time.time(),
+            "pid": os.getpid(),
+            "workers": int(workers) if workers.isdigit() else 1,
+            "why": os.environ.get("WORKERS_WHY") or "",
+        }
+    )
 
 
 def pytest_collection_finish(session):
@@ -82,8 +89,16 @@ def pytest_runtest_logreport(report):
     if report.when == "teardown":  # the last report of every test, also after a failed or skipped setup
         _tests.pop(report.nodeid)
         node = getattr(report, "node", None)  # with xdist: the worker it came from
-        _write({"kind": "test", "id": report.nodeid, "outcome": test["outcome"], "seconds": round(test["seconds"], 3),
-                "worker": node.gateway.id if node is not None else None, "at": time.time()})
+        _write(
+            {
+                "kind": "test",
+                "id": report.nodeid,
+                "outcome": test["outcome"],
+                "seconds": round(test["seconds"], 3),
+                "worker": node.gateway.id if node is not None else None,
+                "at": time.time(),
+            }
+        )
 
 
 def pytest_runtest_logstart(nodeid, location):

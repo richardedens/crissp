@@ -65,25 +65,33 @@ def test_a_path_that_is_not_there_yet_is_listed_never_a_failure(repo):
 
 
 def test_complexity_comes_from_the_pinned_lizard_per_function(repo):
-    lizard = Lizard([row("app/backend/shop.py", "price", 18, 1), row("app/backend/shop.py", "price", 4, 30),
-                     row("app/frontend/src/cart.js", "add", 3)])
+    lizard = Lizard(
+        [
+            row("app/backend/shop.py", "price", 18, 1),
+            row("app/backend/shop.py", "price", 4, 30),
+            row("app/frontend/src/cart.js", "add", 3),
+        ]
+    )
     measured = quality.complexity(repo, ["app/backend/shop.py", "app/frontend/src/cart.js"], lizard)
-    assert measured == {"app/backend/shop.py::price": {"file": "app/backend/shop.py", "function": "price", "line": 1, "ccn": 18},
-                        "app/frontend/src/cart.js::add": {"file": "app/frontend/src/cart.js", "function": "add", "line": 1,
-                                                          "ccn": 3}}  # two functions of one name: the worst counts
-    (argv, cwd), = lizard.calls
+    assert measured == {
+        "app/backend/shop.py::price": {"file": "app/backend/shop.py", "function": "price", "line": 1, "ccn": 18},
+        "app/frontend/src/cart.js::add": {"file": "app/frontend/src/cart.js", "function": "add", "line": 1, "ccn": 3},
+    }  # two functions of one name: the worst counts
+    ((argv, cwd),) = lizard.calls
     assert argv[:6] == ["uv", "tool", "run", "--quiet", "--from", quality.LIZARD] and "--csv" in argv and cwd == repo
     assert argv[-2:] == ["app/backend/shop.py", "app/frontend/src/cart.js"]
 
 
 def test_a_lizard_that_cannot_run_is_a_problem_never_a_pass(repo):
-    with pytest.raises(quality.QualityError, match="lizard could not run.*no uv"):
+    with pytest.raises(quality.QualityError, match=r"lizard could not run.*no uv"):
         quality.complexity(repo, ["app/backend/shop.py"], Lizard(code=2, err="no uv"))
     assert quality.complexity(repo, [], Lizard(code=2)) == {}  # nothing to measure: lizard is not asked
 
 
 def test_duplication_finds_the_same_lines_in_two_files_whatever_their_indent(repo):
-    (repo / "app/backend/copy.py").write_text("def other(values):\n  total = 1\n" + BLOCK.replace("    ", "  ") + "  return 0\n")
+    (repo / "app/backend/copy.py").write_text(
+        "def other(values):\n  total = 1\n" + BLOCK.replace("    ", "  ") + "  return 0\n"
+    )
     found = quality.duplication(repo, ["app/backend/copy.py", "app/backend/shop.py"], 10)
     assert found["lines"] == 24 and found["of"] == 30 and found["percent"] == 80.0
     (block,) = found["blocks"]
@@ -107,8 +115,12 @@ def test_a_copy_inside_one_file_counts_too(repo):
 
 def measured(over=None, dup=0):
     over = over or {}
-    return {"complex": {k: {"file": k.split("::")[0], "function": k.split("::")[1], "line": 1, "ccn": v}
-                        for k, v in over.items()}, "duplication": {"lines": dup, "of": 100, "percent": float(dup)}}
+    return {
+        "complex": {
+            k: {"file": k.split("::")[0], "function": k.split("::")[1], "line": 1, "ccn": v} for k, v in over.items()
+        },
+        "duplication": {"lines": dup, "of": 100, "percent": float(dup)},
+    }
 
 
 def test_the_first_run_sets_the_baseline():
@@ -119,9 +131,11 @@ def test_the_first_run_sets_the_baseline():
 def test_a_new_complex_function_more_complexity_or_more_copies_fail():
     base = {"complex": {"a.py::f": 20}, "duplicated_lines": 12}
     verdict, kept = quality.judge(measured({"a.py::f": 22, "b.py::g": 16}, 13), base)
-    assert verdict == ["a.py::f grew more complex: cyclomatic complexity 22, was 20",
-                       "b.py::g is new and too complex: cyclomatic complexity 16 (at most 15)",
-                       "more duplicated lines: 13, was 12"]
+    assert verdict == [
+        "a.py::f grew more complex: cyclomatic complexity 22, was 20",
+        "b.py::g is new and too complex: cyclomatic complexity 16 (at most 15)",
+        "more duplicated lines: 13, was 12",
+    ]
     assert kept == base  # a red run never moves the baseline
 
 
@@ -133,8 +147,11 @@ def test_a_green_run_ratchets_the_baseline_down():
 
 def test_accept_takes_the_numbers_as_they_are_with_the_reason():
     kept = quality.accepted(measured({"a.py::f": 30}, 40), "a parser that is complex by nature", "2026-11-28")
-    assert kept == {"complex": {"a.py::f": 30}, "duplicated_lines": 40,
-                    "accepted": {"reason": "a parser that is complex by nature", "on": "2026-11-28"}}
+    assert kept == {
+        "complex": {"a.py::f": 30},
+        "duplicated_lines": 40,
+        "accepted": {"reason": "a parser that is complex by nature", "on": "2026-11-28"},
+    }
 
 
 def suites(repo, conf):

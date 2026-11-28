@@ -5,8 +5,11 @@ writes the same files people read (crissp/backlog/, VERSION, the release certifi
 than the repository says, and what it writes is plain Markdown in the backlog's own format, reviewed like any change.
 
 Tools
-- brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the number of open
-            findings. Small enough to load at the start of every session.
+- brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the
+            number of open findings. Small enough to load at the start of every session.
+- stage     where the work is in the six stages (Discover, Plan, Build, Verify, Review, Release; F-130), read from the
+            backlog, the certificate, git and the UX suite (crissp/testsuite/lib/stages.py, the Stages page's own logic);
+            with a stage, what is in it and what to do to help the product owner with it.
 - backlog   exactly what is asked: one finding, decision, epic, feature or PBI by its id (F-12, D-05, E8, E8-F1,
             E8-F1-01), the features and PBIs with a status, or the open findings or decisions.
 - finding   writes a new finding (the next F-number) into FINDINGS.md.
@@ -36,6 +39,7 @@ It works for the project CRISSP_ROOT names, or the current directory (Claude Cod
 """
 
 import datetime
+import importlib.util
 import json
 import os
 import re
@@ -44,13 +48,19 @@ import sys
 import textwrap
 import threading
 import time
+import types
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(os.environ.get("CRISSP_ROOT") or os.getcwd()).resolve()  # the project; never this file's place
-ENGINE = Path(__file__).resolve().parent.parent  # the framework this tool belongs to: its guards, when a project has none
+ENGINE = (
+    Path(__file__).resolve().parent.parent
+)  # the framework this tool belongs to: its guards, when a project has none
 PROTOCOL = "2025-06-18"
-ITEM = re.compile(r"^### (E\d+(?:-F\d+)?-\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\](?:\s+\[(\w+)\])?", re.MULTILINE)
+ITEM = re.compile(
+    r"^### (E\d+(?:-F\d+)?-\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\](?:\s+\[(\w+)\])?", re.MULTILINE
+)
 FEATURE = re.compile(r"^## (E\d+-F\d+) · (.+?)\s+\[(todo|doing|review|done|parked)\]", re.MULTILINE)
 EPIC = re.compile(r"^# (E\d+) · (.+)$", re.MULTILINE)
 HEADING = re.compile(r"^#{1,3} ", re.MULTILINE)
@@ -59,94 +69,224 @@ STATUSES = ("todo", "doing", "review", "done", "parked")
 SIZES = ("S", "M", "L")
 MAIN = " For the main session only: agents never edit the backlog."
 # what run may start: name → (script in crissp/, its arguments, in the background). A deploy is not here, on purpose.
-RUNS = {"check-plan": ("check.sh", ["--plan"], False), "deploy-plan": ("deploy.sh", ["--plan"], False),
-        "ux-status": ("ux.sh", ["--status"], False), "check": ("check.sh", [], True), "check-all": ("check-all.sh", [], True)}
+RUNS = {
+    "check-plan": ("check.sh", ["--plan"], False),
+    "deploy-plan": ("deploy.sh", ["--plan"], False),
+    "ux-status": ("ux.sh", ["--status"], False),
+    "check": ("check.sh", [], True),
+    "check-all": ("check-all.sh", [], True),
+}
 VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the one local server to answer
-PLAN_TIMEOUT = 120  # seconds a plan may take
-DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
+PLAN_TIMEOUT = 45  # seconds a plan may take: under a tool call budget of a minute (Vibe's, F-108)
+DASHBOARD_WAIT = 45  # seconds to wait for the dashboard to say where it is (F-108: under a minute)
 EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.MULTILINE)
-WAIT = 300  # status with wait: seconds it waits by default (F-31) …
+WAIT = 45  # status with wait: seconds it waits by default (F-31; F-108: under a minute, then ask again) …
 WAIT_MAX = 3600  # … and at most
 WAIT_POLL = 0.5  # how often it looks while it waits
 
 TOOLS = [
-    {"name": "brief",
-     "description": "Where the work on this repository stands: version, commit, release certificate, backlog items doing "
-                    "/ in review / next, open decisions, the number of open findings. Call it first in a session.",
-     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "backlog",
-     "description": "Exactly the backlog lines asked for, instead of reading the backlog files: one finding, decision or "
-                    "item by id (F-12, D-05, E7-01), the items with a status, or the open findings or decisions.",
-     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
-         "id": {"type": "string", "description": "F-<n>, D-<n>, E<n>, E<n>-F<m> or E<n>-F<m>-<nn>"},
-         "status": {"type": "string", "enum": list(STATUSES), "description": "the features and PBIs with this status"},
-         "open": {"type": "string", "enum": ["findings", "decisions"], "description": "the open findings or decisions"}}}},
-    {"name": "finding",
-     "description": "Write a new finding (observation) into FINDINGS.md under the next F-number; answers its id." + MAIN,
-     "inputSchema": {"type": "object", "additionalProperties": False, "required": ["seen", "observation", "goes_to"],
-                     "properties": {
-         "seen": {"type": "string", "description": "where it was seen, with the date: `deploy.sh (2026-10-23)`"},
-         "observation": {"type": "string", "description": "what was seen, in plain words"},
-         "goes_to": {"type": "string", "description": "where it goes: an item (E5-01), a decision, a project, the product owner"}}}},
-    {"name": "decision",
-     "description": "Write a new open decision for the product owner (question, options, recommendation) under the next "
-                    "D-number, or record one the product owner took (id, decision): it moves to Taken." + MAIN,
-     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
-         "question": {"type": "string"}, "options": {"type": "string", "description": "a) … · b) …"},
-         "recommendation": {"type": "string", "description": "the option Claude recommends, and why"},
-         "id": {"type": "string", "description": "D-<n>: the open decision the product owner took"},
-         "decision": {"type": "string", "description": "what the product owner decided, in their words where possible"},
-         "date": {"type": "string", "description": "YYYY-MM-DD; today when left out"}}}},
-    {"name": "epic",
-     "description": "Write a new epic (title, why): its own file E<n>-<slug>.md under the next E-number, listed in the "
-                    "backlog's README; then add its features with feature." + MAIN,
-     "inputSchema": {"type": "object", "additionalProperties": False, "required": ["title", "why"], "properties": {
-         "title": {"type": "string"},
-         "why": {"type": "string", "description": "why the epic exists, in the product owner's words where possible"}}}},
-    {"name": "feature",
-     "description": "Write a new feature into an open epic (epic, title, why) under the epic's next feature number "
-                    "(E8-F1) with status todo; then add its PBIs with item." + MAIN,
-     "inputSchema": {"type": "object", "additionalProperties": False, "required": ["epic", "title", "why"], "properties": {
-         "epic": {"type": "string", "description": "E<n>, an open epic"}, "title": {"type": "string"},
-         "why": {"type": "string", "description": "what this feature gives the user"}}}},
-    {"name": "item",
-     "description": "Write a new PBI (backlog item) into a feature (feature, title, size, why, what, done_when, tests, "
-                    "depends) under the feature's next number (E8-F1-01) with status todo, or move a PBI or a feature to "
-                    "another status (id, status). Never to done: only the product owner accepts." + MAIN,
-     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
-         "feature": {"type": "string", "description": "E<n>-F<m>, a feature of an open epic"}, "title": {"type": "string"},
-         "size": {"type": "string", "enum": list(SIZES), "description": "S ≤ half a day · M 1–2 days · L 3–5 days"},
-         "why": {"type": "string"}, "what": {"type": "string"},
-         "done_when": {"type": "string", "description": "acceptance criteria, observable and testable"},
-         "tests": {"type": "string", "description": "which tests prove it"},
-         "depends": {"type": "string", "description": "other items or decisions; — when none"},
-         "id": {"type": "string", "description": "E<n>-F<m>-<nn> (a PBI) or E<n>-F<m> (a feature): what to move"},
-         "status": {"type": "string", "enum": [s for s in STATUSES if s != "done"]}}}},
-    {"name": "run",
-     "description": "Start a check of this repository: check (tests what changed since the last green state) or "
-                    "check-all (the full run; the product owner's to start unless they asked) in the background, then "
-                    "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: check-plan (what check would run and how long), "
-                    "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
-                    "waits). It never deploys and never starts a UX round: those stay with the product owner. Commit "
-                    "first: the checks test what is committed.",
-     "inputSchema": {"type": "object", "additionalProperties": False, "required": ["what"], "properties": {
-         "what": {"type": "string", "enum": list(RUNS)}}}},
-    {"name": "status",
-     "description": "How the checks started with run are doing: running or finished, the exit code, the last lines of "
-                    "their log, and whether a run holds the lock. With wait: true it answers once the run has ended "
-                    "(the lock is free and no check started with run still runs), or when timeout seconds have passed; "
-                    "that is the way to wait for a check, not its pid.",
-     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
-         "wait": {"type": "boolean", "description": "wait until the run has ended (default false: answer at once)"},
-         "timeout": {"type": "number", "description": f"with wait: seconds to wait at most (default {WAIT}, at most {WAIT_MAX})"}}}},
-    {"name": "dashboard",
-     "description": "Build the Tests dashboard's data from the last runs and serve it with the UX suite on 127.0.0.1 "
-                    "(crissp/test.sh --dashboard: one local server); answers the address of the view asked for: tests "
-                    "(what the runs proved, the backlog board with the open decisions and findings; the default) or ux "
-                    "(rounds, advice, designs, verdicts). The open page keeps itself current: a changed backlog, change "
-                    "or run result rebuilds its data. Never runs a test.",
-     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
-         "view": {"type": "string", "enum": list(VIEWS), "description": "tests (default) or ux"}}}},
+    {
+        "name": "brief",
+        "description": "Where the work on this repository stands: version, commit, release certificate, backlog items doing "
+        "/ in review / next, open decisions, the number of open findings. Call it first in a session.",
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "stage",
+        "description": "Where the work is in the six stages of the agentic SDLC (Discover, Plan, Build, Verify, Review, "
+        "Release): what is in each and whose move it is. With a stage: what is in it and the instructions "
+        "for helping the product owner with it. Call it at the start of a session, on a <!-- CRISSP --> "
+        'prompt, and when asked for help with a stage ("crissp: help me with Plan").',
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "stage": {
+                    "type": "string",
+                    "enum": ["discover", "plan", "build", "verify", "review", "release"],
+                    "description": "one stage: what is in it and how to help with it",
+                }
+            },
+        },
+    },
+    {
+        "name": "backlog",
+        "description": "Exactly the backlog lines asked for, instead of reading the backlog files: one finding, decision or "
+        "item by id (F-12, D-05, E7-01), the items with a status, or the open findings or decisions.",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "id": {"type": "string", "description": "F-<n>, D-<n>, E<n>, E<n>-F<m> or E<n>-F<m>-<nn>"},
+                "status": {
+                    "type": "string",
+                    "enum": list(STATUSES),
+                    "description": "the features and PBIs with this status",
+                },
+                "open": {
+                    "type": "string",
+                    "enum": ["findings", "decisions"],
+                    "description": "the open findings or decisions",
+                },
+            },
+        },
+    },
+    {
+        "name": "finding",
+        "description": "Write a new finding (observation) into FINDINGS.md under the next F-number; answers its id."
+        + MAIN,
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["seen", "observation", "goes_to"],
+            "properties": {
+                "seen": {"type": "string", "description": "where it was seen, with the date: `deploy.sh (2026-10-23)`"},
+                "observation": {"type": "string", "description": "what was seen, in plain words"},
+                "goes_to": {
+                    "type": "string",
+                    "description": "where it goes: an item (E5-01), a decision, a project, the product owner",
+                },
+            },
+        },
+    },
+    {
+        "name": "decision",
+        "description": "Write a new open decision for the product owner (question, options, recommendation) under the next "
+        "D-number, or record one the product owner took (id, decision): it moves to Taken." + MAIN,
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "question": {"type": "string"},
+                "options": {"type": "string", "description": "a) … · b) …"},
+                "recommendation": {"type": "string", "description": "the option Claude recommends, and why"},
+                "id": {"type": "string", "description": "D-<n>: the open decision the product owner took"},
+                "decision": {
+                    "type": "string",
+                    "description": "what the product owner decided, in their words where possible",
+                },
+                "date": {"type": "string", "description": "YYYY-MM-DD; today when left out"},
+            },
+        },
+    },
+    {
+        "name": "epic",
+        "description": "Write a new epic (title, why): its own file E<n>-<slug>.md under the next E-number, listed in the "
+        "backlog's README; then add its features with feature." + MAIN,
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["title", "why"],
+            "properties": {
+                "title": {"type": "string"},
+                "why": {
+                    "type": "string",
+                    "description": "why the epic exists, in the product owner's words where possible",
+                },
+            },
+        },
+    },
+    {
+        "name": "feature",
+        "description": "Write a new feature into an open epic (epic, title, why) under the epic's next feature number "
+        "(E8-F1) with status todo; then add its PBIs with item." + MAIN,
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["epic", "title", "why"],
+            "properties": {
+                "epic": {"type": "string", "description": "E<n>, an open epic"},
+                "title": {"type": "string"},
+                "why": {"type": "string", "description": "what this feature gives the user"},
+            },
+        },
+    },
+    {
+        "name": "item",
+        "description": "Write a new PBI (backlog item) into a feature (feature, title, size, why, what, done_when, tests, "
+        "depends) under the feature's next number (E8-F1-01) with status todo, or move a PBI or a feature to "
+        "another status (id, status). Never to done: only the product owner accepts." + MAIN,
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "feature": {"type": "string", "description": "E<n>-F<m>, a feature of an open epic"},
+                "title": {"type": "string"},
+                "size": {
+                    "type": "string",
+                    "enum": list(SIZES),
+                    "description": "S ≤ half a day · M 1–2 days · L 3–5 days",
+                },
+                "why": {"type": "string"},
+                "what": {"type": "string"},
+                "done_when": {"type": "string", "description": "acceptance criteria, observable and testable"},
+                "tests": {"type": "string", "description": "which tests prove it"},
+                "depends": {"type": "string", "description": "other items or decisions; — when none"},
+                "id": {
+                    "type": "string",
+                    "description": "E<n>-F<m>-<nn> (a PBI) or E<n>-F<m> (a feature): what to move",
+                },
+                "status": {"type": "string", "enum": [s for s in STATUSES if s != "done"]},
+            },
+        },
+    },
+    {
+        "name": "run",
+        "description": "Start a check of this repository: check (tests what changed since the last green state) or "
+        "check-all (the full run: only with asked: true, when the product owner asked for it) in the background, then "
+        "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: "
+        "check-plan (what check would run and how long), "
+        "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
+        "waits). It never deploys and never starts a UX round: those stay with the product owner. Commit "
+        "first: the checks test what is committed.",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["what"],
+            "properties": {
+                "what": {"type": "string", "enum": list(RUNS)},
+                "asked": {
+                    "type": "boolean",
+                    "description": "check-all only: true when the product owner asked for the full run "
+                    "in so many words (F-112); a wish to use crissp fully is no such ask",
+                },
+            },
+        },
+    },
+    {
+        "name": "status",
+        "description": "How the checks started with run are doing: running or finished, the exit code, the last lines of "
+        "their log, and whether a run holds the lock. With wait: true it answers once the run has ended "
+        "(the lock is free and no check started with run still runs), or when timeout seconds have passed; "
+        "that is the way to wait for a check, not its pid.",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "wait": {
+                    "type": "boolean",
+                    "description": "wait until the run has ended (default false: answer at once)",
+                },
+                "timeout": {
+                    "type": "number",
+                    "description": f"with wait: seconds to wait at most (default {WAIT}, at most {WAIT_MAX})",
+                },
+            },
+        },
+    },
+    {
+        "name": "dashboard",
+        "description": "Build the Tests dashboard's data from the last runs and serve it with the UX suite on 127.0.0.1 "
+        "(crissp/test.sh --dashboard: one local server); answers the address of the view asked for: tests "
+        "(what the runs proved, the backlog board with the open decisions and findings; the default) or ux "
+        "(rounds, advice, designs, verdicts). The open page keeps itself current: a changed backlog, change "
+        "or run result rebuilds its data. Never runs a test.",
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"view": {"type": "string", "enum": list(VIEWS), "description": "tests (default) or ux"}},
+        },
+    },
 ]
 
 
@@ -169,7 +309,7 @@ def until(text: str, start: int, end: re.Pattern) -> str:
     """From start to the next heading the pattern names (or the end of the file)."""
     eol = text.find("\n", start)
     nxt = end.search(text, eol + 1) if eol != -1 else None
-    return text[start: nxt.start() if nxt else len(text)].strip()
+    return text[start : nxt.start() if nxt else len(text)].strip()
 
 
 def items(root: Path) -> list[dict]:
@@ -178,8 +318,16 @@ def items(root: Path) -> list[dict]:
     for f in epic_files(root):
         text = read(f)
         for m in ITEM.finditer(text):
-            out.append({"id": m.group(1), "title": m.group(2).strip(), "status": m.group(3), "size": m.group(4) or "",
-                        "file": str(f.relative_to(root)), "block": until(text, m.start(), HEADING)})
+            out.append(
+                {
+                    "id": m.group(1),
+                    "title": m.group(2).strip(),
+                    "status": m.group(3),
+                    "size": m.group(4) or "",
+                    "file": str(f.relative_to(root)),
+                    "block": until(text, m.start(), HEADING),
+                }
+            )
     return out
 
 
@@ -189,8 +337,15 @@ def features(root: Path) -> list[dict]:
     for f in epic_files(root):
         text = read(f)
         for m in FEATURE.finditer(text):
-            out.append({"id": m.group(1), "title": m.group(2).strip(), "status": m.group(3),
-                        "file": str(f.relative_to(root)), "block": until(text, m.start(), HEADING)})
+            out.append(
+                {
+                    "id": m.group(1),
+                    "title": m.group(2).strip(),
+                    "status": m.group(3),
+                    "file": str(f.relative_to(root)),
+                    "block": until(text, m.start(), HEADING),
+                }
+            )
     return out
 
 
@@ -200,8 +355,15 @@ def rows(root: Path, name: str) -> list[dict]:
     for f in (backlog_dir(root) / name, backlog_dir(root) / "done" / name):
         for m in ROW.finditer(read(f)):
             cells = [c.strip() for c in m.group(3).split("|")]
-            out.append({"id": m.group(2), "taken": bool(m.group(1)), "cells": cells, "done": f.parent.name == "done",
-                        "file": str(f.relative_to(root))})
+            out.append(
+                {
+                    "id": m.group(2),
+                    "taken": bool(m.group(1)),
+                    "cells": cells,
+                    "done": f.parent.name == "done",
+                    "file": str(f.relative_to(root)),
+                }
+            )
     return out
 
 
@@ -229,16 +391,38 @@ def brief(root: Path) -> str:
     certificate = f"green full run on {str(c.get('commit', ''))[:8]}" if c else "none"
     all_items = items(root)
     by = {s: [i for i in all_items if i["status"] == s] for s in STATUSES}
-    line = lambda xs: ", ".join(f'{i["id"]} {i["title"]}' for i in xs) or "none"  # noqa: E731
-    return "\n".join([
-        f"{root.name} {version} · commit {commit} · release certificate: {certificate}",
-        f"Doing: {line(by['doing'])}",
-        f"In review (waiting for the product owner): {line(by['review'])}",
-        f"Next (first todo): {line(by['todo'][:3])}",
-        "Open decisions: " + ("; ".join(f'{r["id"]} {r["cells"][0][:90]}' for r in open_decisions(root)) or "none"),
-        f"Open findings: {len(open_findings(root))} (the backlog tool with open=findings lists them)",
-        "Ask the backlog tool for any F-/D-/E- id instead of reading the backlog files.",
-    ])
+    line = lambda xs: ", ".join(f"{i['id']} {i['title']}" for i in xs) or "none"  # noqa: E731
+    return "\n".join(
+        [
+            f"{root.name} {version} · commit {commit} · release certificate: {certificate}",
+            f"Doing: {line(by['doing'])}",
+            f"In review (waiting for the product owner): {line(by['review'])}",
+            f"Next (first todo): {line(by['todo'][:3])}",
+            "Open decisions: " + ("; ".join(f"{r['id']} {r['cells'][0][:90]}" for r in open_decisions(root)) or "none"),
+            f"Open findings: {len(open_findings(root))} (the backlog tool with open=findings lists them)",
+            "Ask the backlog tool for any F-/D-/E- id instead of reading the backlog files.",
+        ]
+    )
+
+
+def stage(root: Path, args: dict) -> str:
+    """F-130: the six stages, from lib/stages.py: the project's own (a repository that carries the framework), else the
+    engine's (an installed crissp)."""
+    path = next(
+        (
+            p
+            for p in (root / "crissp" / "testsuite" / "lib" / "stages.py", ENGINE / "testsuite" / "lib" / "stages.py")
+            if p.is_file()
+        ),
+        None,
+    )
+    if path is None:
+        raise LookupError("crissp/testsuite/lib/stages.py is missing")
+    spec = importlib.util.spec_from_file_location("crissp_stages_for_the_tool", path)
+    stages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(stages)
+    this = types.SimpleNamespace(items=items, open_findings=open_findings, open_decisions=open_decisions)  # one parser
+    return stages.text(stages.state(root, this), args.get("stage"))
 
 
 def backlog(root: Path, args: dict) -> str:
@@ -246,31 +430,60 @@ def backlog(root: Path, args: dict) -> str:
         wanted = args["id"].strip().upper()
         for i in items(root):
             if i["id"] == wanted:
-                return f'{i["file"]}\n{i["block"]}'
-        pbis = lambda prefix: [f'{i["id"]} · {i["title"]} [{i["status"]}] [{i["size"]}]'  # noqa: E731
-                               for i in items(root) if i["id"].startswith(prefix + "-")]
+                return f"{i['file']}\n{i['block']}"
+
+        def pbis(prefix):
+            return [
+                f"{i['id']} · {i['title']} [{i['status']}] [{i['size']}]"
+                for i in items(root)
+                if i["id"].startswith(prefix + "-")
+            ]
+
         for ft in features(root):
             if ft["id"] == wanted:
                 return "\n".join([ft["file"], ft["block"], "PBIs:", *(pbis(wanted) or ["none yet"])])
         for f in epic_files(root):
             m = EPIC.search(read(f))
             if m and m.group(1) == wanted:
-                own = [f'{ft["id"]} · {ft["title"]} [{ft["status"]}]' for ft in features(root) if ft["id"].startswith(wanted + "-")]
-                return "\n".join([str(f.relative_to(root)), until(read(f), m.start(), re.compile(r"^#{2,3} ", re.MULTILINE)),
-                                  "Features:", *(own or ["none yet"])])
+                own = [
+                    f"{ft['id']} · {ft['title']} [{ft['status']}]"
+                    for ft in features(root)
+                    if ft["id"].startswith(wanted + "-")
+                ]
+                return "\n".join(
+                    [
+                        str(f.relative_to(root)),
+                        until(read(f), m.start(), re.compile(r"^#{2,3} ", re.MULTILINE)),
+                        "Features:",
+                        *(own or ["none yet"]),
+                    ]
+                )
         for r in rows(root, "FINDINGS.md") + rows(root, "DECISIONS.md"):
             if r["id"] == wanted:
-                return f'{r["file"]}{" (taken)" if r["taken"] else ""}\n{r["id"]} | ' + " | ".join(r["cells"])
+                return f"{r['file']}{' (taken)' if r['taken'] else ''}\n{r['id']} | " + " | ".join(r["cells"])
         raise LookupError(f"{wanted} is not in the backlog")
     if args.get("status"):
-        lines = [f'{ft["id"]} · {ft["title"]} [{ft["status"]}] (feature)' for ft in features(root) if ft["status"] == args["status"]]
-        lines += [f'{i["id"]} · {i["title"]} [{i["status"]}] [{i["size"]}]' for i in items(root) if i["status"] == args["status"]]
-        return "\n".join(lines) or f'no items {args["status"]}'
+        lines = [
+            f"{ft['id']} · {ft['title']} [{ft['status']}] (feature)"
+            for ft in features(root)
+            if ft["status"] == args["status"]
+        ]
+        lines += [
+            f"{i['id']} · {i['title']} [{i['status']}] [{i['size']}]"
+            for i in items(root)
+            if i["status"] == args["status"]
+        ]
+        return "\n".join(lines) or f"no items {args['status']}"
     if args.get("open") == "findings":
-        return "\n".join(f'{r["id"]} → {r["cells"][-1]} · {r["cells"][1][:110]}' for r in open_findings(root)) or "no open findings"
+        return (
+            "\n".join(f"{r['id']} → {r['cells'][-1]} · {r['cells'][1][:110]}" for r in open_findings(root))
+            or "no open findings"
+        )
     if args.get("open") == "decisions":
-        return "\n".join(f'{r["id"]} {r["cells"][0]} · recommendation: {r["cells"][-1]}' for r in open_decisions(root)) \
+        return (
+            "\n".join(f"{r['id']} {r['cells'][0]} · recommendation: {r['cells'][-1]}" for r in open_decisions(root))
             or "no open decisions"
+        )
     raise ValueError("give an id, a status, or open=findings|decisions")
 
 
@@ -307,7 +520,7 @@ def add_row(text: str, row: str, heading: str | None = None) -> str:
     last = first
     while last + 1 < len(lines) and lines[last + 1].startswith("|"):
         last += 1
-    return "\n".join(lines[: last + 1] + [row] + lines[last + 1:]) + "\n"
+    return "\n".join([*lines[: last + 1], row, *lines[last + 1 :]]) + "\n"
 
 
 def finding(root: Path, args: dict) -> str:
@@ -421,8 +634,10 @@ def item(root: Path, args: dict) -> str:
         return move(root, args["id"].strip().upper(), args.get("status") or "")
     feature_id = str(args.get("feature") or "").strip().upper()
     if not re.fullmatch(r"E\d+-F\d+", feature_id):
-        raise ValueError("a PBI belongs to a feature: give feature (E<n>-F<m>; create one with feature), "
-                         "or an id and a status to move one")
+        raise ValueError(
+            "a PBI belongs to a feature: give feature (E<n>-F<m>; create one with feature), "
+            "or an id and a status to move one"
+        )
     path = open_epic(root, feature_id.split("-")[0])
     text = path.read_text()
     heading = re.search(rf"^## {re.escape(feature_id)} · ", text, re.MULTILINE)
@@ -432,12 +647,18 @@ def item(root: Path, args: dict) -> str:
     if size not in SIZES:
         raise ValueError("size must be S, M or L (an XL item is split before it starts)")
     title = cell(args, "title")
-    body = [field("Why", cell(args, "why")), field("What", cell(args, "what")),
-            field("Done when", cell(args, "done_when")), field("Tests", cell(args, "tests")),
-            field("Depends", " ".join(str(args.get("depends") or "—").split()))]
+    body = [
+        field("Why", cell(args, "why")),
+        field("What", cell(args, "what")),
+        field("Done when", cell(args, "done_when")),
+        field("Tests", cell(args, "tests")),
+        field("Depends", " ".join(str(args.get("depends") or "—").split())),
+    ]
     new = next_id(feature_id, [i["id"] for i in items(root) if i["id"].startswith(feature_id + "-")])
     block = "\n".join([f"{f'### {new} · {title}':<88} [todo] [{size}]", *body])
-    nxt = re.compile(r"^#{1,2} ", re.MULTILINE).search(text, heading.end())  # the feature ends where the next feature starts
+    nxt = re.compile(r"^#{1,2} ", re.MULTILINE).search(
+        text, heading.end()
+    )  # the feature ends where the next feature starts
     at = nxt.start() if nxt else len(text)
     write(path, text[:at].rstrip("\n") + "\n\n" + block + "\n" + ("\n" + text[at:] if nxt else ""))
     return f"{new} written to {path.relative_to(root)}"
@@ -469,12 +690,22 @@ def background(root: Path, key: str, argv: list[str]) -> int:
     out = results(root) / "mcp"
     out.mkdir(parents=True, exist_ok=True)
     with open(out / f"{key}.log", "w") as log:
-        proc = subprocess.Popen(["/bin/sh", "-c", '"$0" "$@"; echo "[crissp] exit $?"', *argv], cwd=root, stdout=log,
-                                stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+        proc = subprocess.Popen(
+            ["/bin/sh", "-c", '"$0" "$@"; echo "[crissp] exit $?"', *argv],
+            cwd=root,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
     # reaped the moment it ends (F-31): an unreaped child stays a zombie, which `kill -0 <pid>` still finds alive
     threading.Thread(target=proc.wait, name=f"reap-{key}", daemon=True).start()
     runs = json.loads(read(out / "runs.json") or "{}")
-    runs[key] = {"pid": proc.pid, "started": datetime.datetime.now().strftime("%H:%M:%S"), "log": f"crissp/testsuite/results/mcp/{key}.log"}
+    runs[key] = {
+        "pid": proc.pid,
+        "started": datetime.datetime.now().strftime("%H:%M:%S"),
+        "log": f"crissp/testsuite/results/mcp/{key}.log",
+    }
     write(out / "runs.json", json.dumps(runs, indent=2) + "\n")
     return proc.pid
 
@@ -492,21 +723,37 @@ def run(root: Path, args: dict) -> str:
     what = args.get("what") or ""
     if what not in RUNS:
         raise ValueError(f"what must be one of {', '.join(RUNS)} (a deploy stays in the product owner's terminal)")
+    if what == "check-all" and args.get("asked") is not True:  # F-112: the full run is the product owner's
+        raise ValueError(
+            "check-all (the full run) is the product owner's to start: ask them; once they asked for the "
+            "full run, call run with what: check-all and asked: true. For your own work: what: check"
+        )
     name, argv, detached = RUNS[what]
     path = script(root, name)
     if not detached:
         try:
-            done = subprocess.run([str(path), *argv], cwd=root, capture_output=True, text=True, timeout=PLAN_TIMEOUT,
-                                  stdin=subprocess.DEVNULL, check=False)
+            done = subprocess.run(
+                [str(path), *argv],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=PLAN_TIMEOUT,
+                stdin=subprocess.DEVNULL,
+                check=False,
+            )
         except subprocess.TimeoutExpired:
-            raise ValueError(f"{what} took longer than {PLAN_TIMEOUT}s; run crissp/{name} {' '.join(argv)} in a terminal") from None
+            raise ValueError(
+                f"{what} took longer than {PLAN_TIMEOUT}s; run crissp/{name} {' '.join(argv)} in a terminal"
+            ) from None
         return f"crissp/{name} {' '.join(argv)} (exit {done.returncode})\n" + (done.stdout + done.stderr).strip()
     busy = held(root)
     if busy:
         raise ValueError(f"a run is in progress: {busy}. One run at a time; status follows it.")
     pid = background(root, what, [str(path), *argv])
-    return (f"{what} started: crissp/{name} (pid {pid}, only to stop it). Wait for its result with status (wait: true), "
-            f"not on the pid; log: crissp/testsuite/results/mcp/{what}.log")
+    return (
+        f"{what} started: crissp/{name} (pid {pid}, only to stop it). Wait for its result with status (wait: true), "
+        f"not on the pid; log: crissp/testsuite/results/mcp/{what}.log"
+    )
 
 
 def started(root: Path) -> dict:
@@ -516,15 +763,17 @@ def started(root: Path) -> dict:
 def running(root: Path) -> bool:
     """A run is on: the lock is held, or a check started with run has not said its exit code yet and still lives. The
     dashboard is no run: it is served until it is stopped."""
-    return bool(held(root)) or any(key != "dashboard" and not EXIT.search(read(root / r["log"])) and alive(r["pid"])
-                                   for key, r in started(root).items())
+    return bool(held(root)) or any(
+        key != "dashboard" and not EXIT.search(read(root / r["log"])) and alive(r["pid"])
+        for key, r in started(root).items()
+    )
 
 
 def status(root: Path, args: dict | None = None) -> str:
     args = args or {}
     wait, timeout = args.get("wait", False), args.get("timeout", WAIT)
     if not isinstance(wait, bool):
-        raise ValueError("wait is true or false")  # noqa: TRY004  (a bad argument: a ValueError, like the rest)
+        raise ValueError("wait is true or false")
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout < 0:
         raise ValueError(f"timeout is a number of seconds (default {WAIT}, at most {WAIT_MAX})")
     if wait:
@@ -539,23 +788,32 @@ def status(root: Path, args: dict | None = None) -> str:
     for key, r in runs.items():
         log = read(root / r["log"])
         ended = EXIT.findall(log)
-        state = (f"finished, exit {ended[-1]}" + (" (green)" if ended[-1] == "0" else "")) if ended else \
-            "running" if alive(r["pid"]) else "stopped without an exit code"
-        tail = [line for line in EXIT.sub("", log).rstrip().splitlines()][-12:]
+        state = (
+            (f"finished, exit {ended[-1]}" + (" (green)" if ended[-1] == "0" else ""))
+            if ended
+            else "running"
+            if alive(r["pid"])
+            else "stopped without an exit code"
+        )
+        tail = EXIT.sub("", log).rstrip().splitlines()[-12:]
         lines += ["", f"{key} · started {r['started']} · {state} · {r['log']}", *("  " + t for t in tail)]
     return "\n".join(lines) if runs else lines[0] + "\nNothing started with run yet."
 
 
 def served(url: str, root: Path | None = None) -> bool:
     """The address answers with the dashboard itself, not with an error page or another program; given a project, its
-    stamp names that project too (F-09: never another project's dashboard)."""
+    stamp names that project too (F-09: never another project's dashboard). Only this machine's address is opened
+    (F-91): the address is read from a log the project's own script writes."""
+    where = urllib.parse.urlsplit(url)
+    if where.scheme != "http" or where.hostname != "127.0.0.1":
+        return False
     try:
-        with urllib.request.urlopen(url, timeout=2) as answer:
+        with urllib.request.urlopen(url, timeout=2) as answer:  # noqa: S310 - http://127.0.0.1 only, see above
             if 'id="sessions"' not in answer.read(65536).decode(errors="replace"):
                 return False
         if root is None:
             return True
-        with urllib.request.urlopen(url.rstrip("/") + "/stamp", timeout=2) as answer:
+        with urllib.request.urlopen(url.rstrip("/") + "/stamp", timeout=2) as answer:  # noqa: S310 - the same address
             return json.loads(answer.read(65536)).get("root") == str(Path(root).resolve())
     except (OSError, ValueError):
         return False
@@ -566,8 +824,12 @@ def dashboard(root: Path, args: dict | None = None) -> str:
     if view not in VIEWS:
         raise ValueError(f"view must be one of {', '.join(VIEWS)}")
     path = script(root, "test.sh")
-    background(root, "dashboard", [str(path), VIEWS[view]])
     log = results(root) / "mcp" / "dashboard.log"
+    running = re.search(r"Dashboard: (http://127\.0\.0\.1:\d+)/", read(log))
+    if running and served(running.group(1) + "/dashboard/", root):  # F-108: never a second test.sh over a running one
+        page = "ux" if view == "ux" else "dashboard"
+        return f"Dashboard: {running.group(1)}/{page}/ (served already; the open page keeps itself current)"
+    background(root, "dashboard", [str(path), VIEWS[view]])
     deadline = time.monotonic() + DASHBOARD_WAIT
     while time.monotonic() < deadline:
         text = read(log)
@@ -578,7 +840,10 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])
         time.sleep(0.2)
-    raise ValueError(f"the dashboard said nothing in {DASHBOARD_WAIT}s; see crissp/testsuite/results/mcp/dashboard.log")
+    raise ValueError(
+        f"the dashboard said nothing in {DASHBOARD_WAIT}s; it may still be starting: call dashboard again "
+        "(see crissp/testsuite/results/mcp/dashboard.log)"
+    )
 
 
 def call(root: Path, name: str, args: dict) -> dict:
@@ -586,6 +851,8 @@ def call(root: Path, name: str, args: dict) -> dict:
     try:
         if name == "brief":
             text = brief(root)
+        elif name == "stage":
+            text = stage(root, args)
         elif name == "backlog":
             text = backlog(root, args)
         elif name == "finding":
@@ -617,13 +884,19 @@ def handle(root: Path, msg: dict) -> dict | None:
     if mid is None:
         return None
     if method == "initialize":
-        result = {"protocolVersion": (msg.get("params") or {}).get("protocolVersion", PROTOCOL),
-                  "capabilities": {"tools": {}}, "serverInfo": {"name": "crissp", "version": "0.1.0"},
-                  "instructions": "The way of working of this repository. Call brief at the start; ask backlog for "
-                                  "F-/D-/E- ids instead of reading crissp/backlog files; write findings, decisions, "
-                                  "epics, features and PBIs with finding, decision, epic, feature and item instead of "
-                                  "editing them; start the checks with run, wait for them with status (wait: true), "
-                                  "show the dashboard with dashboard. Deploying stays in the product owner's terminal."}
+        result = {
+            "protocolVersion": (msg.get("params") or {}).get("protocolVersion", PROTOCOL),
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "crissp", "version": "0.1.0"},
+            "instructions": "The way of working of this repository. Call brief and stage at the start, and call stage "
+            "on a <!-- CRISSP --> prompt: say which stage the work is in and offer to help "
+            'with it ("crissp: help me with <stage>" asks for it; call stage with that stage '
+            "and do what it says). Ask backlog for "
+            "F-/D-/E- ids instead of reading crissp/backlog files; write findings, decisions, "
+            "epics, features and PBIs with finding, decision, epic, feature and item instead of "
+            "editing them; start the checks with run, wait for them with status (wait: true), "
+            "show the dashboard with dashboard. Deploying stays in the product owner's terminal.",
+        }
     elif method == "tools/list":
         result = {"tools": TOOLS}
     elif method == "tools/call":

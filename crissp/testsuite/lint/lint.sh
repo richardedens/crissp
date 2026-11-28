@@ -4,10 +4,11 @@
 #      (shellcheck-py), run with uv
 #   2. ESLint on every tracked JavaScript file (the shared look, the Tests dashboard, the UX suite's page), pinned in
 #      package.json and package-lock.json here; npm ci when node_modules is missing or older than the lock
+#   3. stylelint on every tracked CSS file (F-96), pinned beside ESLint, with stylelint.config.mjs here
 # Without uv or Node.js a step is FAILED with how to get it, never a silent pass.
 #
 #   lint.sh                     lint everything; exit 0 only when both are clean
-#   lint.sh --list shell|js     the files it lints, one per line
+#   lint.sh --list shell|js|css the files it lints, one per line
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${CRISSP_ROOT:-$(cd "$HERE/../../.." && pwd)}"
@@ -23,12 +24,14 @@ shell_files() {
   done < <(git ls-files)
 }
 js_files() { git ls-files '*.js' '*.mjs' | grep -v '^crissp/testsuite/lint/'; }
+css_files() { git ls-files '*.css'; }
 
 if [ "${1:-}" = "--list" ]; then
   case "${2:-}" in
     shell) shell_files ;;
     js) js_files ;;
-    *) echo "usage: lint.sh [--list shell|js]" >&2; exit 2 ;;
+    css) css_files ;;
+    *) echo "usage: lint.sh [--list shell|js|css]" >&2; exit 2 ;;
   esac
   exit 0
 fi
@@ -37,7 +40,8 @@ failed=0
 bad() { echo "FAILED: $*"; failed=1; }
 
 echo "== shellcheck (every bash script)"
-mapfile -t scripts < <(shell_files)
+scripts=()  # bash 3.2 (a Mac's /bin/bash) has no mapfile (F-107)
+while IFS= read -r f; do scripts+=("$f"); done < <(shell_files)
 if command -v uv >/dev/null 2>&1; then
   # -s bash: a sourced file without a shebang (lib/steps.sh) is bash too; -x follows what a script sources
   if uv run --quiet --no-project --with-requirements "$HERE/requirements.txt" shellcheck -s bash -x "${scripts[@]}"; then
@@ -50,7 +54,8 @@ else
 fi
 
 echo "== ESLint (every JavaScript file)"
-mapfile -t sources < <(js_files)
+sources=()
+while IFS= read -r f; do sources+=("$f"); done < <(js_files)
 if command -v npm >/dev/null 2>&1; then
   record="$HERE/node_modules/.package-lock.json"
   if [ ! -f "$record" ] || [ "$HERE/package-lock.json" -nt "$record" ]; then
@@ -65,6 +70,19 @@ if command -v npm >/dev/null 2>&1; then
   fi
 else
   bad "Node.js (npm) is not installed: ESLint cannot run (https://nodejs.org, 20 or newer)"
+fi
+
+echo "== stylelint (every CSS file)"
+sheets=()
+while IFS= read -r f; do sheets+=("$f"); done < <(css_files)
+if [ -x "$HERE/node_modules/.bin/stylelint" ]; then
+  if "$HERE/node_modules/.bin/stylelint" --config "$HERE/stylelint.config.mjs" "${sheets[@]}"; then
+    echo "ok: stylelint, ${#sheets[@]} files"
+  else
+    bad "stylelint"
+  fi
+else
+  bad "stylelint is not installed: npm ci in crissp/testsuite/lint (needs Node.js 20 or newer)"
 fi
 
 exit "$failed"

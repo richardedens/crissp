@@ -11,12 +11,12 @@ import pytest
 
 PLUGINS = Path(__file__).resolve().parents[1] / "lib" / "pytest_plugin"
 sys.path.insert(0, str(PLUGINS))
-import crissp_timing  # noqa: E402
+import crissp_timing
 
 TESTS = {
     "tests/test_one.py": "def test_passes():\n    assert True\n\n\ndef test_fails():\n    assert False\n",
     "tests/test_two.py": "import pytest\n\n\n@pytest.mark.skip(reason='later')\ndef test_skipped():\n    pass\n\n\n"
-                         "def test_also_passes():\n    assert 1\n",
+    "def test_also_passes():\n    assert 1\n",
 }
 
 
@@ -30,10 +30,23 @@ def tiny(tmp_path) -> Path:
 
 def pytest_run(root: Path, timing: Path, *args: str, **env: str) -> subprocess.CompletedProcess:
     clean = {k: v for k, v in os.environ.items() if k not in (crissp_timing.ACTIVE, "PYTEST_ADDOPTS")}
-    return subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "crissp_timing", *args,
-                           "tests"], cwd=root, capture_output=True, text=True, timeout=120,
-                          env={**clean, "PYTHONPATH": str(PLUGINS), "CRISSP_TIMING_DIR": str(timing), "STEP": "unit",
-                               "WORKERS": "2", "WORKERS_WHY": "3 CPUs, one left for the machine", **env}, check=False)
+    return subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "crissp_timing", *args, "tests"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={
+            **clean,
+            "PYTHONPATH": str(PLUGINS),
+            "CRISSP_TIMING_DIR": str(timing),
+            "STEP": "unit",
+            "WORKERS": "2",
+            "WORKERS_WHY": "3 CPUs, one left for the machine",
+            **env,
+        },
+        check=False,
+    )
 
 
 def lines(path: Path) -> list[dict]:
@@ -51,8 +64,11 @@ def test_one_process_writes_every_test_as_it_finishes(tiny):
     assert rows[1]["n"] == 4 and rows[-1]["status"] == 1
     tests = {r["id"]: r for r in rows if r["kind"] == "test"}
     assert {k: v["outcome"] for k, v in tests.items()} == {
-        "tests/test_one.py::test_passes": "passed", "tests/test_one.py::test_fails": "failed",
-        "tests/test_two.py::test_skipped": "skipped", "tests/test_two.py::test_also_passes": "passed"}
+        "tests/test_one.py::test_passes": "passed",
+        "tests/test_one.py::test_fails": "failed",
+        "tests/test_two.py::test_skipped": "skipped",
+        "tests/test_two.py::test_also_passes": "passed",
+    }
     assert all(r["worker"] is None and r["seconds"] >= 0 for r in tests.values())
     assert not list(timing.glob("unit.now.*"))  # one process: no worker files
 
@@ -108,6 +124,7 @@ def test_writes_that_fail_are_dropped(tmp_path, monkeypatch):
 def test_a_worker_with_an_odd_name_writes_no_now_file(tmp_path, monkeypatch):
     class Config:
         workerinput = {"workerid": "../../etc"}  # noqa: RUF012  (a stand-in for pytest-xdist's config)
+
     monkeypatch.setenv("CRISSP_TIMING_DIR", str(tmp_path))
     monkeypatch.setitem(crissp_timing._now, "path", None)
     crissp_timing.pytest_configure(Config())

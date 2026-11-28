@@ -723,7 +723,7 @@
     }
    ],
    "tests": [
-    "test_cli.py::test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored",
+    "test_cli.py::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
     "test_package.py::test_init_makes_a_crissp_project_that_is_green"
    ]
   },
@@ -1318,8 +1318,764 @@
    ]
   },
   {
+   "id": "pytest-raises-ambiguous-pattern",
+   "title": "A test's match= matched every message (F-90)",
+   "problem": "pytest.raises(match=...) reads a regular expression. match=\"cannot hold a |\" ends in an empty alternative and matches any message, so the finding() test passed whatever error was raised; 18 more patterns held a regex sign (a dot, a bar) by accident.",
+   "fix": "pyproject.toml selects ruff's RUF043 (pytest-raises-ambiguous-pattern): the python-lint step refuses such a pattern. Plain texts go through re.escape, the patterns that mean a regex are raw strings.",
+   "sources": [
+    {
+     "file": "pyproject.toml",
+     "symbol": "RUF043"
+    },
+    {
+     "file": "crissp/testsuite/tests/test_crissp_tool.py",
+     "symbol": "re.escape(\"cannot hold a |\")"
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_a_pytest_raises_match_with_regex_signs_is_escaped_or_raw"
+   ]
+  },
+  {
+   "id": "served-opens-only-localhost",
+   "title": "The dashboard probe opened any address it was handed (F-91)",
+   "problem": "served() passed the address from the dashboard log straight to urllib, so a file: URL or another host in that log would have been opened by the crissp tool.",
+   "fix": "served() opens an address only when it is http on 127.0.0.1, the one address the dashboard listens on; anything else is not the dashboard.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def served("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_served_opens_only_this_machines_address",
+    "test_crissp_tool::test_served_means_the_dashboard_itself_answers"
+   ]
+  },
+  {
+   "id": "one-python-standard",
+   "title": "crissp's own Python held to bugbear, bandit and ruff's own rules (F-92)",
+   "problem": "The python-lint step ran ruff's defaults (E4, E7, E9, F) and three rules; raise without from, zip without strict, an unused loop variable, 24 noqa comments that suppressed nothing and unaudited URL opens passed, while projects' backend-lint already ran the security rules.",
+   "fix": "pyproject.toml selects E, W, F, B, S, SIM, I, N, UP, C4, RUF, PLW1510 and D100 (S603/S607 off: the guards run git and bash as argument lists; a shell stays forbidden). Tests may assert and use throwaway secrets and local addresses. The 47 findings are fixed, each deliberate exception says why in its noqa. E501 waits for the one layout pass.",
+   "sources": [
+    {
+     "file": "pyproject.toml",
+     "symbol": "[tool.ruff.lint]"
+    },
+    {
+     "file": "crissp/testsuite/lib/cluster_plan.py",
+     "symbol": "from None"
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_the_standard_holds_bugs_security_and_dead_noqa_and_lives_in_pyproject_alone"
+   ]
+  },
+  {
+   "id": "stdlib-only-and-no-duplicates",
+   "title": "The engine's standard-library rule and duplicate code were unguarded (F-93)",
+   "problem": "Nothing checked that src/crissp, crissp/tool, crissp/testsuite/lib and crissp/uxsuite import only the standard library and their own modules, and no step looked for copied code.",
+   "fix": "The python-lint step runs crissp/testsuite/lint/python_lint.py: ruff with pyproject.toml's rules, an AST scan of every import in the runtime code (playwright allowed in ux_shoot.py alone, where it runs under uv), and pylint's duplicate-code check (R0801, 6 lines; pinned in crissp/testsuite/lint/requirements.txt, settings in pyproject.toml [tool.pylint]). Without uv it is a finding.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "def foreign_imports("
+    },
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "def duplicates("
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_an_import_outside_the_standard_library_is_a_finding_by_file_and_line",
+    "test_python_lint::test_the_engine_itself_imports_the_standard_library_only",
+    "test_python_lint::test_duplicate_code_runs_the_pinned_pylint_with_pyprojects_settings",
+    "test_python_lint::test_without_uv_the_duplicate_check_is_a_finding_never_a_silent_pass",
+    "test_python_lint::test_the_step_is_clean_or_names_every_finding"
+   ]
+  },
+  {
+   "id": "session-pages-css-in-files",
+   "title": "The session pages' CSS and script move out of Python strings (F-94)",
+   "problem": "sessionview.STYLE, measure.EXTRA and measure.TABS_JS held the Claude session pages' CSS and JavaScript as Python strings: no linter read them, and the long lines were most of the Python's line-length findings.",
+   "fix": "They live in crissp/testsuite/dashboard/ (sessions.css, measure.css, session-tabs.js), unchanged, read as UTF-8 at load; the pages still inline them, so they stay self-contained. lint.sh's ESLint picks session-tabs.js up as a tracked JavaScript file.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/sessionview.py",
+     "symbol": "STYLE = (DASHBOARD"
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "TABS_JS = (sv.DASHBOARD"
+    }
+   ],
+   "tests": [
+    "test_measure::test_the_session_pages_css_and_script_live_in_files_a_linter_reads"
+   ]
+  },
+  {
+   "id": "editorconfig",
+   "title": "Editors write crissp's files the way its checks hold them (F-95)",
+   "problem": "Nothing told an editor crissp's layout: each wrote files with its own defaults, and only the lint caught the difference.",
+   "fix": ".editorconfig at the root: UTF-8, LF, a final newline and no trailing spaces everywhere (not in Markdown, where two spaces break a line), spaces, 4 for Python, lines of 120 like ruff, indent 1 for the JSON crissp writes itself; binaries left alone. suites.json lists it as a note: a change to it runs nothing.",
+   "sources": [
+    {
+     "file": ".editorconfig",
+     "symbol": "max_line_length = 120"
+    },
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": "\"notes\""
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_an_editor_writes_files_the_way_the_checks_hold_them"
+   ]
+  },
+  {
+   "id": "stylelint-crissp-css",
+   "title": "crissp's own CSS is linted (F-96)",
+   "problem": "lint.sh ran shellcheck and ESLint, but no tool read crissp's six stylesheets; a deprecated value (word-break: break-word) went unnoticed three times.",
+   "fix": "lint.sh runs stylelint 17.16.0 with stylelint-config-recommended 18.0.0 (pinned in crissp/testsuite/lint/package.json and its lock, dev-only) over every tracked CSS file, with stylelint.config.mjs there. no-descending-specificity is off: the sheets are ordered by component. The three uses of break-word are overflow-wrap: anywhere.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": "== stylelint (every CSS file)"
+    },
+    {
+     "file": "crissp/testsuite/lint/stylelint.config.mjs",
+     "symbol": "stylelint-config-recommended"
+    }
+   ],
+   "tests": [
+    "test_lint::test_the_step_lints_every_css_file_of_this_repository_with_stylelint",
+    "test_lint::test_this_repository_has_a_lint_step_with_its_own_dev_only_tools"
+   ]
+  },
+  {
+   "id": "one-python-layout",
+   "title": "crissp's Python has one layout, checked (F-97)",
+   "problem": "Nothing set or checked how crissp's Python is laid out: lines ran to 315 characters and E501 was off. Laid out, four test modules showed the same git helper and three guards the same script block.",
+   "fix": "ruff format ran once over src/, crissp/ and site/ in a commit of its own, listed in .git-blame-ignore-revs. python_lint.py adds ruff format --check; E501 is on (130 for a docstring or message, code at 120). project.script() and tests/gitrepo.py hold the copied blocks once; three multi-line lambdas became functions so the layout keeps their meaning.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "FORMAT = "
+    },
+    {
+     "file": "crissp/testsuite/lib/project.py",
+     "symbol": "def script("
+    },
+    {
+     "file": ".git-blame-ignore-revs",
+     "symbol": "F-97"
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_the_python_has_one_layout_checked_and_blame_skips_the_layout_commit",
+    "test_python_lint::test_the_step_is_clean_or_names_every_finding",
+    "test_project::test_a_guard_runs_as_a_script_speaking_and_exits_with_mains_answer"
+   ]
+  },
+  {
+   "id": "vibe-desktop-mcp-tools",
+   "title": "A Vibe desktop session got no crissp tools: the config named no folder (F-100)",
+   "problem": "Vibe's desktop app starts MCP servers from its own app server: the server's working directory is the config's cwd, else the app server's own folder, and its environment only HOME, PATH, SHELL, TERM, USER and LOGNAME plus the config's env. .vibe/config.toml gave a relative server path (this repository) or `uvx crissp==x mcp` without CRISSP_ROOT (a project), so the server was not found or did not know the project, and search_tool_functions showed only Vibe's own tools.",
+   "fix": "lib/vibe.py writes .vibe/config.toml for this machine: cwd and [mcp_servers.env] CRISSP_ROOT name the project's folder, uvx by its full path (the checkout's own server with the Python that repairs, in the framework's repository), startup_timeout_sec 60 for the first uvx download. crissp init and repair write it; repair writes a config anew that does not name the folder when it holds only crissp's server, and says what to do for one with servers of its own or one still in git. The file names one machine's folder, so .vibe/ is git-ignored as a whole (F-29 reversed).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def config("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def server("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_vibe("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def vibe_needs("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def init("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_a_relative_server_path_is_not_found_from_vibes_app_server",
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere",
+    "test_vibe::test_a_windows_path_stays_valid_toml_in_the_config",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew",
+    "test_repair::test_a_vibe_config_with_servers_of_its_own_is_said_not_written",
+    "test_repair::test_a_vibe_config_in_git_is_said",
+    "test_repair::test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server",
+    "test_cli::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
+    "test_vibe_session::test_a_vibe_session_in_a_brought_in_project_finds_brief_and_backlog"
+   ]
+  },
+  {
+   "id": "sessions-section-vibe",
+   "title": "'Sessions that stay small' spoke only Claude Code (F-102)",
+   "problem": "The agreement's habits for short sessions named only Claude Code's commands (/clear, /compact, the Explore agent), so a Vibe session had no stated way to keep its context small.",
+   "fix": "The section, in CRISSP.md, this agreement and the template's (which crissp repair keeps in step, F-21), names Vibe's own: /clear or a new desktop session per item, /compact <what to keep>, its auto_compact_threshold, the task tool with the explore agent for heavy output, and the crissp tools from .vibe/config.toml.",
+   "sources": [
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "## Sessions that stay small"
+    }
+   ],
+   "tests": [
+    "test_template::test_the_sessions_section_names_the_vibe_way_too"
+   ]
+  },
+  {
+   "id": "activity-reads-vibe",
+   "title": "The Activity page saw only Claude Code's sessions (F-101)",
+   "problem": "lib/activity.py read only ~/.claude/projects: a Mistral Vibe session in the repository was invisible on /activity, and its 300k-token 'start fresh' warning could never fire.",
+   "fix": "lib/vibesessions.py reads Vibe's own session folders (VIBE_HOME, else ~/.vibe: logs/session/unified/<id>/meta.json and the journal) for the sessions of this repository written in the last half hour: title, last prompt, the latest tool call (masked), its subagents (sessions that name it as parent), and the last request's input tokens (else the context breakdown) against the 300k line. activity.state lists them beside Claude's, each with its source; the page names the source and gives Vibe's own advice for a long history.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def sessions("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/activity.js",
+     "symbol": "function session("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_busy_vibe_session_with_its_prompt_step_agents_and_long_history",
+    "test_vibesessions::test_the_activity_page_lists_vibe_sessions_next_to_claudes",
+    "test_vibesessions::test_a_session_without_a_journal_or_usage_still_shows",
+    "test_activity_page::test_vibe_sessions_show_beside_claudes_with_their_own_advice",
+    "test_activity_page::test_no_session_at_all_names_both"
+   ]
+  },
+  {
+   "id": "context-budget-checks",
+   "title": "The context-budget habits were advice only (F-104)",
+   "problem": "F-18 measured one session whose context was mostly 47 screenshots and re-read files; the agreement asks for browser checks in a subagent and narrow reads, but nothing told a session, Claude's or Vibe's, that it was doing otherwise.",
+   "fix": "measure.py counts the images in a session's main thread and the repository files longer than 800 lines it read whole (no offset or limit); activity.py does so for Claude's transcripts and vibesessions.py for Vibe's journal. Past 10 images, or any whole read of a big file, the session's card on /activity says so (context budget), next to the 300k-token history warning.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def budget("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def images("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def whole("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def session("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    }
+   ],
+   "tests": [
+    "test_activity::test_screenshots_and_whole_big_files_in_the_main_thread_are_flagged",
+    "test_vibesessions::test_a_vibe_sessions_images_and_whole_big_reads_are_counted",
+    "test_activity_page::test_the_context_budget_warnings_show"
+   ]
+  },
+  {
+   "id": "ux-team-on-any-cli",
+   "title": "The UX team ran only on Claude Code (F-103)",
+   "problem": "ux_team._launch always started `claude -p`: a team with only Mistral Vibe installed could not walk, and CRISSP.md said the personas are Claude Code.",
+   "fix": "ux_team.runner() picks the agent CLI: CRISSP_UX_CLI (claude or vibe), else Claude Code when it is installed, else Vibe; an unknown name is said before anything is made. The Vibe run is headless in the run's own folder (its working directory, VIBE_OUTSIDE_WORKDIR=deny refuses writes elsewhere), with only read_file, write_file and edit, MCP off (VIBE_ENABLE_MCP=false), reads allowed only in the UX suite and the agreement and never a .env, and is told to play the personas itself (Vibe has no agents there). _launch keeps its arguments.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def runner("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _vibe("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _launch("
+    }
+   ],
+   "tests": [
+    "test_ux_team::test_a_round_runs_on_mistral_vibe_read_only_without_mcp",
+    "test_ux_team::test_the_runner_is_the_one_asked_for_else_the_one_installed"
+   ]
+  },
+  {
+   "id": "stages-where-the-work-is",
+   "title": "Where the work is in the six stages, and help with each (F-130)",
+   "problem": "The six stages of the agentic SDLC (Discover, Plan, Build, Verify, Review, Release) were only a picture on the website: nothing said which stage the work is in now, what waits for whom, or how to get Claude or Mistral Vibe to help with a stage.",
+   "fix": "lib/stages.py reads every stage from the repository (the backlog through the crissp tool's parser, the release certificate, git, VERSION, CHANGELOG.md, the UX suite's state with its map and discovery round when it has them): its status (setup, work, yours, clear), its lines, the stage the work is in following the flow, and a prompt per stage that keeps the product owner's rules. The crissp tool stage answers it for Claude and Vibe alike; the dashboard's Stages page (/stages, first in the top bar) shows it with Ask Claude, Ask Vibe and Copy the sentence per stage, and Discover starts the UX team's rounds there.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/stages.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/lib/stages.py",
+     "symbol": "def text("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def stage("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "stages.json"
+    },
+    {
+     "file": "crissp/testsuite/dashboard/stages.js",
+     "symbol": "function stage("
+    }
+   ],
+   "tests": [
+    "test_stages",
+    "test_stages_page",
+    "test_crissp_tool::test_stage_says_where_the_work_is_in_the_six_stages_and_how_to_help",
+    "test_crissp_tool::test_stage_comes_from_the_project_s_engine_or_this_one",
+    "test_serve::test_stages_is_the_page_and_its_data_is_where_the_work_is",
+    "test_look::test_look_js_holds_the_sections_once_and_fills_and_marks_them"
+   ]
+  },
+  {
+   "id": "sessions-open-with-the-stage",
+   "title": "Every session opens with the stage and offers its help (F-131)",
+   "problem": "A Claude or Vibe session that started, or that the product owner gave a <!-- CRISSP --> prompt, never said where the work stands in the flow nor offered the next step, such as setting up the UX suite.",
+   "fix": "The agreement's own section The six stages (template and this repository; CRISSP.md names the stages in its flow): call stage at the start and on a <!-- CRISSP --> prompt, say the stage and offer its help, and answer \"crissp: help me with <stage>\". The crissp tool's MCP instructions say the same; crissp repair brings the section into projects brought in earlier (fix_section, shared with the sessions section); crissp init's last lines mention it.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_section("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_stages("
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "## The six stages"
+    }
+   ],
+   "tests": [
+    "test_repair::test_the_agreement_gets_this_crissps_six_stages",
+    "test_repair::test_the_agreement_gets_this_crissps_sessions_section",
+    "test_crissp_tool::test_stage_says_where_the_work_is_in_the_six_stages_and_how_to_help"
+   ]
+  },
+  {
+   "id": "ux-map-of-the-screens",
+   "title": "The UX suite only ever looked at the screens someone wrote a walk for",
+   "problem": "Nothing listed the product's screens: a screen without a walk was never looked at, and nobody could see which screens no link reaches (E7-F3-01).",
+   "fix": "ux_map: crissp ux --map crawls the running product read-only (its own links only, never sign-out or delete, map.max pages per device, under uv with Playwright like a shoot), reads the screenshots the project's E2E tests list in a manifest (copied into the suite's results), and merges them with the walks by screen (ids folded) into results/map/screens.json with area, how found, linked from, shots and gaps. The page's Map tab shows them by area with the gaps; a shoot now records the page each shot shows.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def build("
+    },
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def follow("
+    },
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def crawl("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function mapTab("
+    }
+   ],
+   "tests": [
+    "test_ux_map::test_a_crawl_runs_the_browser_under_uv_and_builds_the_screen_list",
+    "test_ux_map::test_the_crawl_follows_only_the_product_s_own_pages",
+    "test_ux_map::test_the_project_s_own_test_screenshots_are_screens_too",
+    "test_ux_map::test_after_a_crawl_a_screen_only_the_tests_reach_is_a_gap",
+    "test_ux_api::test_the_state_holds_the_map_once_the_product_was_mapped",
+    "test_ux_cli::test_map_says_what_the_crawl_found"
+   ]
+  },
+  {
+   "id": "ux-discovery-round",
+   "title": "Nothing asked whether a persona can actually do what they come for",
+   "problem": "Rounds judged only the walks someone wrote; no run asked each persona, per job, whether it can be done in the product, so missing screens were never found (E7-F3-02).",
+   "fix": "A third kind of run, discovery, on the whole product: it reads the mapped screens with their pictures (ux_discovery.screens_for_a_run); every persona tries their own jobs (two inferred from the brief when none are written) and says done, hard or impossible, on which screens and where they gave up; the moderator writes the needs. The Jobs tab shows the job map and the needs; a need is approved or rejected (with a reason) like advice, and an approved need becomes a design request: walks/need-<title>.json with the need as its brief, whose first design starts at once; a design for a walk with a brief may start without screenshots and is told the request.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _discover("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def discovery_prompt("
+    },
+    {
+     "file": "crissp/uxsuite/ux_discovery.py",
+     "symbol": "def design_request("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "NEED_ID"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function jobsTab("
+    }
+   ],
+   "tests": [
+    "test_ux_discovery::test_a_discovery_round_gives_every_persona_their_jobs_and_every_screen",
+    "test_ux_discovery::test_an_approved_need_is_a_design_request_that_starts_a_design",
+    "test_ux_discovery::test_a_wrong_verdict_on_a_need_is_refused",
+    "test_ux_api::test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs",
+    "test_ux_cli::test_discover_asks_for_a_discovery_round"
+   ]
+  },
+  {
+   "id": "ux-accept-what-was-built",
+   "title": "Nobody compared a built screen with the design that was approved",
+   "problem": "After an approved design was built, nothing put the built screen next to the design, and there was no way to accept it or send it back from the UX suite (E7-F5-01).",
+   "fix": "A verdict on what was built (<walk>#v<n>/built: accept or send-back with a reason), allowed only for an approved design and only on screenshots taken after the approval (ux_team.shot_at). Accept moves the design's PBI to review; send-back moves it to doing and files the reason as a finding that goes to the PBI, both through the crissp tool. The Designs tab shows the new screens next to the approved design with Accept and Not good.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _built("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _move("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def shot_at("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function builtOf("
+    }
+   ],
+   "tests": [
+    "test_ux_accept::test_a_built_screen_is_judged_only_after_the_walk_was_shot_again",
+    "test_ux_accept::test_not_good_sends_the_pbi_back_with_the_reason",
+    "test_ux_accept::test_only_an_approved_design_can_be_accepted",
+    "test_ux_accept::test_a_pbi_that_cannot_move_is_told_and_the_verdict_stands",
+    "test_ux_api::test_the_state_says_when_a_walk_was_shot_and_what_was_built"
+   ]
+  },
+  {
+   "id": "ux-measured-rules",
+   "title": "The team had to find overflowing text, small targets and see-through dialogs in a picture",
+   "problem": "Every rule was judged by the team from the screenshots alone, so facts the browser can measure (text that is cut off or runs past the screen, tap targets under 44 × 44, the primary action below the fold, a see-through dialog, a control without visible focus) cost tokens and were missed (E7-F2-02).",
+   "fix": "A rule may name the checks the browser runs for it (measure: in its file, \"Measured by the browser: ...\" in PRINCIPLES.md, a set of ticks in the Rules tab). The shoot hands the checks of the rules that hold to measure.js on every shot; each shot keeps what was found with its rule and place, the shoot says how much, the round's prompt lists them as facts, and the viewer draws a numbered box where each one is.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def _measure("
+    },
+    {
+     "file": "crissp/uxsuite/ux_shoot.py",
+     "symbol": "def plan("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _measured("
+    },
+    {
+     "file": "crissp/uxsuite/measure.js",
+     "symbol": "window.crisspMeasure"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function marks("
+    }
+   ],
+   "tests": [
+    "test_ux_measure::test_a_principle_says_what_the_browser_measures",
+    "test_ux_measure::test_the_page_sets_and_clears_what_a_rule_measures",
+    "test_ux_measure::test_a_check_the_browser_does_not_run_is_refused",
+    "test_ux_measure::test_a_rule_file_with_an_unknown_check_is_named",
+    "test_ux_measure::test_the_shoot_hands_the_checks_of_the_rules_that_hold_to_the_browser",
+    "test_ux_measure::test_the_shoot_says_how_much_was_measured",
+    "test_ux_measure::test_each_shot_brings_what_was_measured_and_the_team_reads_it_as_facts"
+   ]
+  },
+  {
+   "id": "ux-review-screen",
+   "title": "No status per screen, no progress and no one place to decide",
+   "problem": "The UX page listed walks with their advice and designs in separate tabs: nothing said how far each screen was, which ones waited for the product owner, or let them go through the open decisions one after another (E7-F4-01).",
+   "fix": "ux_review gives every screen (a walk's screen) its status on the way new, seen, discussed, decided, designed, approved, built, accepted, whose turn it is and what comes next; the state carries it with the progress and a status per mapped screen. The page's new Review tab shows the progress bar, the screens that wait for you first, the shot with the advice pinned where it is (the round's advice may carry where) next to the design, the advice must first, and one verdict bar at the bottom: keys 1 2 3, arrows for screen and item.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def screen("
+    },
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def review("
+    },
+    {
+     "file": "crissp/uxsuite/api.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function reviewTab("
+    }
+   ],
+   "tests": [
+    "test_ux_review::test_a_screen_goes_from_new_to_accepted",
+    "test_ux_review::test_a_design_that_was_rejected_or_is_redone_waits_for_the_team",
+    "test_ux_review::test_a_running_round_is_the_team_s_turn",
+    "test_ux_review::test_progress_counts_every_screen_and_those_that_wait_for_you_come_first",
+    "test_ux_review::test_a_mapped_screen_takes_the_status_of_the_walks_that_look_at_it",
+    "test_ux_review::test_the_area_of_a_screen_comes_from_its_walk_s_first_page",
+    "test_ux_review::test_the_team_is_asked_to_pin_advice_to_a_place_on_the_shot"
+   ]
+  },
+  {
+   "id": "ux-decide-once",
+   "title": "Every piece of advice needed its own verdict, and agreed advice never became a rule",
+   "problem": "Hundreds of pieces of advice each needed their own verdict, and advice the product owner agreed with on screen after screen was never turned into a rule (E7-F4-02).",
+   "fix": "A verdict on a rule, an area or a screen (rule/<id>, area/<area>, screen/<walk>: agree, disagree or later) holds for every piece of advice under it without a verdict of its own, the nearest first (ux_review.held); the review screen's verdict bar sends the verdict to the advice, its screen, its area or its rule (s switches). Agreed advice without a rule that comes back on two screens or more under one theme is proposed as a rule (ux_review.proposed, shown in the Rules tab); approved, it is written as a rule file. The round's advice carries a theme.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def held("
+    },
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def proposed("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _node("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function reviewTab("
+    }
+   ],
+   "tests": [
+    "test_ux_tree::test_a_verdict_on_a_rule_holds_for_its_advice",
+    "test_ux_tree::test_the_nearest_verdict_holds_and_the_advice_s_own_wins",
+    "test_ux_tree::test_a_wrong_verdict_up_the_tree_is_refused",
+    "test_ux_tree::test_agreed_advice_on_several_screens_is_proposed_as_a_rule",
+    "test_ux_tree::test_an_approved_proposal_is_a_rule_file_and_a_rejected_one_stays_away",
+    "test_ux_tree::test_a_theme_or_else_the_title_groups_advice"
+   ]
+  },
+  {
+   "id": "brief-names-the-checkout",
+   "title": "A test held the checkout to the folder name crissp (F-105)",
+   "problem": "The Vibe config test asserted that brief starts with \"crissp \", while brief names the checkout's folder: in a checkout named otherwise the full run was red.",
+   "fix": "The test expects the checkout's own folder name and the commit.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def brief("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere"
+   ]
+  },
+  {
+   "id": "audit-test-on-a-mac",
+   "title": "The audit test was red on every Mac (F-106)",
+   "problem": "test_audit_runs_the_engines_security_scans_for_the_project gave bash PATH=/usr/bin:/bin, where a Mac has Apple's python3 3.9, which cannot load the engine.",
+   "fix": "The python that runs the tests comes first on that PATH, as in a terminal where crissp runs.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "audit()"
+    }
+   ],
+   "tests": [
+    "test_run::test_audit_runs_the_engines_security_scans_for_the_project"
+   ]
+  },
+  {
+   "id": "vibe-server-path",
+   "title": "What the crissp tool started from Vibe's desktop app ran with the app's PATH (F-107)",
+   "problem": "Vibe's desktop app gives an MCP server its own PATH: on a Mac /bin/bash 3.2 first, so a check-all started through the crissp tool failed its lint step (mapfile: command not found) while the same run from a terminal was green.",
+   "fix": "vibe.config writes the PATH of the shell that runs crissp init or repair into the server's env, vibe.pinned counts a config without it as stale (repair writes it anew), and lint.sh reads its file lists without mapfile; a test keeps bash 4 builtins out of every bash script.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def fields("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": "scripts=()"
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_gives_the_server_this_machines_path",
+    "test_lint::test_every_bash_script_runs_on_the_bash_a_mac_ships",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew"
+   ]
+  },
+  {
+   "id": "agents-first-moves",
+   "title": "An agent that reads AGENTS.md had to explore before its first move (F-110)",
+   "problem": "Vibe reads AGENTS.md as its instructions; the root file only pointed at two long files, so a session read the whole agreement, .mcp.json, the README and server.py before calling brief, and took \"use crissp to the fullest\" as a yes for the full run. crissp/AGENTS.md, for an agent next to the main session, reached the main session as well.",
+   "fix": "The root AGENTS.md (this repository and the template) gives the first moves in 20 lines: brief, backlog, run and status, the tools that write the backlog, what waits for the product owner's yes, never a .env, and where to read more. crissp/AGENTS.md says the main session ignores it. Repair replaces the old pointer and the old intro, only where they are crissp's text.",
+   "sources": [
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": "# {{PRODUCT}}"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_root_agents_file_gives_an_agent_its_first_moves",
+    "test_repair::test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
+  },
+  {
+   "id": "crissp-skill",
+   "title": "No playbook for the crissp tools (F-111)",
+   "problem": "An agent learned the crissp tools one description at a time, after a search: nothing said which tool fits which question, the order of a session, or what to do when a call is slow.",
+   "fix": "The crissp skill (crissp/template/agents/skills/crissp/SKILL.md, written by init to .agents/skills/crissp/SKILL.md, which Vibe loads when needed and which can be committed): which tool when, the order of a session, what waits for the product owner, a slow or missing tool. Repair keeps it this crissp's; this repository has the same file.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": "name: crissp"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "F-111"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_repair::test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
+  },
+  {
+   "id": "tools-fit-a-minute",
+   "title": "The crissp tools could hold a call past Vibe's minute (F-108)",
+   "problem": "Vibe cancels a tool call after 60 s and the server answers one call at a time: the dashboard tool waited up to 120 s, so it and the call behind it (deploy-plan) were cancelled. A second dashboard call started test.sh over the running server and rewrote its log (NUL bytes in status), and a rebuild that failed was tried again on every request.",
+   "fix": "DASHBOARD_WAIT, PLAN_TIMEOUT and status's default wait are 45 s, each then says to ask again; dashboard answers at once when the log names a server that serves this project; Live.stamp tries a failed rebuild again only once something changed.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def dashboard("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def stamp("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_every_answer_fits_a_tool_call_budget_of_a_minute",
+    "test_crissp_tool::test_a_dashboard_this_project_already_serves_is_answered_without_a_restart",
+    "test_serve::test_a_failed_rebuild_keeps_the_last_good_data"
+   ]
+  },
+  {
+   "id": "check-all-asked",
+   "title": "The tool started the full run on a vague wish (F-112)",
+   "problem": "Asked to use crissp to the fullest, a Vibe session started check-all through the tool; the agreement keeps the full run the product owner's unless they ask.",
+   "fix": "run starts check-all only with asked: true (described in the tool's schema as the product owner asking for the full run), otherwise it says to ask them and to use check for one's own work; the skill says the same.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def run("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_the_full_run_starts_only_when_the_product_owner_asked_for_it"
+   ]
+  },
+  {
+   "id": "vibe-packed-sessions",
+   "title": "A packed Vibe session showed no prompt or step on /activity (F-109)",
+   "problem": "Vibe 3.1 packs a session's older turns into generations/ and chunks/ and starts a new, often empty journal; the Activity page read only the journal, so a busy session showed no prompt, no step and no history. Vibe calls MCP tools through run_typescript, which showed as other.",
+   "fix": "vibesessions.packed reads CURRENT, the generation's manifest and checkpoint and its chunks of messages (and the context's last reported tokens); read takes those turns before the journal. A run_typescript step names the tools its program called, by namespace.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def packed("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def step("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_packed_vibe_session_still_shows_its_prompt_step_and_history",
+    "test_vibesessions::test_a_run_typescript_call_names_the_tools_it_used"
+   ]
+  },
+  {
+   "id": "skill-names-every-tool",
+   "title": "The crissp skill names every tool the server offers, stage too (F-140)",
+   "problem": "The crissp skill and the root AGENTS.md were written before the stage tool landed: the playbook named every tool but stage, so an agent following it never asked which of the six stages the work is in.",
+   "fix": "The skill's table and session order, and the first moves in AGENTS.md (this repository's and the template's), name stage. The skill's test reads the tool names from crissp/tool/server.py's TOOLS, so a tool added later fails it until the skill names it.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_template.py::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_template.py::test_the_root_agents_file_gives_an_agent_its_first_moves"
+   ]
+  },
+  {
+   "id": "site-rebuilt-on-version",
+   "title": "F-141: the website is rebuilt when VERSION changes",
+   "problem": "The Pages workflow ran only on changes to site/, docs/images/ and crissp/look/, so the bump to 0.2.0 left the published site naming 0.1.10.",
+   "fix": "VERSION is in the workflow's paths; a test checks that every input of site/build.sh is there.",
+   "sources": [
+    ".github/workflows/pages.yml"
+   ],
+   "tests": [
+    "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
+   ]
+  },
+  {
    "id": "quality-ratchet",
-   "title": "Complexity and duplication were measured nowhere (F-110, E6-F4-01)",
+   "title": "Complexity and duplication were measured nowhere (F-150, E6-F4-01)",
    "problem": "A function with forty branches or a block copied into three files went through every step, in crissp and in every project: nothing measured either, and nothing kept them from growing.",
    "fix": "lib/quality.py measures the cyclomatic complexity of every function with the pinned lizard (through uv, many languages) and counts copied blocks itself (ten counted lines or more, whatever their indent, blank lines, comments and brackets left out). crissp/testsuite/quality-baseline.json holds the complex functions and the duplicated lines: a new complex function, a more complex one or more copies fail; a green run lowers it; --accept takes the numbers with why. A quality step in crissp and in the template (every change under app/), results/quality.json, and a Code quality tile on the dashboard.",
    "sources": [
@@ -1364,7 +2120,7 @@
   },
   {
    "id": "dast-zap-baseline",
-   "title": "Nothing scanned the running app (F-111, E6-F5-01)",
+   "title": "Nothing scanned the running app (F-151, E6-F5-01)",
    "problem": "The scans read code and dependencies only: a missing Content-Security-Policy, a cookie without HttpOnly or Secure, or an error page that leaks a stack trace was only seen in production.",
    "fix": "audit dast runs zap-baseline.py (passive, it never attacks) in the ZAP image pinned by digest against audit.dast.targets; when the app does not answer it starts it with the compose file named (docker compose up --wait) and stops only what it started. A HIGH risk blocks and so does every rule the project's rules file (zap-baseline -c) makes FAIL; the rest is listed; accepted-risks.json counts. An app that does not answer, or a ZAP without a report, is a problem. A full-run step in the template once docker-compose.yml exists.",
    "sources": [
@@ -1395,7 +2151,7 @@
   },
   {
    "id": "licences-and-sbom",
-   "title": "No licence check and no SBOM (F-112, E6-F6-01)",
+   "title": "No licence check and no SBOM (F-152, E6-F6-01)",
    "problem": "A GPL or AGPL package could reach a product's dependencies, and ship, without any step noticing; and there was no list of what a release contains.",
    "fix": "audit licenses reads every package of the audit's npm lock files and pip requirements (resolved with every transitive package by uv pip compile), its licence from the lock file or from PyPI (SPDX expression, licence field, classifiers; cached), and classifies it: forbidden and copyleft block, weak copyleft and unknown are listed, a dev-only package only listed; audit.licenses.allow and block are the project's policy. It writes results/licenses.json and a CycloneDX 1.6 SBOM, results/sbom.cdx.json. A full-run step in crissp (its pinned tools) and in the template.",
    "sources": [
@@ -1426,6 +2182,32 @@
     "test_licenses::test_a_clean_report_says_where_the_sbom_is",
     "test_licenses::test_main_writes_the_licences_and_the_sbom",
     "test_template::test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences"
+   ]
+  },
+  {
+   "id": "new-steps-for-earlier-projects",
+   "title": "A project brought in earlier never got the new steps (F-153)",
+   "problem": "suites.json is the project's own once crissp init wrote it, so the quality, licenses and dast steps the template gained never reached a project brought in before: crissp said nothing of DAST there.",
+   "fix": "lib/upgrade.py adds what is missing and nothing else: the template's step, its audit settings, and quality on a path rule that runs sast. crissp repair says and adds it (new-steps, and with the old-steps repair too); crissp init adds it to a suites.json it keeps. The project's own steps, rules and settings stay.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/upgrade.py",
+     "symbol": "add"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_new_steps"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "add_new_steps"
+    }
+   ],
+   "tests": [
+    "test_repair::test_a_project_brought_in_earlier_gets_the_new_steps_and_keeps_its_own",
+    "test_repair::test_new_steps_are_only_said_where_the_steps_are_the_projects_own",
+    "test_upgrade::test_a_step_the_project_has_is_never_added_again_nor_put_on_its_rules",
+    "test_cli::test_init_over_a_project_brought_in_earlier_adds_the_new_steps"
    ]
   }
  ],

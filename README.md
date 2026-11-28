@@ -1,6 +1,12 @@
 # C.R.I.S.S.P.
 
-**The agentic SDLC framework for Claude Code: AI colleagues build, guards prove, a person decides.**
+[![Works with Claude Code](https://img.shields.io/badge/works_with-Claude_Code-D97757?logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![Works with Mistral Vibe](https://img.shields.io/badge/works_with-Mistral_Vibe-FA520F?logo=mistralai&logoColor=white)](https://github.com/mistralai/mistral-vibe)
+
+**The agentic SDLC framework for Claude Code and Mistral Vibe: AI colleagues build, guards prove, a person decides.**
+
+**Works with Claude Code and Mistral Vibe.** Both get the same crissp tools (`brief`, `stage`, `backlog`, `run`, …),
+the same agreement and the same UX team: use the one you have, or both on the same project.
 
 [![PyPI](https://img.shields.io/pypi/v/crissp)](https://pypi.org/project/crissp/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -48,9 +54,15 @@ Guards are plain scripts, with no AI in them. They decide what is green.
 
 ## See it
 
-One local server (`crissp dashboard`, on 127.0.0.1) shows the tests, the backlog board, the UX team, the workers and
-what Claude is doing now, under one top bar (Tests · Backlog · UX · Workers · Activity · Sessions) in one dark look (a
-light theme is one click away). It never runs a test and loads nothing from the internet.
+One local server (`crissp dashboard`, on 127.0.0.1) shows where the work is, the tests, the backlog board, the UX team,
+the workers and what Claude is doing now, under one top bar (Stages · Tests · Backlog · UX · Workers · Activity ·
+Sessions) in one dark look (a light theme is one click away). It never runs a test and loads nothing from the internet.
+
+**Where the work is**: the six stages, Discover, Plan, Build, Verify, Review and Release, on the Stages page
+(`/stages`), each with what is in it and whose move it is, read from the backlog, the checks, git and the UX team. Ask
+Claude or Ask Vibe gives you the command that starts a session on that stage; every session also opens by saying the
+stage and offering its help.
+![The Stages page](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/stages.jpg)
 
 **Ready to release?** The answer comes first: green, or which steps stop the release, each linked to its log. Then the
 tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code,
@@ -78,10 +90,23 @@ design.
 *Agree · Disagree · Later*.
 ![A UX round's advice](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-advice.jpg)
 
+**The review screen**: one screen at a time, the ones that wait for you first. Its way from new to accepted as one
+progress bar, the shot with the team's advice pinned where it is, next to the design, and one verdict bar at the
+bottom (`1 2 3` to answer, the arrow keys to move on).
+![The UX review screen](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-review.jpg)
+
 **Before and after, then approve**: what people see now (on a laptop or a phone) next to the designer's proposal, the
 same size, with *Approve · Approve with a remark… · Again, with… · Reject* right under it. An approval becomes a backlog
 item, and your remark is the first thing the builder reads in it.
 ![A design: before and after](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-design.jpg)
+
+**The map**: every screen of the product, found by a read-only crawl, the walks and your own E2E tests' screenshots,
+each with its area, how it was found and its gaps: a screen no link reaches, or one no walk looks at.
+![The UX map](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-map.jpg)
+
+**The jobs**: in a discovery round every persona tries their own jobs on the mapped screens and says per job *done*,
+*hard* or *impossible*, and where they gave up. What cannot be done becomes a need you approve or reject.
+![The UX jobs: a discovery round](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-jobs.jpg)
 
 **The team**: who they are, which device they use and what they look for, configured per product and edited in the Team tab.
 ![The UX team](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-team.jpg)
@@ -89,9 +114,10 @@ item, and your remark is the first thing the builder reads in it.
 **The rules**: what every screen must do, checked on each round and edited in the Rules tab.
 ![The UX rules](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-rules.jpg)
 
-<sub>The pictures show demo projects made with `crissp init` (the Tests dashboard with 0.1.10, the rest with 0.1.4). Its backlog and its moves, test run, workers and
-screenshots are real; the UX round's and the design's text and the Claude session on the Activity page are samples,
-because a real round runs on your own Claude login and costs tokens.</sub>
+<sub>The pictures show a demo project, a small sample shop made with `crissp init` (0.2.0). Its backlog and its moves,
+test runs, workers, screenshots and map are real; the text of the UX rounds, the designs and the discovery round, and
+the Claude session on the Activity page, are samples, because a real round runs on your own Claude login and costs
+tokens.</sub>
 
 ## Start a project
 
@@ -126,9 +152,9 @@ diff first.
 | `crissp check [--plan]` | Runs only what the changes since the last green state can affect, then moves the certificate to this commit |
 | `crissp check-all` | The full run, with the coverage gate |
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
-| `crissp dashboard` | The Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
+| `crissp dashboard` | Where the work is in the six stages (`/stages`), the Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
-| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set); `--yes` puts it in place, never deleting or committing. Run it after an update: `uvx crissp==<new> repair --yes` |
+| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the steps a newer crissp brings such as `quality`, `licenses` and `dast`, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set); `--yes` puts it in place, never deleting or committing. Run it after an update: `uvx crissp==<new> repair --yes` |
 | `crissp hook` | The project's lint steps (`lint` and every `*-lint` step), as git runs them before every commit from `.githooks/pre-commit`; `git commit --no-verify` skips it once |
 | `crissp mcp` | The crissp MCP server that Claude Code starts from `.mcp.json` |
 

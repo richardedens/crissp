@@ -13,9 +13,13 @@ read them, lib/sessionview.py), the sessions written in the last half hour, newe
   more than an hour ago are only counted ("earlier").
 
 Only what Claude sent to its tools is shown, never what came back.
+
+F-101: Mistral Vibe's sessions of this repository are listed beside them (lib/vibesessions.py, from VIBE_HOME, else
+~/.vibe), in the same shape; each session says its source (claude or vibe).
 """
 
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -23,17 +27,24 @@ from pathlib import Path
 import measure
 import project
 import sessionview as sv
+import vibe
+import vibesessions
 
 WINDOW_S = 30 * 60  # a session written longer ago than this is not activity any more
 QUIET_S = 120  # nothing written for this long: listed, no longer busy
 FINISHED_S = 60 * 60  # a finished agent whose last step is older than this is counted, not listed
+IMAGES, BIG_LINES, budget = measure.IMAGES, measure.BIG_LINES, measure.budget  # F-104: the context-budget checks
 
 
 def _step(record: dict, block: dict, repo: sv.Repo) -> dict:
     if block.get("name") == "Agent":
         given = block.get("input") or {}
-        return {"tool": "Agent", "kind": "agent", "text": f"started an agent: {given.get('description', '')}",
-                "since": record.get("timestamp")}
+        return {
+            "tool": "Agent",
+            "kind": "agent",
+            "text": f"started an agent: {given.get('description', '')}",
+            "since": record.get("timestamp"),
+        }
     act = sv.action(block, repo, record.get("cwd"))
     return {"tool": block.get("name", ""), "kind": act["kind"], "text": act["text"], "since": record.get("timestamp")}
 
@@ -64,8 +75,12 @@ def session(path: Path, root: Path, now: float) -> dict:
     main = [r for r in records if not r.get("isSidechain")]
     prompts = [p for r in main if (p := sv.prompt(r)) and not p.startswith("<task-notification>")]
     titles = [r["aiTitle"] for r in records if r.get("type") == "ai-title" and r.get("aiTitle")]
-    answered = {b.get("tool_use_id") for r in main for b in ((r.get("message") or {}).get("content") or [])
-                if isinstance(b, dict) and b.get("type") == "tool_result"}
+    answered = {
+        b.get("tool_use_id")
+        for r in main
+        for b in ((r.get("message") or {}).get("content") or [])
+        if isinstance(b, dict) and b.get("type") == "tool_result"
+    }
     own = _subagents(path)
     updated = path.stat().st_mtime
     agents = []
@@ -78,31 +93,70 @@ def session(path: Path, root: Path, now: float) -> dict:
             mine = list(sv.records(transcript)) if transcript and transcript.is_file() else []
             if mine:
                 updated = max(updated, transcript.stat().st_mtime)
-            step = _latest(mine, repo, skip=b.get("id")) or {"tool": "", "kind": "", "text": "", "since": r.get("timestamp")}
+            step = _latest(mine, repo, skip=b.get("id")) or {
+                "tool": "",
+                "kind": "",
+                "text": "",
+                "since": r.get("timestamp"),
+            }
             running = not info["finished"] if "finished" in info else b.get("id") not in answered
-            agents.append({"name": info.get("description") or given.get("description", "agent"),
-                           "type": info.get("agentType") or given.get("subagent_type", "agent"), "running": running,
-                           **step})
-    old = [a for a in agents if not a["running"] and a["since"]
-           and now - datetime.fromisoformat(a["since"]).timestamp() > FINISHED_S]
+            agents.append(
+                {
+                    "name": info.get("description") or given.get("description", "agent"),
+                    "type": info.get("agentType") or given.get("subagent_type", "agent"),
+                    "running": running,
+                    **step,
+                }
+            )
+    old = [
+        a
+        for a in agents
+        if not a["running"] and a["since"] and now - datetime.fromisoformat(a["since"]).timestamp() > FINISHED_S
+    ]
     agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
     sized = [r for r in main if r.get("type") == "assistant" and (r.get("message") or {}).get("usage")]
     history = measure.history(sized[-1]) if sized else 0
-    return {"id": path.stem, "title": sv.mask(titles[-1]) if titles else "", "history": history,
-            "long": history > measure.LONG,
-            "prompt": sv.mask(prompts[-1][:300]) if prompts else "", "busy": now - updated < QUIET_S,
-            "updated": updated, "main": _latest(main, repo), "agents": agents, "earlier": len(old)}
+    pictures = sum(measure.images((r.get("message") or {}).get("content")) for r in main if r.get("type") == "user")
+    wholes = [
+        w
+        for r in main
+        for b in sv.tool_uses(r)
+        if b.get("name") == "Read"
+        if (w := measure.whole(repo.rel((b.get("input") or {}).get("file_path", "")), b.get("input") or {}, root))
+    ]
+    return {
+        "images": pictures,
+        "whole": sorted(set(wholes)),
+        "budget": budget(pictures, wholes),
+        "id": path.stem,
+        "source": "claude",
+        "title": sv.mask(titles[-1]) if titles else "",
+        "history": history,
+        "long": history > measure.LONG,
+        "prompt": sv.mask(prompts[-1][:300]) if prompts else "",
+        "busy": now - updated < QUIET_S,
+        "updated": updated,
+        "main": _latest(main, repo),
+        "agents": agents,
+        "earlier": len(old),
+    }
 
 
-def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None) -> dict:
-    """The sessions of this repository written in the last half hour, newest first, as the Activity page shows them."""
+def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None, vibe_home: Path | None = None) -> dict:
+    """The sessions of this repository written in the last half hour, newest first, as the Activity page shows them:
+    Claude Code's and Mistral Vibe's (F-101)."""
     now = time.time() if now is None else now
     folder = sv.project_dir(root, projects)
     recent = [p for p in folder.glob("*.jsonl") if now - p.stat().st_mtime <= WINDOW_S] if folder.is_dir() else []
     found = [session(p, root, now) for p in recent]
+    found += vibesessions.sessions(root, vibe.home(os.environ) if vibe_home is None else vibe_home, now)
     try:
         conf = project.load(root)
     except project.ConfigError:
         conf = {"product": root.name, "monogram": root.name[:1].upper()}
-    return {"sessions": sorted(found, key=lambda s: s["updated"], reverse=True), "now": now, "product": conf["product"],
-            "monogram": conf["monogram"]}
+    return {
+        "sessions": sorted(found, key=lambda s: s["updated"], reverse=True),
+        "now": now,
+        "product": conf["product"],
+        "monogram": conf["monogram"],
+    }

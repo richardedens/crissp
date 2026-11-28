@@ -16,12 +16,30 @@ spec.loader.exec_module(audit)
 
 TODAY = datetime.date(2026, 11, 28)
 NONE = {"accepted": []}
-ZAP = {"site": [{"@name": "http://127.0.0.1:8080", "alerts": [
-    {"pluginid": "10038", "alert": "Content Security Policy (CSP) Header Not Set", "riskcode": "2", "count": "3",
-     "instances": [{"uri": "http://127.0.0.1:8080/"}, {"uri": "http://127.0.0.1:8080/a"}]},
-    {"pluginid": "10010", "alert": "Cookie No HttpOnly Flag", "riskcode": "1", "count": "1",
-     "instances": [{"uri": "http://127.0.0.1:8080/login"}]},
-    {"pluginid": "40012", "alert": "Cross Site Scripting (Reflected)", "riskcode": "3", "instances": []}]}]}
+ZAP = {
+    "site": [
+        {
+            "@name": "http://127.0.0.1:8080",
+            "alerts": [
+                {
+                    "pluginid": "10038",
+                    "alert": "Content Security Policy (CSP) Header Not Set",
+                    "riskcode": "2",
+                    "count": "3",
+                    "instances": [{"uri": "http://127.0.0.1:8080/"}, {"uri": "http://127.0.0.1:8080/a"}],
+                },
+                {
+                    "pluginid": "10010",
+                    "alert": "Cookie No HttpOnly Flag",
+                    "riskcode": "1",
+                    "count": "1",
+                    "instances": [{"uri": "http://127.0.0.1:8080/login"}],
+                },
+                {"pluginid": "40012", "alert": "Cross Site Scripting (Reflected)", "riskcode": "3", "instances": []},
+            ],
+        }
+    ]
+}
 
 
 class Docker:
@@ -57,13 +75,15 @@ def test_the_baseline_scans_the_app_with_the_pinned_image_and_a_high_risk_blocks
     report = audit.dast_all(tmp_path, docker, TODAY, NONE, CONF, reach=up, platform="linux")
     assert report["scanned"] == ["zap baseline http://127.0.0.1:8080"] and report["problems"] == []
     rows = [(f["id"], f["severity"], f["blocks"], f["package"], f["installed"]) for f in report["findings"]]
-    assert rows == [("10038", "MEDIUM", False, "http://127.0.0.1:8080/", "3 URLs"),
-                    ("10010", "LOW", False, "http://127.0.0.1:8080/login", "1 URLs"),
-                    ("40012", "HIGH", True, "http://127.0.0.1:8080", "0 URLs")]
+    assert rows == [
+        ("10038", "MEDIUM", False, "http://127.0.0.1:8080/", "3 URLs"),
+        ("10010", "LOW", False, "http://127.0.0.1:8080/login", "1 URLs"),
+        ("40012", "HIGH", True, "http://127.0.0.1:8080", "0 URLs"),
+    ]
     (run,) = docker.calls
     assert run[:5] == ["docker", "run", "--rm", "--network", "host"] and audit.ZAP in run
     assert audit.ZAP.startswith("ghcr.io/zaproxy/zaproxy:") and "@sha256:" in audit.ZAP  # pinned by digest
-    assert run[run.index(audit.ZAP) + 1:] == ["zap-baseline.py", "-t", "http://127.0.0.1:8080", "-J", "zap.json", "-I"]
+    assert run[run.index(audit.ZAP) + 1 :] == ["zap-baseline.py", "-t", "http://127.0.0.1:8080", "-J", "zap.json", "-I"]
     said = audit.render(report)
     assert "BLOCKING HIGH     40012" in said and "Cross Site Scripting (Reflected)" in said
     assert "listed   MEDIUM   10038" in said and "accepted-risks.json" in said
@@ -91,7 +111,8 @@ def test_the_projects_own_zap_rules_are_used_and_a_fail_rule_blocks(tmp_path):
 def test_a_rules_file_that_is_not_there_is_absent_or_a_problem(tmp_path):
     conf = {"dast": {**CONF["dast"], "rules": "zap/rules.tsv"}}
     assert audit.dast_all(tmp_path, Docker(), TODAY, NONE, {**conf, "missing": "skip"}, reach=up)["absent"] == [
-        "zap/rules.tsv"]
+        "zap/rules.tsv"
+    ]
     assert audit.dast_all(tmp_path, Docker(), TODAY, NONE, conf, reach=up)["problems"][0] == "zap/rules.tsv"
 
 
@@ -102,8 +123,10 @@ def test_an_app_that_is_not_up_is_started_with_compose_and_stopped_again(tmp_pat
     conf = {"dast": {**CONF["dast"], "compose": "docker-compose.yml"}}
     report = audit.dast_all(tmp_path, docker, TODAY, NONE, conf, reach=lambda _: next(answers), platform="linux")
     assert report["problems"] == [] and report["scanned"]
-    assert [c[3:5] for c in docker.calls if c[1] == "compose"] == [[str(tmp_path / "docker-compose.yml"), "up"],
-                                                                  [str(tmp_path / "docker-compose.yml"), "down"]]
+    assert [c[3:5] for c in docker.calls if c[1] == "compose"] == [
+        [str(tmp_path / "docker-compose.yml"), "up"],
+        [str(tmp_path / "docker-compose.yml"), "down"],
+    ]
 
 
 def test_an_app_that_is_already_up_is_left_running(tmp_path):
@@ -115,7 +138,9 @@ def test_an_app_that_is_already_up_is_left_running(tmp_path):
 
 def test_an_app_that_does_not_answer_is_a_problem_never_a_pass(tmp_path):
     report = audit.dast_all(tmp_path, Docker(), TODAY, NONE, CONF, reach=lambda _: False)
-    assert report["problems"] == ["the app does not answer at http://127.0.0.1:8080: start it first (docker compose up)"]
+    assert report["problems"] == [
+        "the app does not answer at http://127.0.0.1:8080: start it first (docker compose up)"
+    ]
     assert report["scanned"] == [] and "Not green" in audit.render(report)
     (tmp_path / "docker-compose.yml").write_text("services: {}\n")
     conf = {"dast": {**CONF["dast"], "compose": "docker-compose.yml"}}
@@ -137,8 +162,18 @@ def test_without_targets_there_is_nothing_to_scan(tmp_path):
 
 
 def test_a_finding_is_accepted_for_a_while_like_any_other(tmp_path):
-    accepted = {"accepted": [{"id": "40012", "package": "http://127.0.0.1:8080", "why": "a test page, gone in E9",
-                              "by": "PO", "since": "2026-11-20", "until": "2026-12-20"}]}
+    accepted = {
+        "accepted": [
+            {
+                "id": "40012",
+                "package": "http://127.0.0.1:8080",
+                "why": "a test page, gone in E9",
+                "by": "PO",
+                "since": "2026-11-20",
+                "until": "2026-12-20",
+            }
+        ]
+    }
     report = audit.dast_all(tmp_path, Docker(), TODAY, accepted, CONF, reach=up)
     assert report["blocking"] == []
 
@@ -153,6 +188,7 @@ def test_reachable_is_any_answer_and_never_a_refused_connection(monkeypatch):
 
     monkeypatch.setattr(audit.urllib.request, "urlopen", lambda url, timeout: Answer())
     assert audit.reachable("http://127.0.0.1:8080")
+    assert not audit.reachable("file:///etc/passwd")  # never another scheme
 
     def refused(url, timeout):
         raise urllib.error.URLError("refused")
@@ -181,4 +217,5 @@ def test_main_runs_dast_into_its_own_results(tmp_path, monkeypatch, capsys):
 def _no_real_network(monkeypatch):
     def refused(url, timeout):
         raise AssertionError(f"a test opened {url}")
+
     monkeypatch.setattr(audit.urllib.request, "urlopen", refused)

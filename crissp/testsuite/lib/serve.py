@@ -15,6 +15,9 @@ What it serves, only on 127.0.0.1:
 - /activity     the Activity page (dashboard/activity.html, E3-F3-01): what this repository's Claude sessions, their
                 orchestrator and their agents do now; its data is /dashboard/activity.json (lib/activity.py state(),
                 from Claude Code's transcripts), asked for every two seconds while the page is open.
+- /stages       the Stages page (dashboard/stages.html, F-130): where the work is in the six stages (Discover, Plan,
+                Build, Verify, Review, Release) and how to ask Claude or Mistral Vibe to help with each; its data is
+                /dashboard/stages.json (lib/stages.py state(), from the backlog, the certificate, git and the UX suite).
 - /results/     the project's run output: the dashboard's data (results/data.js, lib/collect.py), the Claude session
                 pages (results/sessions/) and what the dashboard links to (screenshots).
 - /look/        the shared look (crissp/look: the tokens, the font, the theme, the water).
@@ -36,6 +39,7 @@ ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
 import activity  # noqa: E402
 import project  # noqa: E402
+import stages  # noqa: E402
 import workers  # noqa: E402
 
 SUITE = ENGINE.parent  # the engine's own files: the dashboard page (dashboard/), the look is crissp/look beside it
@@ -78,8 +82,10 @@ class Live:
                 try:
                     self.rebuild()
                     self.seen, self.error = now, ""
-                except Exception as err:  # noqa: BLE001  the page keeps the last good data and says why
-                    self.error = str(err) or type(err).__name__
+                except Exception as err:
+                    # F-108: tried again once something changes, not on every request: a rebuild that cannot succeed
+                    # ran collect.py each time the page (or the crissp tool) asked, and held every answer up
+                    self.seen, self.error = now, str(err) or type(err).__name__
                     print(f"dashboard data not rebuilt: {self.error}", file=sys.stderr)
             return self.built()
 
@@ -110,7 +116,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         for prefix, base in (("/dashboard/", self.pages), ("/results/", project.results(self.live.root))):
             if path.startswith(prefix):
                 self.directory = str(base)
-                return super().translate_path("/" + path[len(prefix):])
+                return super().translate_path("/" + path[len(prefix) :])
         return str(self.pages / ".nothing-here")
 
     def _json(self, code: int, data: dict) -> None:
@@ -124,7 +130,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/workers", "/activity"):
+        if path in ("/", "/workers", "/activity", "/stages"):
             self.send_response(302)
             self.send_header("Location", "/dashboard/" if path == "/" else f"/dashboard{path}.html")
             self.send_header("Content-Length", "0")
@@ -134,11 +140,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(200, workers.state(self.live.root))
         if path == "/dashboard/activity.json":
             return self._json(200, activity.state(self.live.root))
+        if path == "/dashboard/stages.json":
+            return self._json(200, stages.state(self.live.root))
         if path == "/dashboard/stamp":
             stamp = self.live.stamp()  # whose (F-09), and why it is not current when it is not (F-32)
             return self._json(200, {"stamp": stamp, "root": str(self.live.root.resolve()), "error": self.live.error})
         if path.startswith("/look/"):
-            return self._look(path[len("/look/"):])
+            return self._look(path[len("/look/") :])
         if path == "/ux" or path.startswith("/ux/"):
             return self._ux("GET")
         if path == "/results/data.js":
@@ -176,14 +184,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def server(port: int, root: Path | None = None, suite: Path = SUITE, rebuild=None, ux=None,
-           look: Path = LOOK) -> http.server.ThreadingHTTPServer:
+def server(
+    port: int, root: Path | None = None, suite: Path = SUITE, rebuild=None, ux=None, look: Path = LOOK
+) -> http.server.ThreadingHTTPServer:
     """The server, not started yet, for the project at root (default: CRISSP_ROOT or the current directory). suite: where
     the dashboard page is (the engine's); ux: the UX suite's handler (by default the project's own, when it has one)."""
     root = root or project.root()
     live = Live(root, rebuild or collect)
-    handler = type("LiveHandler", (Handler,), {"live": live, "look": look, "pages": suite / "dashboard",
-                                               "ux": load_ux() if ux is None else ux})
+    handler = type(
+        "LiveHandler",
+        (Handler,),
+        {"live": live, "look": look, "pages": suite / "dashboard", "ux": load_ux() if ux is None else ux},
+    )
     return http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(handler, directory=str(suite)))
 
 

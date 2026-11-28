@@ -40,7 +40,9 @@ def gate(tmp_path, monkeypatch):
 def _write(gate, key: str, files: dict[str, tuple[int, int, int, int]]) -> None:
     out = {"files": {}, "totals": {"covered_lines": 0, "num_statements": 0, "covered_branches": 0, "num_branches": 0}}
     for name, (cl, nl, cb, nb) in files.items():
-        out["files"][name] = {"summary": {"covered_lines": cl, "num_statements": nl, "covered_branches": cb, "num_branches": nb}}
+        out["files"][name] = {
+            "summary": {"covered_lines": cl, "num_statements": nl, "covered_branches": cb, "num_branches": nb}
+        }
         for k, v in (("covered_lines", cl), ("num_statements", nl), ("covered_branches", cb), ("num_branches", nb)):
             out["totals"][k] += v
     gate.RESULTS.mkdir(exist_ok=True)
@@ -68,9 +70,19 @@ def test_the_gate_holds_the_suites_the_product_gates(tmp_path):
     """configure(): the gated steps of suites.json, each with its sources, its folder and what it leaves out."""
     real = _module()
     real.configure(REPO)
-    assert real.SOURCES == {"tools": [REPO / "crissp/testsuite/lib", REPO / "crissp/tool", REPO / "crissp/uxsuite"]}
+    assert real.SOURCES == {
+        "tools": [
+            REPO / "crissp/testsuite/lib",
+            REPO / "crissp/tool",
+            REPO / "crissp/uxsuite",
+            REPO / "crissp/testsuite/lint",
+        ]
+    }
     assert real.DIRS == {"tools": REPO / "crissp/testsuite"} and real.OMIT == {"tools": ["*/tests/*"]}
-    assert real.BASELINE == REPO / "crissp/testsuite/coverage-baseline.json" and real.RESULTS == REPO / "crissp/testsuite/results"
+    assert (
+        real.BASELINE == REPO / "crissp/testsuite/coverage-baseline.json"
+        and real.RESULTS == REPO / "crissp/testsuite/results"
+    )
     assert all(p.is_dir() for p in real.SOURCES["tools"])
 
 
@@ -109,7 +121,9 @@ def test_a_fresh_baseline_without_the_suite_is_set_by_the_first_run(gate, capsys
     covered(gate, {"a.py": {"executed": [1], "missing": [2, 3, 4]}})
     assert gate.check(suites=["backend"]) == 0
     out = capsys.readouterr().out
-    assert "diff coverage: skipped: no baseline commit recorded yet" in out and out.rstrip().endswith("coverage gate: green")
+    assert "diff coverage: skipped: no baseline commit recorded yet" in out and out.rstrip().endswith(
+        "coverage gate: green"
+    )
     data = json.loads(gate.BASELINE.read_text())
     assert data["suites"]["backend"]["files"]["shop/a.py"]["line"] == 25.0 and "worker" not in data["suites"]
     assert "commit" not in data  # only backend ran: the commit waits for a run of every suite
@@ -209,9 +223,13 @@ def test_a_run_of_some_suites_leaves_the_others_as_they_were(gate):
 
 # ------------------------------------------------------------------------------- diff coverage (new and changed lines)
 
+
 def git(gate, *args):
-    subprocess.run(["git", "-C", str(gate.ROOT), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
-                   check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(gate.ROOT), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
+        check=True,
+        capture_output=True,
+    )
 
 
 def commit(gate, files: dict[str, str | None]):
@@ -233,17 +251,29 @@ def covered(gate, files: dict[str, dict]):
     for name, f in files.items():
         executed, missing = f.get("executed", []), f.get("missing", [])
         taken, missed = f.get("branches", []), f.get("missed", [])
-        s = {"covered_lines": len(executed), "num_statements": len(executed) + len(missing),
-             "covered_branches": len(taken), "num_branches": len(taken) + len(missed)}
-        out["files"][f"shop/{name}"] = {"summary": s, "executed_lines": executed, "missing_lines": missing,
-                                            "excluded_lines": f.get("excluded", []), "executed_branches": taken,
-                                            "missing_branches": missed}
+        s = {
+            "covered_lines": len(executed),
+            "num_statements": len(executed) + len(missing),
+            "covered_branches": len(taken),
+            "num_branches": len(taken) + len(missed),
+        }
+        out["files"][f"shop/{name}"] = {
+            "summary": s,
+            "executed_lines": executed,
+            "missing_lines": missing,
+            "excluded_lines": f.get("excluded", []),
+            "executed_branches": taken,
+            "missing_branches": missed,
+        }
         for k, v in s.items():
             out["totals"][k] += v
     gate.RESULTS.mkdir(exist_ok=True)
     (gate.RESULTS / "coverage-backend.json").write_text(json.dumps(out))
-    (gate.RESULTS / "coverage-worker.json").write_text(json.dumps(
-        {"files": {}, "totals": {"covered_lines": 1, "num_statements": 1, "covered_branches": 0, "num_branches": 0}}))
+    (gate.RESULTS / "coverage-worker.json").write_text(
+        json.dumps(
+            {"files": {}, "totals": {"covered_lines": 1, "num_statements": 1, "covered_branches": 0, "num_branches": 0}}
+        )
+    )
 
 
 def lines(n: int, first: int = 1) -> str:
@@ -251,8 +281,9 @@ def lines(n: int, first: int = 1) -> str:
 
 
 def head(gate) -> str:
-    return subprocess.run(["git", "-C", str(gate.ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
-                          check=False).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(gate.ROOT), "rev-parse", "HEAD"], capture_output=True, text=True, check=False
+    ).stdout.strip()
 
 
 @pytest.fixture
@@ -334,7 +365,9 @@ def test_a_run_of_some_suites_keeps_the_baseline_commit(repo):
     assert repo.check(suites=["backend"]) == 0
     assert json.loads(repo.BASELINE.read_text())["commit"] == start
     assert repo.check(suites=["backend", "worker"]) == 0
-    assert json.loads(repo.BASELINE.read_text())["commit"] == start  # no number moved: the older commit stays (stricter)
+    assert (
+        json.loads(repo.BASELINE.read_text())["commit"] == start
+    )  # no number moved: the older commit stays (stricter)
     covered(repo, {"a.py": {"executed": [1, 2, 3, 5], "missing": [4]}})
     assert repo.check(suites=["backend", "worker"]) == 0
     assert json.loads(repo.BASELINE.read_text())["commit"] == head(repo)  # numbers moved in a run of every suite
@@ -342,7 +375,9 @@ def test_a_run_of_some_suites_keeps_the_baseline_commit(repo):
 
 def test_a_branch_on_a_changed_line_that_is_never_taken_is_red(repo):
     commit(repo, {"a.py": lines(4) + "if x1:\n    x5 = 5\n"})
-    covered(repo, {"a.py": {"executed": [1, 2, 5, 6], "missing": [3, 4], "branches": [[5, 6]], "missed": [[5, -1], [2, 3]]}})
+    covered(
+        repo, {"a.py": {"executed": [1, 2, 5, 6], "missing": [3, 4], "branches": [[5, 6]], "missed": [[5, -1], [2, 3]]}}
+    )
     assert repo.check() == 1
     d = diff(repo)
     assert d["uncovered"] == [{"file": A, "line": 5, "what": "changed line: its branch to the exit is never taken"}]
@@ -398,7 +433,9 @@ def test_a_changed_file_coverage_did_not_measure_is_red(repo):
     commit(repo, {"c.py": lines(2), "notes.txt": "not python\n"})
     covered(repo, {"a.py": {"executed": [1, 2], "missing": [3, 4]}})
     assert repo.check() == 1
-    assert diff(repo)["uncovered"] == [{"file": "shop/c.py", "line": 1, "what": "changed, but not measured by coverage"}]
+    assert diff(repo)["uncovered"] == [
+        {"file": "shop/c.py", "line": 1, "what": "changed, but not measured by coverage"}
+    ]
 
 
 def test_a_suite_that_measured_nothing_is_left_to_the_other_rule(repo):
@@ -418,18 +455,25 @@ def test_a_branch_on_an_uncovered_changed_line_is_reported_once_as_the_line(repo
     covered(repo, {"a.py": {"executed": [1, 2], "missing": [3, 4, 5, 6], "missed": [[5, 6], [5, -1], [2, 3]]}})
     assert repo.check() == 1
     d = diff(repo)
-    assert [(u["line"], u["what"]) for u in d["uncovered"]] == [(5, "changed line not covered"), (6, "changed line not covered")]
+    assert [(u["line"], u["what"]) for u in d["uncovered"]] == [
+        (5, "changed line not covered"),
+        (6, "changed line not covered"),
+    ]
     assert d["branches"] == 0
 
 
 # ------------------------------------------------------------------------------------------------ the command line
 
-@pytest.mark.parametrize("argv, called", [
-    ([], (None, None)),
-    (["--accept", "code removed"], ("code removed", None)),
-    (["--suites", "tools"], (None, ["tools"])),
-    (["--suites", "tools,", "--accept", "why"], ("why", ["tools"])),
-])
+
+@pytest.mark.parametrize(
+    "argv, called",
+    [
+        ([], (None, None)),
+        (["--accept", "code removed"], ("code removed", None)),
+        (["--suites", "tools"], (None, ["tools"])),
+        (["--suites", "tools,", "--accept", "why"], ("why", ["tools"])),
+    ],
+)
 def test_the_command_line_hands_the_reason_and_the_suites_to_the_check(monkeypatch, argv, called):
     gate = _module()
     seen = []
@@ -437,19 +481,25 @@ def test_the_command_line_hands_the_reason_and_the_suites_to_the_check(monkeypat
     assert gate.main(["gate.py", *argv], REPO) == 0 and seen == [called]
 
 
-@pytest.mark.parametrize("argv, message", [
-    (["--accept"], "--accept needs a reason"),
-    (["--accept", " "], "--accept needs a reason"),
-    (["--suites"], "--suites takes a comma-separated list of tools"),
-    (["--suites", "frontend"], "--suites takes a comma-separated list of tools"),
-    (["--suites", "tools,shop"], "--suites takes a comma-separated list of tools"),
-])
+@pytest.mark.parametrize(
+    "argv, message",
+    [
+        (["--accept"], "--accept needs a reason"),
+        (["--accept", " "], "--accept needs a reason"),
+        (["--suites"], "--suites takes a comma-separated list of tools"),
+        (["--suites", "frontend"], "--suites takes a comma-separated list of tools"),
+        (["--suites", "tools,shop"], "--suites takes a comma-separated list of tools"),
+    ],
+)
 def test_wrong_arguments_are_refused(argv, message, capsys):
     assert _module().main(["gate.py", *argv], REPO) == 2 and message in capsys.readouterr().err
 
 
 def test_a_product_without_a_configuration_is_refused(tmp_path, capsys):
-    assert _module().main(["gate.py"], tmp_path) == 2 and "gate: crissp/testsuite/suites.json is missing" in capsys.readouterr().err
+    assert (
+        _module().main(["gate.py"], tmp_path) == 2
+        and "gate: crissp/testsuite/suites.json is missing" in capsys.readouterr().err
+    )
 
 
 def test_run_as_a_script_it_exits_with_main(monkeypatch):
@@ -468,7 +518,9 @@ def test_a_green_run_that_changes_no_number_leaves_the_baseline_as_it_is(repo):
     covered(repo, {"a.py": {"executed": [1, 2], "missing": [3, 4]}})
     assert repo.check() == 0
     assert repo.BASELINE.read_bytes() == before
-    covered(repo, {"a.py": {"executed": [1, 2, 3], "missing": [4]}})  # a number moves: then the baseline and its commit do
+    covered(
+        repo, {"a.py": {"executed": [1, 2, 3], "missing": [4]}}
+    )  # a number moves: then the baseline and its commit do
     assert repo.check() == 0
     data = json.loads(repo.BASELINE.read_text())
     assert data["commit"] == head(repo) and data["suites"]["backend"]["files"]["shop/a.py"]["line"] == 75.0

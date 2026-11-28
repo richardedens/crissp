@@ -4,13 +4,15 @@ Every round of the UX team judges against these, every proposal is designed to t
 proposal against them (`proposal.json` → `principles` says, per principle, how the design meets it). They are about
 **how** a feature is presented, never about **whether** it exists: nothing is cut to meet them; what is not needed now
 moves one step further away (a fold, a tab, a "More"), it does not disappear. A product changes them here, in its own
-words; the team reads this file at the start of every run.
+words; the team reads this file at the start of every run. A line "Measured by the browser: <checks>." has the
+browser check that part itself at every shoot (overflow, tap-targets, below-fold, dialog-opaque, focus-visible).
 
 ## 1. Nothing important behind a scroll
 
 What a person needs to do the task on a screen is visible without scrolling on a laptop (1440 × 900) and on a phone
 (390 × 844), and the primary action is never below the fold. Long content (lists, logs, documentation) may scroll
 inside its own area; the screen itself does not make the person search.
+Measured by the browser: below-fold.
 
 ## 2. A screen gives time to understand
 
@@ -39,13 +41,16 @@ still reaches everything quickly. The test: a new person is not burdened by it, 
 Every text fits its place, in every language the product has and with real data (long names, large numbers): it wraps,
 or it is shortened with an ellipsis and its full text on hover and for screen readers. Nothing runs out of its card,
 button, chip, cell or panel, and nothing is cut off without a way to read it.
+Measured by the browser: overflow.
 
 ## 7. Dialogs are solid
 
 A dialog (and a menu or panel that lies over content) has a solid, opaque surface, so what is behind it never shows
 through its text; the content behind is dimmed by the backdrop, not by the dialog.
+Measured by the browser: dialog-opaque.
 
 ## 8. Accessible by default
 
 Text contrast meets WCAG 2.2 AA in both themes, every control can be reached and used with the keyboard and has a
 visible focus, tap targets on a phone are at least 44 × 44 points, and nothing is said by colour alone.
+Measured by the browser: tap-targets, focus-visible.

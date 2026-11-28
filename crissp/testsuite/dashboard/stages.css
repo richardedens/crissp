@@ -1,0 +1,28 @@
+/* The Stages page (F-130): the six stages of the agentic SDLC, where the work is, and help from Claude or Vibe. */
+.now { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.now .big { font-size: 22px; font-weight: 800; }
+.now p { margin: 2px 0 0; }
+.flow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flow a { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); background: var(--panel); }
+.flow a:hover { text-decoration: none; border-color: var(--accent); }
+.flow .n { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+.flow b { font-size: 15px; }
+.flow li.on a { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.stages { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+.stage { display: grid; gap: 10px; align-content: start; scroll-margin-top: 90px; }
+.stage.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.stage header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.stage header .n { font: 700 12px var(--mono); color: var(--muted); }
+.stage header .here { margin-left: auto; }
+.stage p { margin: 0; }
+.stage ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.stage .asks { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.stage .asks code { padding: 2px 6px; border-radius: 6px; background: var(--panel2); }
+.stage details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.stage details p { margin-top: 6px; font-size: 13px; }
+.badge.yours { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.copied { color: var(--green); font-size: 12px; }
+@media (max-width: 800px) {
+  .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stages { grid-template-columns: 1fr; }
+}

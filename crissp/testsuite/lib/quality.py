@@ -36,10 +36,48 @@ import project
 LIZARD = "lizard==1.26.1"  # complexity per function, many languages (MIT); pinned, run through uv
 COMPLEXITY = 15  # Sonar's and lizard's limit for one function
 DUPLICATE_LINES = 10  # Sonar's smallest copy
-CODE = {".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".vue", ".svelte", ".go", ".java", ".kt", ".cs", ".rb",
-        ".php", ".rs", ".c", ".h", ".cc", ".cpp", ".hpp", ".swift", ".scala", ".lua"}
-EXCLUDE = ("*/tests/*", "*/test/*", "*/__tests__/*", "*/test_*.py", "*_test.py", "*_test.go", "*.test.*", "*.spec.*",
-           "*/node_modules/*", "*/dist/*", "*/build/*", "*/vendor/*", "*/migrations/*", "*.min.js")
+CODE = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".tsx",
+    ".vue",
+    ".svelte",
+    ".go",
+    ".java",
+    ".kt",
+    ".cs",
+    ".rb",
+    ".php",
+    ".rs",
+    ".c",
+    ".h",
+    ".cc",
+    ".cpp",
+    ".hpp",
+    ".swift",
+    ".scala",
+    ".lua",
+}
+EXCLUDE = (
+    "*/tests/*",
+    "*/test/*",
+    "*/__tests__/*",
+    "*/test_*.py",
+    "*_test.py",
+    "*_test.go",
+    "*.test.*",
+    "*.spec.*",
+    "*/node_modules/*",
+    "*/dist/*",
+    "*/build/*",
+    "*/vendor/*",
+    "*/migrations/*",
+    "*.min.js",
+)
 COMMENT = ("#", "//", "/*", "*", "<!--", "--")
 MEANINGFUL = re.compile(r"[A-Za-z0-9_]")
 
@@ -70,13 +108,16 @@ def files(root: Path, conf: dict) -> list[str]:
     if not here:
         return []
     if (root / ".git").exists():
-        out = subprocess.run(["git", "ls-files", "-z", "--", *here], cwd=root, capture_output=True, text=True,
-                             check=False).stdout
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "--", *here], cwd=root, capture_output=True, text=True, check=False
+        ).stdout
         found = [f for f in out.split("\0") if f]
     else:
         found = [str(f.relative_to(root)) for p in here for f in (root / p).rglob("*") if f.is_file()]
     skip = EXCLUDE + tuple(conf.get("exclude", []))
-    return sorted(f for f in set(found) if Path(f).suffix in CODE and not any(fnmatch.fnmatch("/" + f, g) for g in skip))
+    return sorted(
+        f for f in set(found) if Path(f).suffix in CODE and not any(fnmatch.fnmatch("/" + f, g) for g in skip)
+    )
 
 
 def complexity(root: Path, code: list[str], run) -> dict:
@@ -125,19 +166,26 @@ def duplication(root: Path, code: list[str], size: int) -> dict:
     seen: dict[str, list[tuple[str, int]]] = {}
     for f, ls in lines.items():
         for i in range(len(ls) - size + 1):
-            key = hashlib.sha1("\n".join(t for _, t in ls[i:i + size]).encode(), usedforsecurity=False).hexdigest()
+            key = hashlib.sha1("\n".join(t for _, t in ls[i : i + size]).encode(), usedforsecurity=False).hexdigest()
             seen.setdefault(key, []).append((f, i))
     groups = {tuple(sorted(at)) for at in seen.values() if len(at) > 1}
     marked = {(f, j) for at in groups for f, i in at for j in range(i, i + size)}
     total = sum(len(ls) for ls in lines.values())
-    return {"min_lines": size, "lines": len(marked), "of": total,
-            "percent": round(100 * len(marked) / total, 1) if total else 0.0, "blocks": _blocks(groups, size, lines)}
+    return {
+        "min_lines": size,
+        "lines": len(marked),
+        "of": total,
+        "percent": round(100 * len(marked) / total, 1) if total else 0.0,
+        "blocks": _blocks(groups, size, lines),
+    }
 
 
 def judge(measured: dict, baseline: dict | None, limit: int = COMPLEXITY) -> tuple[list[str], dict]:
     """The regressions against the baseline, and the baseline to keep (lowered where the code got better)."""
-    now = {"complex": {k: v["ccn"] for k, v in sorted(measured["complex"].items())},
-           "duplicated_lines": measured["duplication"]["lines"]}
+    now = {
+        "complex": {k: v["ccn"] for k, v in sorted(measured["complex"].items())},
+        "duplicated_lines": measured["duplication"]["lines"],
+    }
     if baseline is None:
         return [], now
     worse = []
@@ -165,20 +213,26 @@ def render(report: dict) -> str:
     lines = [f"Measured: {report['files']} files, {report['functions']} functions — {'; '.join(report['paths'])}"]
     lines += [f"note     not there yet, not measured: {p}" for p in report["absent"]]
     lines += [f"PROBLEM  {p}" for p in report["problems"]]
-    lines += [f"complex  {c['file']}::{c['function']}  cyclomatic complexity {c['ccn']} (line {c['line']})"
-              for c in report["complex"]]
+    lines += [
+        f"complex  {c['file']}::{c['function']}  cyclomatic complexity {c['ccn']} (line {c['line']})"
+        for c in report["complex"]
+    ]
     lines += [f"copy     {b['lines']} lines: " + ", ".join(f"{f} line {n}" for f, n in b["at"]) for b in d["blocks"]]
     lines += [f"REGRESSION {r}" for r in report["regressions"]]
     if report["problems"]:
         lines.append("Not green: the quality could not be measured.")
     elif report["regressions"]:
-        lines.append("Not green: the code got worse. Simplify the function or remove the copy; for an honest reason "
-                     "take the numbers as they are: python3 crissp/testsuite/lib/quality.py --accept \"why\".")
+        lines.append(
+            "Not green: the code got worse. Simplify the function or remove the copy; for an honest reason "
+            'take the numbers as they are: python3 crissp/testsuite/lib/quality.py --accept "why".'
+        )
     elif not report["files"]:
         lines.append("Nothing to measure yet: none of the places suites.json names is here.")
     else:
-        lines.append(f"{report['functions_over']} complex functions (above {report['threshold']}), "
-                     f"{d['percent']}% duplicated ({d['lines']} of {d['of']} lines): {report['baseline']}.")
+        lines.append(
+            f"{report['functions_over']} complex functions (above {report['threshold']}), "
+            f"{d['percent']}% duplicated ({d['lines']} of {d['of']} lines): {report['baseline']}."
+        )
     return "\n".join(lines)
 
 
@@ -190,8 +244,10 @@ def _measure(root: Path, conf: dict) -> tuple[list[str], dict, dict, list[str]]:
     except QualityError as e:
         functions, problems = {}, [str(e)]
     limit = conf.get("complexity", COMPLEXITY)
-    measured = {"complex": {k: v for k, v in functions.items() if v["ccn"] > limit},
-                "duplication": duplication(root, code, conf.get("duplicate_lines", DUPLICATE_LINES))}
+    measured = {
+        "complex": {k: v for k, v in functions.items() if v["ccn"] > limit},
+        "duplication": duplication(root, code, conf.get("duplicate_lines", DUPLICATE_LINES)),
+    }
     return code, functions, measured, problems
 
 
@@ -199,7 +255,11 @@ def _ratchet(path: Path, measured: dict, limit: int, reason: str | None) -> tupl
     """Compare with the baseline (or take the numbers, with --accept) and write it when it moved."""
     baseline = json.loads(path.read_text()) if path.is_file() else None
     if reason:
-        keep, said, regressions = accepted(measured, reason, datetime.date.today().isoformat()), f"accepted ({reason})", []
+        keep, said, regressions = (
+            accepted(measured, reason, datetime.date.today().isoformat()),
+            f"accepted ({reason})",
+            [],
+        )
     else:
         regressions, keep = judge(measured, baseline, limit)
         said = "baseline set" if baseline is None else "held" if keep == baseline else "the baseline went down"
@@ -226,12 +286,22 @@ def main(argv: list[str], root: Path | None = None) -> int:
     regressions, said = [], "held"
     if not problems:
         regressions, said = _ratchet(root / "crissp/testsuite/quality-baseline.json", measured, limit, reason)
-    report = {"date": datetime.date.today().isoformat(), "paths": _paths(conf), "absent": absent(root, conf),
-              "files": len(code), "functions": len(functions), "threshold": limit,
-              "complex": sorted(measured["complex"].values(), key=lambda c: (-c["ccn"], c["file"], c["function"])),
-              "functions_over": len(measured["complex"]), "max_ccn": max((v["ccn"] for v in functions.values()), default=0),
-              "duplication": measured["duplication"], "regressions": regressions, "problems": problems,
-              "baseline": said, "ok": not regressions and not problems}
+    report = {
+        "date": datetime.date.today().isoformat(),
+        "paths": _paths(conf),
+        "absent": absent(root, conf),
+        "files": len(code),
+        "functions": len(functions),
+        "threshold": limit,
+        "complex": sorted(measured["complex"].values(), key=lambda c: (-c["ccn"], c["file"], c["function"])),
+        "functions_over": len(measured["complex"]),
+        "max_ccn": max((v["ccn"] for v in functions.values()), default=0),
+        "duplication": measured["duplication"],
+        "regressions": regressions,
+        "problems": problems,
+        "baseline": said,
+        "ok": not regressions and not problems,
+    }
     results = project.results(root)
     results.mkdir(parents=True, exist_ok=True)
     (results / "quality.json").write_text(json.dumps(report, indent=1) + "\n")

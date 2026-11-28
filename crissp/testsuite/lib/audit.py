@@ -85,8 +85,18 @@ def runner(argv: list[str], cwd: Path) -> tuple[int, str, str]:
 
 
 def _finding(source, target, package, installed, id_, severity, fixed, title, blocks, aliases=()) -> dict:
-    return {"source": source, "target": target, "package": package, "installed": installed, "id": id_,
-            "aliases": list(aliases), "severity": severity, "fixed": fixed, "title": title, "blocks": blocks}
+    return {
+        "source": source,
+        "target": target,
+        "package": package,
+        "installed": installed,
+        "id": id_,
+        "aliases": list(aliases),
+        "severity": severity,
+        "fixed": fixed,
+        "title": title,
+        "blocks": blocks,
+    }
 
 
 def from_pip_audit(data: dict, target: str) -> list[dict]:
@@ -96,9 +106,20 @@ def from_pip_audit(data: dict, target: str) -> list[dict]:
             if (dep["name"], v["id"]) in seen:  # pip-audit can report one advisory twice
                 continue
             seen.add((dep["name"], v["id"]))
-            out.append(_finding("pip-audit", target, dep["name"], dep["version"], v["id"], "UNKNOWN",
-                                ", ".join(v.get("fix_versions", [])) or "no fix",
-                                (v.get("description") or "").splitlines()[0][:160], True, v.get("aliases", [])))
+            out.append(
+                _finding(
+                    "pip-audit",
+                    target,
+                    dep["name"],
+                    dep["version"],
+                    v["id"],
+                    "UNKNOWN",
+                    ", ".join(v.get("fix_versions", [])) or "no fix",
+                    (v.get("description") or "").splitlines()[0][:160],
+                    True,
+                    v.get("aliases", []),
+                )
+            )
     return out
 
 
@@ -109,9 +130,19 @@ def from_npm_audit(data: dict, target: str) -> list[dict]:
             if not isinstance(via, dict):  # only points at another package's advisory: counted there
                 continue
             severity = via.get("severity", vuln.get("severity", "")).upper().replace("MODERATE", "MEDIUM")
-            out.append(_finding("npm audit", target, name, vuln.get("range", ""), via["url"].rsplit("/", 1)[-1],
-                                severity, "fix available" if vuln.get("fixAvailable") else "no fix",
-                                via.get("title", ""), severity in BLOCKING))
+            out.append(
+                _finding(
+                    "npm audit",
+                    target,
+                    name,
+                    vuln.get("range", ""),
+                    via["url"].rsplit("/", 1)[-1],
+                    severity,
+                    "fix available" if vuln.get("fixAvailable") else "no fix",
+                    via.get("title", ""),
+                    severity in BLOCKING,
+                )
+            )
     return out
 
 
@@ -120,13 +151,34 @@ def from_trivy(data: dict, target: str) -> list[dict]:
     for result in data.get("Results") or []:
         for v in result.get("Vulnerabilities") or []:
             fixed = v.get("FixedVersion") or ""
-            out.append(_finding("trivy", target, v["PkgName"], v.get("InstalledVersion", ""), v["VulnerabilityID"],
-                                v["Severity"], fixed or "no fix", v.get("Title", ""),
-                                v["Severity"] in BLOCKING and bool(fixed)))
+            out.append(
+                _finding(
+                    "trivy",
+                    target,
+                    v["PkgName"],
+                    v.get("InstalledVersion", ""),
+                    v["VulnerabilityID"],
+                    v["Severity"],
+                    fixed or "no fix",
+                    v.get("Title", ""),
+                    v["Severity"] in BLOCKING and bool(fixed),
+                )
+            )
         for m in result.get("Misconfigurations") or []:
             if m.get("Status") == "FAIL":
-                out.append(_finding("trivy", target, result["Target"], "", m["ID"], m["Severity"], "change the config",
-                                    m.get("Title", ""), m["Severity"] in BLOCKING))
+                out.append(
+                    _finding(
+                        "trivy",
+                        target,
+                        result["Target"],
+                        "",
+                        m["ID"],
+                        m["Severity"],
+                        "change the config",
+                        m.get("Title", ""),
+                        m["Severity"] in BLOCKING,
+                    )
+                )
     return out
 
 
@@ -198,6 +250,7 @@ def own_images(root: Path, conf: dict) -> list[str]:
 
 def _scanner(run, findings: list, problems: list, scanned: list):
     """scan(label, argv, cwd, parse, target): run one scanner, its JSON parsed into findings, or a problem."""
+
     def scan(label: str, argv: list[str], cwd: Path, parse, target: str) -> None:
         code, out, err = run(argv, cwd)
         try:
@@ -207,14 +260,25 @@ def _scanner(run, findings: list, problems: list, scanned: list):
             return
         findings.extend(parse(data, target))
         scanned.append(label)
+
     return scan
 
 
-def _report(kind: str, on: datetime.date, scanned: list, problems: list, findings: list, accepted: dict,
-            **more) -> dict:
+def _report(
+    kind: str, on: datetime.date, scanned: list, problems: list, findings: list, accepted: dict, **more
+) -> dict:
     findings, invalid = apply_accepted(findings, accepted, on)
-    return {"kind": kind, "date": on.isoformat(), "scanned": scanned, "not_scanned": [], "absent": [], **more,
-            "problems": problems + invalid, "findings": findings, "blocking": [f for f in findings if f["blocks"]]}
+    return {
+        "kind": kind,
+        "date": on.isoformat(),
+        "scanned": scanned,
+        "not_scanned": [],
+        "absent": [],
+        **more,
+        "problems": problems + invalid,
+        "findings": findings,
+        "blocking": [f for f in findings if f["blocks"]],
+    }
 
 
 def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> dict:
@@ -240,13 +304,37 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         # resolved first (every transitive package, pinned), then audited as is: no throwaway environment, no pip run
         with tempfile.TemporaryDirectory(prefix="audit-") as tmp:
             resolved = str(Path(tmp) / "resolved.txt")
-            code, _, err = run(["uv", "pip", "compile", "--quiet", "--python-version", python, req, "-o", resolved], root)
+            code, _, err = run(
+                ["uv", "pip", "compile", "--quiet", "--python-version", python, req, "-o", resolved], root
+            )
             if code != 0:
-                problems.append(f"pip-audit {req}: could not resolve the requirements (exit {code}): {err.strip()[-300:]}")
+                problems.append(
+                    f"pip-audit {req}: could not resolve the requirements (exit {code}): {err.strip()[-300:]}"
+                )
                 continue
-            scan(f"pip-audit {req}", ["uv", "run", "--quiet", "--no-project", "--with", PIP_AUDIT, "pip-audit", "-r",
-                                      resolved, "--no-deps", "--disable-pip", "--format", "json",
-                                      "--progress-spinner", "off"], root, from_pip_audit, str(Path(req).parent))
+            scan(
+                f"pip-audit {req}",
+                [
+                    "uv",
+                    "run",
+                    "--quiet",
+                    "--no-project",
+                    "--with",
+                    PIP_AUDIT,
+                    "pip-audit",
+                    "-r",
+                    resolved,
+                    "--no-deps",
+                    "--disable-pip",
+                    "--format",
+                    "json",
+                    "--progress-spinner",
+                    "off",
+                ],
+                root,
+                from_pip_audit,
+                str(Path(req).parent),
+            )
     for app in conf.get("npm", []):
         if (root / app / "package-lock.json").is_file():
             scan(f"npm audit {app}", ["npm", "audit", "--json"], root / app, from_npm_audit, app)
@@ -255,8 +343,10 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         else:
             problems.append(f"npm audit {app}: no package-lock.json to audit")
     fs = [a for a in conf.get("fs", []) if there(f"trivy fs {a}", a)]
-    configs = [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
-               *(c for c in conf.get("config", []) if there(f"trivy config {c}", c))]
+    configs = [
+        *(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
+        *(c for c in conf.get("config", []) if there(f"trivy config {c}", c)),
+    ]
     found_images = images(root, conf)
     trivy_bin = None
     if fs or configs or found_images:
@@ -276,8 +366,9 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
     if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
-    return _report("audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf),
-                   absent=absent)
+    return _report(
+        "audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf), absent=absent
+    )
 
 
 def from_gitleaks(data: list, target: str) -> list[dict]:
@@ -286,9 +377,22 @@ def from_gitleaks(data: list, target: str) -> list[dict]:
     for leak in data or []:
         commit = (leak.get("Commit") or "")[:12]
         where = f"line {leak['StartLine']}" + (f" in {commit}" if commit else "")
-        out.append({**_finding("gitleaks", target, leak["File"], where, leak["RuleID"], "HIGH",
-                               "rotate it, then remove it from the history", leak.get("Description", ""), True),
-                    "fingerprint": leak.get("Fingerprint", "")})
+        out.append(
+            {
+                **_finding(
+                    "gitleaks",
+                    target,
+                    leak["File"],
+                    where,
+                    leak["RuleID"],
+                    "HIGH",
+                    "rotate it, then remove it from the history",
+                    leak.get("Description", ""),
+                    True,
+                ),
+                "fingerprint": leak.get("Fingerprint", ""),
+            }
+        )
     return out
 
 
@@ -303,10 +407,27 @@ def secrets_all(root: Path, run, on: datetime.date, accepted: dict) -> dict:
         problems.append(f"gitleaks: {e}")
     else:
         history = (root / ".git").exists()
-        scan("gitleaks git history" if history else "gitleaks files",
-             [gitleaks, "git" if history else "dir", "--no-banner", "--redact", "--report-format", "json",
-              "--report-path", "-", "--exit-code", "0", "--log-level", "warn", "."], root, from_gitleaks,
-             "git history" if history else "files")
+        scan(
+            "gitleaks git history" if history else "gitleaks files",
+            [
+                gitleaks,
+                "git" if history else "dir",
+                "--no-banner",
+                "--redact",
+                "--report-format",
+                "json",
+                "--report-path",
+                "-",
+                "--exit-code",
+                "0",
+                "--log-level",
+                "warn",
+                ".",
+            ],
+            root,
+            from_gitleaks,
+            "git history" if history else "files",
+        )
     return _report("secrets", on, scanned, problems, findings, accepted)
 
 
@@ -317,8 +438,10 @@ LOCAL = re.compile(r"^(https?://)(localhost|127\.0\.0\.1)(?=[:/]|$)")
 
 def reachable(url: str) -> bool:
     """Whether the app answers at all: any HTTP status is an answer; a refused connection is not."""
+    if not url.startswith(("http://", "https://")):
+        return False  # never a file: or another scheme, whatever suites.json says
     try:
-        with urllib.request.urlopen(url, timeout=5):  # the project's own local URL, from suites.json
+        with urllib.request.urlopen(url, timeout=5):  # noqa: S310 — http(s) only, the project's own URL
             return True
     except urllib.error.HTTPError:
         return True
@@ -328,8 +451,11 @@ def reachable(url: str) -> bool:
 
 def zap_rules(text: str) -> set[str]:
     """The ZAP rules a project's rules file (zap-baseline.py -c) makes FAIL: they block whatever their risk."""
-    return {cols[0] for cols in (line.split("\t") for line in text.splitlines())
-            if len(cols) > 1 and not cols[0].startswith("#") and cols[1].strip() == "FAIL"}
+    return {
+        cols[0]
+        for cols in (line.split("\t") for line in text.splitlines())
+        if len(cols) > 1 and not cols[0].startswith("#") and cols[1].strip() == "FAIL"
+    }
 
 
 def from_zap(data: dict, target: str, fail: set[str]) -> list[dict]:
@@ -338,24 +464,35 @@ def from_zap(data: dict, target: str, fail: set[str]) -> list[dict]:
         for a in site.get("alerts", []):
             severity = RISK.get(str(a.get("riskcode")), "UNKNOWN")
             uris = [i.get("uri", "") for i in a.get("instances", [])]
-            out.append(_finding("zap", target, uris[0] if uris else site.get("@name", target),
-                                f"{a.get('count', len(uris))} URLs", str(a.get("pluginid")), severity, "",
-                                a.get("alert") or a.get("name", ""), severity == "HIGH" or str(a.get("pluginid")) in fail))
+            out.append(
+                _finding(
+                    "zap",
+                    target,
+                    uris[0] if uris else site.get("@name", target),
+                    f"{a.get('count', len(uris))} URLs",
+                    str(a.get("pluginid")),
+                    severity,
+                    "",
+                    a.get("alert") or a.get("name", ""),
+                    severity == "HIGH" or str(a.get("pluginid")) in fail,
+                )
+            )
     return out
 
 
 def _zap(root: Path, run, target: str, rules: Path | None, platform: str) -> tuple[dict | None, str]:
     """One ZAP baseline of one target: its JSON report, or None and why."""
     with tempfile.TemporaryDirectory(prefix="crissp-zap-") as work:
-        os.chmod(work, 0o777)  # ZAP runs as its own user in the container and writes its report here
+        os.chmod(work, 0o777)  # noqa: S103 — a private temp folder that ZAP, its own user, writes into
         network = ["--network", "host"] if platform.startswith("linux") else []
         seen = target if network else LOCAL.sub(r"\1host.docker.internal", target)
         args = ["-t", seen, "-J", "zap.json", "-I"]
         if rules:
             (Path(work) / "rules.tsv").write_text(rules.read_text())
             args += ["-c", "rules.tsv"]
-        code, out, err = run(["docker", "run", "--rm", *network, "-v", f"{work}:/zap/wrk:rw", ZAP, "zap-baseline.py",
-                              *args], root)
+        code, out, err = run(
+            ["docker", "run", "--rm", *network, "-v", f"{work}:/zap/wrk:rw", ZAP, "zap-baseline.py", *args], root
+        )
         report = Path(work) / "zap.json"
         if not report.is_file():
             return None, f"ZAP could not scan {target} (exit {code}): {(err or out).strip()[-300:]}"
@@ -383,8 +520,9 @@ def _rules_file(root: Path, dast: dict, conf: dict, absent: list, problems: list
     return None
 
 
-def dast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict, reach=None,
-             platform: str = sys.platform) -> dict:
+def dast_all(
+    root: Path, run, on: datetime.date, accepted: dict, conf: dict, reach=None, platform: str = sys.platform
+) -> dict:
     """The passive ZAP baseline (pinned image) against the running app. Started with docker compose when it is not up
     and the project names a compose file; stopped again only when this scan started it."""
     reach = reach or reachable
@@ -413,33 +551,49 @@ def dast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict, rea
     return {**_report("dast", on, scanned, problems, findings, accepted), "absent": absent}
 
 
-PERMISSIVE = re.compile(r"^(MIT(-0)?|BSD-\d-Clause.*|0BSD|Apache-[12]\.\d|ISC|Unlicense|Zlib|PSF-2\.0|Python-2\.0(\.1)?|"
-                        r"CC0-1\.0|CC-BY-[34]\.0|BlueOak-1\.0\.0|BSL-1\.0|WTFPL|X11|UPL-1\.0|Unicode-.*|OFL-1\.1|"
-                        r"Artistic-2\.0|HPND|MIT-CMU|NCSA|PostgreSQL)$", re.IGNORECASE)
+PERMISSIVE = re.compile(
+    r"^(MIT(-0)?|BSD-\d-Clause.*|0BSD|Apache-[12]\.\d|ISC|Unlicense|Zlib|PSF-2\.0|Python-2\.0(\.1)?|"
+    r"CC0-1\.0|CC-BY-[34]\.0|BlueOak-1\.0\.0|BSL-1\.0|WTFPL|X11|UPL-1\.0|Unicode-.*|OFL-1\.1|"
+    r"Artistic-2\.0|HPND|MIT-CMU|NCSA|PostgreSQL)$",
+    re.IGNORECASE,
+)
 WEAK = re.compile(r"^(LGPL-.*|MPL-.*|EPL-.*|CDDL-.*|CC-BY-SA-.*)$", re.IGNORECASE)
 COPYLEFT = re.compile(r"^(GPL-.*|EUPL-.*|OSL-.*|CPAL-.*|RPL-.*)$", re.IGNORECASE)
 FORBIDDEN = re.compile(r"^(AGPL-.*|SSPL-.*|BUSL-.*|Commons-Clause|CC-BY-NC.*|Elastic-2\.0|PolyForm-.*)$", re.IGNORECASE)
 KINDS = ("permissive", "weak copyleft", "unknown", "copyleft", "forbidden")  # from best to worst
-CLASSIFIERS = {"MIT License": "MIT", "BSD License": "BSD-3-Clause", "Apache Software License": "Apache-2.0",
-               "ISC License (ISCL)": "ISC", "Mozilla Public License 2.0 (MPL 2.0)": "MPL-2.0",
-               "Python Software Foundation License": "PSF-2.0", "The Unlicense (Unlicense)": "Unlicense",
-               "GNU General Public License v2 (GPLv2)": "GPL-2.0-only", "GNU General Public License v3 (GPLv3)":
-               "GPL-3.0-only", "GNU General Public License v2 or later (GPLv2+)": "GPL-2.0-or-later",
-               "GNU Lesser General Public License v2 or later (LGPLv2+)": "LGPL-2.1-or-later",
-               "GNU Lesser General Public License v3 (LGPLv3)": "LGPL-3.0-only",
-               "GNU Affero General Public License v3": "AGPL-3.0-only"}
+CLASSIFIERS = {
+    "MIT License": "MIT",
+    "BSD License": "BSD-3-Clause",
+    "Apache Software License": "Apache-2.0",
+    "ISC License (ISCL)": "ISC",
+    "Mozilla Public License 2.0 (MPL 2.0)": "MPL-2.0",
+    "Python Software Foundation License": "PSF-2.0",
+    "The Unlicense (Unlicense)": "Unlicense",
+    "GNU General Public License v2 (GPLv2)": "GPL-2.0-only",
+    "GNU General Public License v3 (GPLv3)": "GPL-3.0-only",
+    "GNU General Public License v2 or later (GPLv2+)": "GPL-2.0-or-later",
+    "GNU Lesser General Public License v2 or later (LGPLv2+)": "LGPL-2.1-or-later",
+    "GNU Lesser General Public License v3 (LGPLv3)": "LGPL-3.0-only",
+    "GNU Affero General Public License v3": "AGPL-3.0-only",
+}
 PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^]]*\])?==([^\s;#]+)")
 
 
 def kind(expression: str) -> str:
     """How free a licence expression is: of OR the best choice counts, of AND (and WITH) the worst."""
+
     def one(spdx: str) -> str:
         spdx = spdx.strip("() ").removesuffix("+")
-        for name, pattern in (("forbidden", FORBIDDEN), ("copyleft", COPYLEFT), ("weak copyleft", WEAK),
-                              ("permissive", PERMISSIVE)):
+        for name, pattern in (
+            ("forbidden", FORBIDDEN),
+            ("copyleft", COPYLEFT),
+            ("weak copyleft", WEAK),
+            ("permissive", PERMISSIVE),
+        ):
             if pattern.match(spdx):
                 return name
         return "unknown"
+
     if not expression.strip():
         return "unknown"
     choices = [[one(t) for t in re.split(r"\s+(?:AND|WITH)\s+", part)] for part in re.split(r"\s+OR\s+", expression)]
@@ -461,8 +615,16 @@ def npm_components(lock: dict, target: str) -> list[dict]:
         if not key:
             continue
         name = p.get("name") or key.rsplit("node_modules/", 1)[-1]
-        out.append({"ecosystem": "npm", "name": name, "version": p.get("version", ""), "licence": _npm_licence(p.get("license")),
-                    "dev": bool(p.get("dev") or p.get("devOptional")), "target": target})
+        out.append(
+            {
+                "ecosystem": "npm",
+                "name": name,
+                "version": p.get("version", ""),
+                "licence": _npm_licence(p.get("license")),
+                "dev": bool(p.get("dev") or p.get("devOptional")),
+                "target": target,
+            }
+        )
     return out
 
 
@@ -473,7 +635,9 @@ def pypi_licence(info: dict) -> str:
     text = (info.get("license") or "").strip()
     if text and len(text) <= 40 and "\n" not in text and kind(text) != "unknown":
         return text
-    named = [CLASSIFIERS.get(c.rsplit(" :: ", 1)[-1]) for c in info.get("classifiers", []) if c.startswith("License ::")]
+    named = [
+        CLASSIFIERS.get(c.rsplit(" :: ", 1)[-1]) for c in info.get("classifiers", []) if c.startswith("License ::")
+    ]
     return " OR ".join(sorted({n for n in named if n})) or text[:40]
 
 
@@ -487,8 +651,16 @@ def pip_components(text: str, target: str, lookup) -> tuple[list[dict], list[str
         if not m:
             unpinned.append(f"{target}: {line} is not pinned (name==version): its licence cannot be known")
             continue
-        out.append({"ecosystem": "pypi", "name": m.group(1).lower(), "version": m.group(2),
-                    "licence": lookup(m.group(1), m.group(2)), "dev": False, "target": target})
+        out.append(
+            {
+                "ecosystem": "pypi",
+                "name": m.group(1).lower(),
+                "version": m.group(2),
+                "licence": lookup(m.group(1), m.group(2)),
+                "dev": False,
+                "target": target,
+            }
+        )
     return out, unpinned
 
 
@@ -504,6 +676,7 @@ def pypi_lookup(cache: Path, fetcher=None):
             cache.parent.mkdir(parents=True, exist_ok=True)
             cache.write_text(json.dumps(known, indent=1, sort_keys=True) + "\n")
         return known[key]
+
     return lookup
 
 
@@ -514,14 +687,27 @@ def purl(c: dict) -> str:
 
 def sbom(components: list[dict], product: str, version: str, on: datetime.date) -> dict:
     """A CycloneDX 1.6 SBOM: every component with its version, purl and licence; dev-only ones are scope excluded."""
-    return {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1,
-            "metadata": {"timestamp": f"{on.isoformat()}T00:00:00Z",
-                         "tools": {"components": [{"type": "application", "name": "crissp"}]},
-                         "component": {"type": "application", "name": product, "version": version}},
-            "components": [{"type": "library", "name": c["name"], "version": c["version"], "purl": purl(c),
-                            "scope": "excluded" if c["dev"] else "required",
-                            **({"licenses": [{"expression": c["licence"]}]} if c["licence"] else {})}
-                           for c in sorted(components, key=lambda c: (c["ecosystem"], c["name"], c["version"]))]}
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "metadata": {
+            "timestamp": f"{on.isoformat()}T00:00:00Z",
+            "tools": {"components": [{"type": "application", "name": "crissp"}]},
+            "component": {"type": "application", "name": product, "version": version},
+        },
+        "components": [
+            {
+                "type": "library",
+                "name": c["name"],
+                "version": c["version"],
+                "purl": purl(c),
+                "scope": "excluded" if c["dev"] else "required",
+                **({"licenses": [{"expression": c["licence"]}]} if c["licence"] else {}),
+            }
+            for c in sorted(components, key=lambda c: (c["ecosystem"], c["name"], c["version"]))
+        ],
+    }
 
 
 def licence_findings(components: list[dict], policy: dict) -> list[dict]:
@@ -537,9 +723,21 @@ def licence_findings(components: list[dict], policy: dict) -> list[dict]:
         severity = {"forbidden": "CRITICAL", "copyleft": "HIGH", "weak copyleft": "MEDIUM", "unknown": "MEDIUM"}[found]
         why = allow.get(c["name"])
         blocks = found in ("forbidden", "copyleft") and not c["dev"] and not why
-        out.append({**_finding("licence", c["target"], c["name"], c["version"], c["licence"] or "no licence", severity,
-                               f"allowed: {why}" if why else "dev only, never shipped" if c["dev"] else "",
-                               f"{found} licence", blocks)})
+        out.append(
+            {
+                **_finding(
+                    "licence",
+                    c["target"],
+                    c["name"],
+                    c["version"],
+                    c["licence"] or "no licence",
+                    severity,
+                    f"allowed: {why}" if why else "dev only, never shipped" if c["dev"] else "",
+                    f"{found} licence",
+                    blocks,
+                )
+            }
+        )
     return out
 
 
@@ -561,8 +759,20 @@ def licenses_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict,
             continue
         with tempfile.TemporaryDirectory(prefix="licenses-") as tmp:
             resolved = Path(tmp) / "resolved.txt"
-            code, _, err = run(["uv", "pip", "compile", "--quiet", "--python-version", conf.get("python", PYTHON), place,
-                                "-o", str(resolved)], root)
+            code, _, err = run(
+                [
+                    "uv",
+                    "pip",
+                    "compile",
+                    "--quiet",
+                    "--python-version",
+                    conf.get("python", PYTHON),
+                    place,
+                    "-o",
+                    str(resolved),
+                ],
+                root,
+            )
             text = resolved.read_text() if code == 0 and resolved.is_file() else None
         if text is None:
             problems.append(f"{place}: could not resolve the requirements (exit {code}): {err.strip()[-300:]}")
@@ -576,25 +786,28 @@ def licenses_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict,
         problems += unpinned
         scanned.append(f"licences {place}")
     policy = conf.get("licenses") or {}
-    report = {**_report("licenses", on, scanned, problems, licence_findings(components, policy), accepted),
-              "absent": absent, "components": len(components)}
+    report = {
+        **_report("licenses", on, scanned, problems, licence_findings(components, policy), accepted),
+        "absent": absent,
+        "components": len(components),
+    }
     version = (root / "VERSION").read_text().strip() if (root / "VERSION").is_file() else ""
     return report, sbom(components, policy.get("product") or root.resolve().name, version, on)
 
 
 NOT_GREEN = {
     "audit": "Not green: update the package or image to the fixed version, or accept it for a while with a reason in "
-             "crissp/testsuite/accepted-risks.json (at most 90 days).",
+    "crissp/testsuite/accepted-risks.json (at most 90 days).",
     "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
-               "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
-               "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
+    "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
+    "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
     "sast": "Not green: change the code (each finding says why), or accept it for a while with a reason in "
-            "crissp/testsuite/accepted-risks.json (at most 90 days).",
+    "crissp/testsuite/accepted-risks.json (at most 90 days).",
     "dast": "Not green: fix what the running app says (a header, a cookie flag, a leak), or accept it for a while with "
-            "a reason in crissp/testsuite/accepted-risks.json (at most 90 days). A rule that does not apply goes into "
-            "the project's ZAP rules file (audit.dast.rules) as IGNORE, with why.",
+    "a reason in crissp/testsuite/accepted-risks.json (at most 90 days). A rule that does not apply goes into "
+    "the project's ZAP rules file (audit.dast.rules) as IGNORE, with why.",
     "licenses": "Not green: replace the package, or allow it for good with why in suites.json (audit.licenses.allow: "
-                "{package: why}) once it is clear the product may ship it.",
+    "{package: why}) once it is clear the product may ship it.",
 }
 
 
@@ -603,10 +816,20 @@ SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM"}
 
 def from_semgrep(data: dict, target: str) -> list[dict]:
     """A finding names the file, the line, the rule and why; never the code it matched."""
-    return [_finding("semgrep", target, r["path"], f"line {r['start']['line']}", r["check_id"].rsplit(".", 1)[-1],
-                     SEVERITY.get(r["extra"]["severity"], "LOW"), "change the code", r["extra"].get("message", ""),
-                     r["extra"]["severity"] == "ERROR")
-            for r in data.get("results", [])]
+    return [
+        _finding(
+            "semgrep",
+            target,
+            r["path"],
+            f"line {r['start']['line']}",
+            r["check_id"].rsplit(".", 1)[-1],
+            SEVERITY.get(r["extra"]["severity"], "LOW"),
+            "change the code",
+            r["extra"].get("message", ""),
+            r["extra"]["severity"] == "ERROR",
+        )
+        for r in data.get("results", [])
+    ]
 
 
 def semgrep(*args: str) -> list[str]:
@@ -635,15 +858,22 @@ def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> 
             problems.append(f"semgrep: no rules at {rules}")
 
     def parse(data: dict, target: str) -> list[dict]:
-        problems.extend(f"semgrep: {e.get('type')}: {e.get('message', '')}".strip() for e in data.get("errors", [])
-                        if e.get("level") == "error")
+        problems.extend(
+            f"semgrep: {e.get('type')}: {e.get('message', '')}".strip()
+            for e in data.get("errors", [])
+            if e.get("level") == "error"
+        )
         return from_semgrep(data, target)
 
     if paths:
         configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
         _scanner(run, findings, problems, scanned)(
-            f"semgrep {' '.join(paths)}", semgrep("scan", *configs, "--json", "--metrics", "off",
-                                                  "--disable-version-check", "--quiet", *paths), root, parse, "code")
+            f"semgrep {' '.join(paths)}",
+            semgrep("scan", *configs, "--json", "--metrics", "off", "--disable-version-check", "--quiet", *paths),
+            root,
+            parse,
+            "code",
+        )
     elif not conf.get("sast") and not skip:
         problems.append("nothing to scan: name the code in crissp/testsuite/suites.json (audit, sast)")
     return _report("sast", on, scanned, problems, findings, accepted, absent=absent)
@@ -658,7 +888,9 @@ def rules_test(root: Path, run) -> tuple[int, str]:
 def render(report: dict) -> str:
     lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
     for image in report["not_scanned"]:
-        lines.append(f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above")
+        lines.append(
+            f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above"
+        )
     for path in report.get("absent", []):
         lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:
@@ -666,8 +898,10 @@ def render(report: dict) -> str:
     kind = report.get("kind", "audit")
     fix = "fixed in " if kind == "audit" else ""
     for f in report["blocking"]:
-        lines.append(f"BLOCKING {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): "
-                     f"{f['title']}" + (f" — {fix}{f['fixed']}" if f["fixed"] else ""))
+        lines.append(
+            f"BLOCKING {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): "
+            f"{f['title']}" + (f" — {fix}{f['fixed']}" if f["fixed"] else "")
+        )
     listed = [f for f in report["findings"] if not f["blocks"]]
     for f in listed:
         note = f"accepted: {f['accepted']}" if f.get("accepted") else f"{fix}{f['fixed']}" or f["title"]
@@ -677,15 +911,18 @@ def render(report: dict) -> str:
     elif kind == "secrets":
         lines.append("No secret found.")
     elif not report["scanned"]:
-        lines.append(f"Nothing to {'scan' if kind == 'sast' else 'audit'} yet: none of the places suites.json names is here.")
+        lines.append(
+            f"Nothing to {'scan' if kind == 'sast' else 'audit'} yet: none of the places suites.json names is here."
+        )
     elif kind == "sast":
         lines.append(f"No unsafe code blocks ({len(listed)} listed for review).")
     elif kind == "dast":
         lines.append(f"No high risk on the running app ({len(listed)} listed).")
     elif kind == "licenses":
         n = report["components"]
-        lines.append(f"No licence blocks: {n} component{'' if n == 1 else 's'} in results/sbom.cdx.json "
-                     f"({len(listed)} listed).")
+        lines.append(
+            f"No licence blocks: {n} component{'' if n == 1 else 's'} in results/sbom.cdx.json ({len(listed)} listed)."
+        )
     else:
         lines.append(f"No known vulnerability blocks ({len(listed)} listed).")
     return "\n".join(lines)

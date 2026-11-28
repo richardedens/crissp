@@ -57,9 +57,13 @@ def test_the_provider_is_kubernetes_only_and_pinned_exactly():
 
 def test_the_cluster_side_the_chart_needs_is_there():
     resources = blocks("resource")
-    assert set(resources) == {"kubernetes_namespace_v1.product", "kubernetes_secret_v1.pull",
-                              "kubernetes_network_policy_v1.default_deny", "kubernetes_resource_quota_v1.product",
-                              "kubernetes_limit_range_v1.product"}
+    assert set(resources) == {
+        "kubernetes_namespace_v1.product",
+        "kubernetes_secret_v1.pull",
+        "kubernetes_network_policy_v1.default_deny",
+        "kubernetes_resource_quota_v1.product",
+        "kubernetes_limit_range_v1.product",
+    }
     ns = resources["kubernetes_namespace_v1.product"]
     assert "pod-security.kubernetes.io/enforce" in ns and "var.labels" in ns
     deny = resources["kubernetes_network_policy_v1.default_deny"]
@@ -104,5 +108,13 @@ def test_the_example_tfvars_is_neutral_holds_no_secret_and_names_only_declared_v
 
 def test_state_plans_and_real_variables_are_never_in_git():
     ignore = (TERRAFORM / ".gitignore").read_text().splitlines()
-    for rule in (".terraform/", "*.tfstate", "*.tfstate.*", "*.tfplan", "*.tfvars", "*.tfvars.json", "!*.tfvars.example"):
+    for rule in (
+        ".terraform/",
+        "*.tfstate",
+        "*.tfstate.*",
+        "*.tfplan",
+        "*.tfvars",
+        "*.tfvars.json",
+        "!*.tfvars.example",
+    ):
         assert rule in ignore, rule

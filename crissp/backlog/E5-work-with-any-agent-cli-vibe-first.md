@@ -40,3 +40,63 @@ Done when  Tests with a faked Windows path prove the TOML stays valid and an exi
 Tests      test_cli.py (system detection, vibe found/not found, TOML escaping), test_repair.py (trust escaping and both
            path spellings)
 Depends    E5-F1-01
+
+## E5-F2 · Mistral Vibe sessions work as Claude sessions do                              [review]
+Why        A Vibe session, in the terminal or the desktop app, gets the crissp tools, shows on the Activity page with
+           the same warnings, follows the same habits for small sessions, and can run the UX team.
+
+### E5-F2-01 · The crissp tools load in a Vibe session, proven (F-100)                   [review] [S]
+Why        Vibe's desktop app started the crissp server from its own folder with a stripped environment: no tools.
+What       .vibe/config.toml names the project's folder (cwd, CRISSP_ROOT), uvx by full path, 60 s to start; init and
+           repair write it per machine, .vibe/ out of git.
+Done when  A real Vibe session in a project crissp init made finds brief and backlog with Vibe's tool search; the config
+           started from another folder with Vibe's environment lists the tools.
+Tests      tests/test_vibe.py, tests/test_repair.py, package_tests/test_cli.py, package_tests/test_vibe_session.py
+           (needs vibe installed)
+Depends    —
+
+### E5-F2-02 · The Activity page reads Vibe sessions (F-101)                             [review] [M]
+Why        /activity read only Claude Code's transcripts.
+What       lib/vibesessions.py reads VIBE_HOME/logs/session/unified; /activity lists Vibe sessions with source, prompt,
+           step, subagents and the 300k warning.
+Done when  A Vibe session of the repository, written in the last half hour, shows on /activity with its latest step and
+           history; another repository's, an old one and a subagent do not show as sessions.
+Tests      tests/test_vibesessions.py, tests/test_activity_page.py
+Depends    —
+
+### E5-F2-03 · Sessions that stay small, the Vibe way (F-102)                            [review] [S]
+Why        The agreement's habits named only Claude Code's commands.
+What       The section (CRISSP.md, the agreement, the template's, synced by repair) names Vibe's: /clear or a new
+           desktop session, /compact <what to keep>, auto_compact_threshold, the task tool's explore agent.
+Done when  The section in all three names Vibe's commands.
+Tests      tests/test_template.py
+Depends    —
+
+### E5-F2-04 · The UX team on any installed agent CLI (F-103)                            [review] [M]
+Why        The personas ran only on claude -p.
+What       CRISSP_UX_CLI, else Claude Code when installed, else Vibe; on Vibe read-only in the run's folder, no shell,
+           web or MCP, never a .env.
+Done when  A round on Vibe starts vibe -p in its folder with only read_file, write_file and edit, MCP off and reads
+           limited to the UX suite and the agreement.
+Tests      uxsuite/tests/test_ux_team.py
+Depends    —
+
+### E5-F2-05 · The context budget as checks (F-104)                                      [review] [S]
+Why        The habits against screenshots and whole reads in the main thread were advice only.
+What       /activity says per session when the main thread holds 10 or more images or read a file past 800 lines whole,
+           for Claude and Vibe.
+Done when  Ten screenshots and a whole read of a big file are flagged; a read with offset and limit, a small file and a
+           subagent's read are not.
+Tests      tests/test_activity.py, tests/test_vibesessions.py, tests/test_activity_page.py
+Depends    —
+
+### E5-F2-06 · Vibe uses crissp fully without exploring first                            [review] [M]
+Why        A Vibe session explored for ten steps, hit the one-minute tool budget, started the full run on a vague wish,
+           and its full run was red on a Mac for reasons outside the code (F-105 to F-112).
+What       The root AGENTS.md gives the first moves; the crissp skill is the playbook; the tools answer within a minute;
+           check-all needs asked: true; the Vibe config carries the terminal PATH; /activity reads packed Vibe sessions.
+Done when  A Vibe session in a crissp project calls brief first, checks with run check and status within the budget,
+           asks before the full run, and its check-all is green on a Mac.
+Tests      test_template, test_repair, test_cli (agent files), test_crissp_tool (budget, asked), test_serve, test_vibe
+           (PATH), test_lint (bash 3.2), test_vibesessions (packed)
+Depends    —

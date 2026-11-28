@@ -45,9 +45,11 @@ def load_config(path: Path) -> dict:
     try:
         return json.loads(Path(path).read_text())
     except FileNotFoundError:
-        raise ValueError(f"{path}: deploy.json is missing (crissp/deploy/deploy.json names what is deployed where)")
+        raise ValueError(
+            f"{path}: deploy.json is missing (crissp/deploy/deploy.json names what is deployed where)"
+        ) from None
     except json.JSONDecodeError as e:
-        raise ValueError(f"{path}: deploy.json is not valid JSON ({e.msg}, line {e.lineno})")
+        raise ValueError(f"{path}: deploy.json is not valid JSON ({e.msg}, line {e.lineno})") from None
 
 
 def _c(config: dict) -> dict:
@@ -66,20 +68,28 @@ def config_stops(config: dict) -> list[str]:
         if not _NAME.fullmatch(str(c.get(key, ""))):
             out.append(f"cluster.{key} must be a Kubernetes name (lower case letters, digits and -)")
     if not c.get("kubeContext"):
-        out.append("cluster.kubeContext is empty in deploy.json: name the context, so a deploy never goes to whatever "
-                   "cluster happens to be current")
+        out.append(
+            "cluster.kubeContext is empty in deploy.json: name the context, so a deploy never goes to whatever "
+            "cluster happens to be current"
+        )
     if not c.get("chart") or not (ROOT / c.get("chart", "")).is_dir():
         out.append(f"cluster.chart: no chart at {c.get('chart') or '(empty)'}")
     image, domains = c.get("image", {}), c.get("domains", {})
-    hosts = [domains.get("primary", ""), *domains.get("redirects", []), _host(image.get("repository", "")),
-             _host(c.get("health", ""))]
+    hosts = [
+        domains.get("primary", ""),
+        *domains.get("redirects", []),
+        _host(image.get("repository", "")),
+        _host(c.get("health", "")),
+    ]
     if not domains.get("primary"):
         out.append("cluster.domains.primary is empty in deploy.json")
     if not image.get("repository"):
         out.append("cluster.image.repository is empty in deploy.json")
     if any(h and _EXAMPLE.search(h) for h in hosts):
-        out.append("deploy.json still holds the example settings (example.org and friends): fill in the product's "
-                   "domains, image repository and health URL")
+        out.append(
+            "deploy.json still holds the example settings (example.org and friends): fill in the product's "
+            "domains, image repository and health URL"
+        )
     parts = image.get("parts", {})
     if not parts:
         out.append("cluster.image.parts is empty: name the parts to build (backend, frontend) and their build folders")
@@ -112,7 +122,9 @@ def env_stops(env: dict[str, str] | None, config: dict) -> list[str]:
     e = _c(config).get("env", {})
     name = Path(e.get("file", ".env.production")).name
     if env is None:
-        return [f"{name} is missing: copy {e.get('example', '.env.production.example')} and fill it in (never commit it)"]
+        return [
+            f"{name} is missing: copy {e.get('example', '.env.production.example')} and fill it in (never commit it)"
+        ]
     out = [f"{k} is empty in {name}" for k in e.get("required", []) if not env.get(k, "").strip()]
     for key, rule in e.get("rules", {}).items():
         value = env.get(key, "")
@@ -202,50 +214,77 @@ def find_kubeconfig(root: Path, environ: dict[str, str], config: dict) -> Path |
     """KUBECONFIG, else cluster.kubeconfig (relative to the repository), else ~/.kube/config. Found, never read."""
     configured = _c(config).get("kubeconfig", "")
     home = environ.get("HOME", "")
-    candidates = [environ.get("KUBECONFIG", ""), str(root / configured) if configured else "",
-                  str(Path(home) / ".kube" / "config") if home else ""]
+    candidates = [
+        environ.get("KUBECONFIG", ""),
+        str(root / configured) if configured else "",
+        str(Path(home) / ".kube" / "config") if home else "",
+    ]
     return next((Path(c) for c in candidates if c and Path(c).is_file()), None)
 
 
-def render_plan(env: dict[str, str] | None, config: dict, version: str, commit: str, kubeconfig: str | None,
-                terraform: bool) -> str:
+def render_plan(
+    env: dict[str, str] | None, config: dict, version: str, commit: str, kubeconfig: str | None, terraform: bool
+) -> str:
     c = _c(config)
     ns, release, ctx = c.get("namespace", "?"), c.get("release", "?"), c.get("kubeContext", "?")
     committed = not commit_stops(commit)
     tag = image_version(version, commit) if committed else f"{version}-<commit>"
-    lines = [(f"Cluster deploy of {config.get('product', release)} {version} (commit {commit[:8] if committed else commit}) "
-             f"to context {ctx}, "
-             f"namespace {ns}"), "", "Steps, after the release gate:"]
+    lines = [
+        (
+            f"Cluster deploy of {config.get('product', release)} {version} (commit {commit[:8] if committed else commit}) "
+            f"to context {ctx}, "
+            f"namespace {ns}"
+        ),
+        "",
+        "Steps, after the release gate:",
+    ]
     pull = c.get("pullSecret", {})
     if terraform:
-        lines += [(f"  terraform plan in {c.get('terraform')} (namespace {ns}, pull secret {pull.get('name')}, "
-                  "default-deny NetworkPolicy, ResourceQuota, LimitRange; private variables file)"),
-                  "  your yes (y/N), then:",
-                  "  terraform apply of exactly that plan"]
+        lines += [
+            (
+                f"  terraform plan in {c.get('terraform')} (namespace {ns}, pull secret {pull.get('name')}, "
+                "default-deny NetworkPolicy, ResourceQuota, LimitRange; private variables file)"
+            ),
+            "  your yes (y/N), then:",
+            "  terraform apply of exactly that plan",
+        ]
     else:
-        lines += [f"  skipped: terraform not installed ({c.get('terraform')} is not applied)", "  your yes (y/N), then:"]
+        lines += [
+            f"  skipped: terraform not installed ({c.get('terraform')} is not applied)",
+            "  your yes (y/N), then:",
+        ]
     try:
         for _, image, folder in images(config, tag):
-            lines.append(f"  docker buildx build --platform {c['image'].get('platform', 'linux/amd64')} --push -t "
-                         f"{image} {folder}")
+            lines.append(
+                f"  docker buildx build --platform {c['image'].get('platform', 'linux/amd64')} --push -t "
+                f"{image} {folder}"
+            )
     except KeyError:
         lines.append("  (no images: cluster.image is incomplete)")
     if not terraform:
         lines.append(f"  namespace {ns} (created if missing)")
         if pull.get("sourceNamespace"):
-            lines.append(f"  pull secret {pull.get('name')} (copied from namespace {pull['sourceNamespace']} when missing)")
+            lines.append(
+                f"  pull secret {pull.get('name')} (copied from namespace {pull['sourceNamespace']} when missing)"
+            )
         else:
-            lines.append(f"  pull secret {pull.get('name')} must already be in namespace {ns} (or set "
-                         "cluster.pullSecret.sourceNamespace, or install terraform)")
+            lines.append(
+                f"  pull secret {pull.get('name')} must already be in namespace {ns} (or set "
+                "cluster.pullSecret.sourceNamespace, or install terraform)"
+            )
     parts = [p for p in PARTS if p in c.get("image", {}).get("parts", {})]
-    lines += [(f"  helm upgrade --install {release} {c.get('chart')} --namespace {ns} --kube-context {ctx} "
-              "-f <private values, mode 600, removed afterwards>"),
-              f"  kubectl -n {ns} rollout status " + " and ".join(f"deployment/{release}-{p}" for p in parts),
-              f"  curl {c.get('health')}",
-              "", f"kubeconfig: {kubeconfig}" if kubeconfig else "kubeconfig: none found"]
+    lines += [
+        (
+            f"  helm upgrade --install {release} {c.get('chart')} --namespace {ns} --kube-context {ctx} "
+            "-f <private values, mode 600, removed afterwards>"
+        ),
+        f"  kubectl -n {ns} rollout status " + " and ".join(f"deployment/{release}-{p}" for p in parts),
+        f"  curl {c.get('health')}",
+        "",
+        f"kubeconfig: {kubeconfig}" if kubeconfig else "kubeconfig: none found",
+    ]
     found = stops(env, config) + commit_stops(commit)
-    found += ([] if kubeconfig else [("no kubeconfig found: set KUBECONFIG or cluster.kubeconfig in "
-                                                         "deploy.json")])
+    found += [] if kubeconfig else [("no kubeconfig found: set KUBECONFIG or cluster.kubeconfig in deploy.json")]
     if found:
         lines += ["", "Stops:"] + [f"  - {s}" for s in found]
         lines += ["", "Not deploying: nothing in the registry or the cluster is changed."]
@@ -257,13 +296,20 @@ def render_plan(env: dict[str, str] | None, config: dict, version: str, commit: 
 def render_shell(config: dict, kubeconfig: str | None) -> str:
     c = _c(config)
     pull = c.get("pullSecret", {})
-    pairs = {"CP_PRODUCT": config.get("product", c.get("release", "")), "CP_RELEASE": c.get("release", ""),
-             "CP_NAMESPACE": c.get("namespace", ""), "CP_CONTEXT": c.get("kubeContext", ""),
-             "CP_KUBECONFIG": kubeconfig or "", "CP_CHART": c.get("chart", ""),
-             "CP_PARTS": " ".join(p for p in PARTS if p in c.get("image", {}).get("parts", {})),
-             "CP_PLATFORM": c.get("image", {}).get("platform", "linux/amd64"), "CP_HEALTH": c.get("health", ""),
-             "CP_PULL_SECRET": pull.get("name", ""), "CP_PULL_SOURCE": pull.get("sourceNamespace", ""),
-             "CP_TERRAFORM": c.get("terraform", "")}
+    pairs = {
+        "CP_PRODUCT": config.get("product", c.get("release", "")),
+        "CP_RELEASE": c.get("release", ""),
+        "CP_NAMESPACE": c.get("namespace", ""),
+        "CP_CONTEXT": c.get("kubeContext", ""),
+        "CP_KUBECONFIG": kubeconfig or "",
+        "CP_CHART": c.get("chart", ""),
+        "CP_PARTS": " ".join(p for p in PARTS if p in c.get("image", {}).get("parts", {})),
+        "CP_PLATFORM": c.get("image", {}).get("platform", "linux/amd64"),
+        "CP_HEALTH": c.get("health", ""),
+        "CP_PULL_SECRET": pull.get("name", ""),
+        "CP_PULL_SOURCE": pull.get("sourceNamespace", ""),
+        "CP_TERRAFORM": c.get("terraform", ""),
+    }
     return "\n".join(f"{k}={shlex.quote(v)}" for k, v in pairs.items())
 
 
@@ -302,5 +348,9 @@ def main(argv: list[str]) -> int:
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import project
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
+
+    sys.stdout, sys.stderr = (
+        project.Speaking(sys.stdout),
+        project.Speaking(sys.stderr),
+    )  # F-04: the names a person can type
     sys.exit(main(sys.argv[1:]))

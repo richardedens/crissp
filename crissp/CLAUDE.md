@@ -38,21 +38,24 @@ instead of reading the backlog files; write findings, decisions, epics, features
 | `crissp/check.sh --plan` | Shows what changed since the last green state, what it would run and how long |
 | `crissp/check.sh` | Runs only what the changes can affect (`crissp/testsuite/lib/impact.py`, from `suites.json`), then moves the release certificate to this commit |
 | `crissp/check-all.sh` | The full run: every step below, plus the CVE audit of the pinned tools |
-| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`; this project's dashboard is reused, another project's is left alone and the next free port taken): the Tests dashboard, the backlog board (with how it moved), the UX suite, `/workers` (the run spread over this machine, live; never runs a test) and `/activity` (what Claude's sessions and their agents do now), one top bar on every page |
+| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`; this project's dashboard is reused, another project's is left alone and the next free port taken): `/stages` (where the work is in the six stages, with Ask Claude and Ask Vibe), the Tests dashboard, the backlog board (with how it moved), the UX suite, `/workers` (the run spread over this machine, live; never runs a test) and `/activity` (what Claude's sessions and their agents do now), one top bar on every page |
 
 This project's steps (`crissp/testsuite/suites.json`):
 
 - `tools`: the testsuite's, uxsuite's and crissp tool's own tests, held at **100% lines and branches**, spread over
   the workers this machine has (`parallel`: on a 16-CPU Mac 15 workers, about 11 s instead of 37 s).
 - `gate`: the coverage gate (coverage only goes up).
-- `python-lint`: the pinned ruff over this repository's Python (`src/`, `crissp/`, `site/`), configured in `pyproject.toml`
-  (`[tool.ruff]`).
+- `python-lint`: `crissp/testsuite/lint/python_lint.py`, over this repository's Python (`src/`, `crissp/`, `site/`): the
+  pinned ruff with the rules in `pyproject.toml` (`[tool.ruff]`) and its layout (`ruff format --check`; git blame skips
+  the one layout commit, `.git-blame-ignore-revs`), an import scan that holds the engine to the standard
+  library, and pylint's duplicate-code check (pinned in `crissp/testsuite/lint/requirements.txt`, `[tool.pylint]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
-- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script and ESLint on every tracked
-  JavaScript file (the look, the dashboard, the uxsuite's page). Dev-only tools, pinned in `crissp/testsuite/lint/`
-  (`requirements.txt` for shellcheck-py, `package.json` and its lock for ESLint) and never in the wheel; it needs uv
-  and Node.js (20 or newer), and says FAILED, never a silent pass, without them.
+- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script, ESLint on every tracked
+  JavaScript file (the look, the dashboard, the uxsuite's page) and stylelint (its recommended rules) on every tracked
+  CSS file. Dev-only tools, pinned in `crissp/testsuite/lint/` (`requirements.txt` for shellcheck-py, `package.json`
+  and its lock for ESLint and stylelint) and never in the wheel; it needs uv and Node.js (20 or newer), and says
+  FAILED, never a silent pass, without them.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
 - `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that
@@ -72,7 +75,7 @@ What `crissp/check.sh` runs per change:
 - `CHANGELOG.md`/`VERSION` → a file check;
 - every part below → also secrets, and its code (everything that runs tools or package) → sast and quality;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
-  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `ux.sh`,
+  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `uxsuite/measure.js`, `ux.sh`,
   `site/`, `testsuite/frontend-lint/`) → lint instead of python-lint;
 - `crissp/testsuite/lint/` → lint;
 - `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`; `deploy.sh` and `deploy/check.sh` → lint instead);
@@ -149,6 +152,23 @@ What `crissp/check.sh` runs per change:
   accepted work moves to `crissp/backlog/done/`.
 - New observations go to FINDINGS.md right away (`F-next | where seen | what | goes to`).
 
+## The six stages
+
+The work moves through six stages, the agentic SDLC (CRISSP.md, *The six stages*): **Discover** (the UX team walks the
+product and finds what its users need) → **Plan** (findings and approved needs become PBIs, choices become decisions)
+→ **Build** (the next PBI, test-first) → **Verify** (`crissp/check.sh`) → **Review** (what waits for the product
+owner) → **Release** (the release notes; the product owner tags). The crissp tool `stage` says where the work is,
+read from the backlog, the release certificate, git and the UX suite; the Stages page of the dashboard (`crissp
+dashboard`, `/stages`) shows the same, with Ask Claude and Ask Vibe per stage.
+
+- **At the start of a session, and on every `<!-- CRISSP … -->` prompt** (bringing the project in, filling a block):
+  call `stage`, open with the stage the work is in and why, in a sentence or two, and offer the help for that stage;
+  for example, when Discover is not set up yet, offer to set up the UX suite with the product owner.
+- **"crissp: help me with <stage>"** (what Ask Claude and Ask Vibe start): call `stage` with that stage and do what it
+  says.
+- Mistral Vibe works the same: its crissp tools (`.vibe/config.toml`) include `stage`.
+- Helping with a stage never pushes, tags, publishes or deploys, and never moves work to done.
+
 ## Sessions that stay small
 
 Every step Claude takes resends the whole conversation so far, so a long session costs more with every step; the fixed
@@ -163,8 +183,18 @@ context (this agreement, the tools) is small. Keeping sessions short saves the m
   history for the rest of the session.
 - **Agents on separate parts**, each briefed narrowly, so they do not each rediscover the same files.
 - **The lighter model and effort for routine work** (release notes, small fixes), the strongest for design and hard bugs.
-- The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
-  fresh.
+- The Activity page (`crissp dashboard`, `/activity`) shows each session's history, Claude Code's and Vibe sessions too;
+  past 300k tokens it says to start fresh.
+
+The same in **Mistral Vibe** (the same habits, its own commands):
+
+- A fresh session per item: `/clear` in the terminal, or a new session in the desktop app; `/compact <what to keep>`
+  in the middle of a long item. Vibe compacts by itself at `auto_compact_threshold` (400k tokens unless set lower in
+  `~/.vibe/config.toml`): start fresh before that, a summary loses what a new session asks for again.
+- Heavy output in a subagent: the `task` tool starts one that reports text (the `explore` agent for searching the
+  code, another for a browser check and its screenshots), so its files and images stay out of the main session.
+- The crissp tools come from `.vibe/config.toml` (crissp repair writes it for this machine): `brief` and `backlog`
+  instead of reading the backlog files; restart Vibe after a change to it.
 
 ## Working with the product owner
 
