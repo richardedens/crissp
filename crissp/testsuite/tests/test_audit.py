@@ -133,6 +133,12 @@ def test_the_images_are_every_one_the_dockerfiles_compose_and_chart_name(tmp_pat
     assert audit.own_images(tmp_path, CONF) == ["example/shop:backend-0.1.0", "example/shop:frontend-0.1.0"]
 
 
+@pytest.fixture(autouse=True)
+def pinned(monkeypatch):
+    """The pinned scanners (lib/tools.py), stood in: never a download in a test."""
+    monkeypatch.setattr(audit, "binary", lambda name: f"/cache/tools/{name}")
+
+
 class Runner:
     """The scanners, stood in: answers per command name; records every call."""
 
@@ -194,6 +200,30 @@ def test_a_clean_run_scans_everything_and_passes(repo):
     assert "--no-deps" in pip and "--disable-pip" in pip and "--format json" in pip
     assert report["not_scanned"] == []
     assert all("--exit-code" not in c for c in commands)  # the verdict is ours, from the JSON
+
+
+def test_trivy_is_the_pinned_one_never_the_one_on_the_path(repo):
+    runner = Runner(CLEAN)
+    audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf=CONF)
+    trivy = [argv for argv, _ in runner.calls if "trivy" in " ".join(argv)]
+    assert trivy and all(argv[0] == "/cache/tools/trivy" for argv in trivy)
+
+
+def test_a_trivy_that_cannot_be_had_is_a_problem_and_the_rest_still_scans(repo, monkeypatch):
+    def refused(name):
+        raise audit.tools.ToolError("trivy_0.76.2_Linux-64bit.tar.gz: the checksum differs")
+
+    monkeypatch.setattr(audit, "binary", refused)
+    runner = Runner(CLEAN)
+    report = audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf=CONF)
+    assert report["problems"] == ["trivy: trivy_0.76.2_Linux-64bit.tar.gz: the checksum differs"]
+    assert report["scanned"] == ["pip-audit app/backend/requirements.txt", "npm audit app/frontend"]
+
+
+def test_the_pinned_tool_comes_from_lib_tools(monkeypatch, tmp_path):
+    monkeypatch.undo()
+    monkeypatch.setattr(audit.tools, "ensure", lambda name, env: tmp_path / name)
+    assert audit.binary("trivy") == str(tmp_path / "trivy")
 
 
 def test_findings_block_and_say_what_to_do(repo):

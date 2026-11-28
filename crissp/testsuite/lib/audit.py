@@ -10,7 +10,8 @@ The audit step runs the scanners the project names (crissp/testsuite/suites.json
              values), scanned with trivy image together with every Dockerfile's FROM. own_images: {values, parts} the
              chart's own images, named as not scanned yet (they need a build). High and critical block when a fix
              exists (vulnerabilities) or the check fails (misconfigurations); the rest is listed.
-A scanner that cannot run is a problem, never a pass. crissp/testsuite/accepted-risks.json accepts a finding for at most
+trivy is the pinned one (lib/tools.py), never whatever a machine has on its PATH. A scanner that cannot run is a
+problem, never a pass. crissp/testsuite/accepted-risks.json accepts a finding for at most
 90 days, with why and by whom; an expired or incomplete acceptance is a problem and accepts nothing.
 
     python3 crissp/testsuite/lib/audit.py run     scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
@@ -18,6 +19,7 @@ A scanner that cannot run is a problem, never a pass. crissp/testsuite/accepted-
 
 import datetime
 import json
+import os
 import re
 import subprocess
 import sys
@@ -26,12 +28,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import project  # noqa: E402
+import tools  # noqa: E402
 
 BLOCKING = ("CRITICAL", "HIGH")
 MAX_DAYS = 90
 NEEDED = ("id", "package", "why", "by", "since", "until")
 PIP_AUDIT = "pip-audit==2.10.1"
 PYTHON = "3.14"  # what pip-audit resolves for, unless the project names another
+
+
+def binary(name: str) -> str:
+    """The pinned scanner (lib/tools.py): fetched once, checksum-checked, never the one on the PATH."""
+    return str(tools.ensure(name, dict(os.environ)))
 
 
 def today() -> datetime.date:
@@ -190,14 +198,22 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         else:
             problems.append(f"npm audit {app}: no package-lock.json to audit")
 
-    def trivy(sub: str) -> list[str]:
-        return ["trivy", sub, "--quiet"]
+    trivy_scans = [*conf.get("fs", []), *dockerfiles(root, conf), *conf.get("config", []), *images(root, conf)]
+    trivy_bin = None
+    if trivy_scans:
+        try:
+            trivy_bin = binary("trivy")
+        except tools.ToolError as e:
+            problems.append(f"trivy: {e}")
 
-    for app in conf.get("fs", []):
+    def trivy(sub: str) -> list[str]:
+        return [trivy_bin, sub, "--quiet"]
+
+    for app in conf.get("fs", []) if trivy_bin else []:
         scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
-    for target in [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)), *conf.get("config", [])]:
+    for target in [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)), *conf.get("config", [])] if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
-    for image in images(root, conf):
+    for image in images(root, conf) if trivy_bin else []:
         scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
     if not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")

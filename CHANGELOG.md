@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The scanners are pinned, and checked before they run (F-42).** The audit no longer runs whatever `trivy` a machine
+  has on its `PATH`: crissp fetches trivy 0.76.2 (and, for the new secrets step, gitleaks 8.30.1) once from the
+  release, checks it against the SHA-256 crissp ships, and keeps it in its cache (`CRISSP_CACHE`, else
+  `~/.cache/crissp`). A download that differs is refused. Linux and macOS, x86_64 and arm64; on Windows the guards
+  run in WSL 2.
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`: `npm run --silent lint` in `app/frontend`, there once `app/frontend/package.json` is, and run by
   `crissp check` for every change under `app/frontend/`. The linter is the frontend's own `lint` script (ESLint,
