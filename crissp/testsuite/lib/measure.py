@@ -26,15 +26,16 @@ import statistics
 import subprocess
 import sys
 from collections import Counter
+from itertools import pairwise
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import sessionview as sv  # noqa: E402  (the transcripts, the session pages, the look)
+import sessionview as sv
 
 ROOT = sv.ROOT  # the project (CRISSP_ROOT, or the current directory)
 BACKLOG = ("crissp/backlog", "crissp/backlog", "backlog")  # where the backlog is, and where it was before
 LONG = 300_000  # a history this long is a long history
-ITEM = re.compile(r"^### (E\d+-\d+) · .+?\[(todo|doing|review|done|parked)\]", re.M)
+ITEM = re.compile(r"^### (E\d+-\d+) · .+?\[(todo|doing|review|done|parked)\]", re.MULTILINE)
 COMMIT_ITEM = re.compile(r"^((?:E\d+-\d+)|(?:F-\d+)):")
 
 
@@ -88,7 +89,7 @@ def requests_of(path: Path, repo: Path) -> list[dict]:
         q["start"] = trips[0]["history"] if trips else 0
         q["end"] = trips[-1]["history"] if trips else 0
         grew: Counter = Counter()
-        for a, b in zip(trips, trips[1:]):
+        for a, b in pairwise(trips):
             grew[" + ".join(a["tools"]) or "Claude's reply"] += b["history"] - a["history"]
         q["grew_by"] = {k: v for k, v in grew.most_common() if v > 0}
         q["compacted"] = any(v < 0 for v in grew.values())
@@ -99,7 +100,7 @@ def requests_of(path: Path, repo: Path) -> list[dict]:
 def git(root: Path, *args: str) -> str:
     """git's output as text, whatever an old commit holds (F-16): UTF-8, else Windows' cp1252 (a file saved there keeps its
     · and é), and a byte that is neither becomes U+FFFD. Never the locale's encoding, never an error."""
-    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True)
+    done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False)
     if done.returncode:
         return ""
     try:
@@ -227,13 +228,13 @@ def recommendations(qs: list[dict], items: dict[str, list[str]], listed: list[di
     if long:
         cost = sum(q["tokens"] for q in long)
         out.append(("Start a new session for each feature or question.",
-                    f"{len(long)} of {len(timed)} requests carried a history longer than {words(LONG)} tokens into "
-                    f"Claude; together they used {words(cost)} tokens. Most of that history was about earlier work."))
+                    (f"{len(long)} of {len(timed)} requests carried a history longer than {words(LONG)} tokens into "
+                     f"Claude; together they used {words(cost)} tokens. Most of that history was about earlier work.")))
     many = [q for q in timed if len(q["trips"]) > 25]
     if many:
         out.append(("Agree the plan first, then let Claude batch its steps.",
-                    f"{len(many)} requests took more than 25 round trips (the most: {max(len(q['trips']) for q in many)}). "
-                    "Every round trip sends the whole history again."))
+                    (f"{len(many)} requests took more than 25 round trips (the most: {max(len(q['trips']) for q in many)}). "
+                     "Every round trip sends the whole history again.")))
     grew: Counter = Counter()
     for q in timed:
         for k, v in q["grew_by"].items():

@@ -6,8 +6,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[3]
 PRIVATE = {
     "598f7a741a1e3a05654d346033571fda567af6dc2bf099b34b930171519d995f",

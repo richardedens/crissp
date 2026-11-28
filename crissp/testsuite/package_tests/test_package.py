@@ -17,7 +17,7 @@ VERSION = (REPO / "VERSION").read_text().strip()
 
 
 def run(cmd, cwd, env=None, check=True):
-    done = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True)
+    done = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, check=False)
     if check and done.returncode != 0:
         raise AssertionError(f"{cmd} → {done.returncode}\n{done.stdout}\n{done.stderr}")
     return done
@@ -135,7 +135,8 @@ def test_mcp_answers_for_the_project_it_is_started_in(crissp, tmp_path):
         (project / "crissp" / "backlog" / "FINDINGS.md").read_text() + "| F-01 | here | only in this project | E1 |\n")
     hello = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                         "params": {"name": "backlog", "arguments": {"id": "F-01"}}}) + "\n"
-    out = subprocess.run([str(crissp), "mcp"], cwd=project, env=env, input=hello, capture_output=True, text=True, timeout=30)
+    out = subprocess.run([str(crissp), "mcp"], cwd=project, env=env, input=hello, capture_output=True, text=True,
+                         timeout=30, check=False)
     assert "only in this project" in out.stdout, out.stdout + out.stderr  # this project's backlog, not another's
 
 

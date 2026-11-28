@@ -23,7 +23,6 @@ its own data. The project is --root, CRISSP_ROOT, or the nearest folder upwards 
 import argparse
 import datetime
 import importlib.util
-import json
 import os
 import shutil
 import subprocess
@@ -186,7 +185,8 @@ def engine_env(root: Path, env: dict) -> dict:
 
 
 def run_script(root: Path, name: str, argv: list[str], env: dict) -> int:
-    return subprocess.run(["bash", str(ENGINE / name), *argv], cwd=root, env=engine_env(root, env)).returncode
+    return subprocess.run(["bash", str(ENGINE / name), *argv], cwd=root, env=engine_env(root, env),
+                          check=False).returncode
 
 
 def parser() -> argparse.ArgumentParser:
@@ -240,10 +240,10 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
         return run_script(root, "test.sh", ["--dashboard"], env)
     if args.command == "repair":
         return subprocess.run([sys.executable, str(ENGINE / "testsuite" / "lib" / "repair.py"), *(["--yes"] if args.yes else [])],
-                              cwd=root, env=engine_env(root, env)).returncode
+                              cwd=root, env=engine_env(root, env), check=False).returncode
     if args.command == "mcp":
         return subprocess.run([sys.executable, "-I", str(ENGINE / "tool" / "server.py")], cwd=root,
-                              env=engine_env(root, env)).returncode
+                              env=engine_env(root, env), check=False).returncode
     return run_script(root, SCRIPTS[args.command], passed, env)
 
 

@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
+import project
 
 ROOT = project.root()  # the project whose sessions these are (CRISSP_ROOT, or the current directory)
 OUT = project.results(ROOT) / "sessions"
@@ -36,8 +36,8 @@ LOOK = Path(__file__).resolve().parents[2] / "look"  # the shared look, beside t
 PROJECTS = Path.home() / ".claude" / "projects"
 
 SECRET = re.compile(r"(?i)((?:token|password|passwd|secret|api[_-]?key|bearer)[\"'=: ]+)[^\s\"']+")
-INJECTED = re.compile(r"<(system-reminder|browser_instruction|ide_[a-z_]+|command-[a-z]+)>.*?</\1>", re.S)
-ROW = re.compile(r"(?:^|(?<=['\"]))\|\s*(~~)?([FD]-\d+)(?:~~)?\s*\|([^|\n]*)\|([^|\n]*)\|", re.M)
+INJECTED = re.compile(r"<(system-reminder|browser_instruction|ide_[a-z_]+|command-[a-z]+)>.*?</\1>", re.DOTALL)
+ROW = re.compile(r"(?:^|(?<=['\"]))\|\s*(~~)?([FD]-\d+)(?:~~)?\s*\|([^|\n]*)\|([^|\n]*)\|", re.MULTILINE)
 REDIRECT = re.compile(r"(?:^|(?<=[\s;|&)]))>>?\s*([\w@-]*[./][\w./@-]*)")  # `> file`, `>> dir/f`; not 2>, =>, ->
 READING = ("cat ", "sed -n", "grep ", "ls", "head ", "tail ", "find ", "wc ", "git log", "git status", "git diff",
            "git show", "rg ")
@@ -231,7 +231,7 @@ def parse(path: Path, repo: Repo) -> list[dict]:
             continue
         text = prompt(r)
         if text and text.startswith("<task-notification>"):
-            summary = re.search(r"<summary>(.*?)</summary>", text, re.S)
+            summary = re.search(r"<summary>(.*?)</summary>", text, re.DOTALL)
             turn(r.get("timestamp"))["reports"].append(mask(summary.group(1).strip() if summary else "an agent reported"))
         elif text:
             turns.append({"ts": r.get("timestamp"), "prompt": text, "acts": [], "agents": [], "reports": [],
@@ -260,8 +260,8 @@ def parse(path: Path, repo: Repo) -> list[dict]:
 
 def when(ts: str | None) -> str:
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime("%a %d %b %H:%M")
-    except (AttributeError, ValueError):
+        return datetime.fromisoformat(ts).astimezone().strftime("%a %d %b %H:%M")
+    except (TypeError, ValueError):  # no time, or not one
         return ""
 
 

@@ -50,7 +50,7 @@ def test_every_move_from_where_to_where_when_and_in_which_commit(tmp_path):
     epic(repo, "review", "todo", encoding="cp1252")  # saved on Windows: the · is 0xb7 (F-16), still read
     commit(repo, "E1-F1-01: built; E1-F1-02 written", "2026-11-22T09:00:00+00:00")
     commit_ids = subprocess.run(["git", "-C", str(repo), "log", "--reverse", "--format=%h"], capture_output=True,
-                                text=True).stdout.split()
+                                text=True, check=False).stdout.split()
     epic(repo, "doing", "todo")  # sent back, not committed yet
     found = movement.moves(repo, TOOL)
     one = [(m["from"], m["to"], m["at"][:10], m["commit"]) for m in found["E1-F1-01"]]

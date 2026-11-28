@@ -20,7 +20,7 @@ PAGES = {ENGINE / "testsuite" / "dashboard" / "index.html": "tests",
          ENGINE / "testsuite" / "dashboard" / "workers.html": "workers",
          ENGINE / "testsuite" / "dashboard" / "activity.html": "activity",
          ENGINE / "uxsuite" / "web" / "index.html": "ux"}
-NAV = re.compile(r'<nav class="?sections"?[^>]*>(.*?)</nav>', re.S)
+NAV = re.compile(r'<nav class="?sections"?[^>]*>(.*?)</nav>', re.DOTALL)
 
 
 def nav_of(html: str) -> tuple[str, str]:
@@ -63,7 +63,7 @@ console.log(JSON.stringify({first, titled, sections: window.Look.SECTIONS.map(s 
 """
     def run(current: str, hash_: str) -> dict:
         done = subprocess.run(["node", "-e", stand_in % (current, hash_, json.dumps(str(LOOK_JS)))],
-                              capture_output=True, text=True, timeout=30)
+                              capture_output=True, text=True, timeout=30, check=False)
         assert done.returncode == 0, done.stderr
         return json.loads(done.stdout)
 
@@ -85,10 +85,10 @@ def test_a_page_s_own_tabs_get_a_row_of_their_own_on_one_line():
     """E3-F1-01, found in review: with six sections the Tests page's tabs wrapped (1280, 1440 wide) or were cut off.
     Row one is the same on every page (brand, sections, theme); a page's own tabs are row two, scrolling when narrow."""
     css = (ENGINE / "look" / "look.css").read_text(encoding="utf-8")
-    top = re.search(r"^\.top \{([^}]*)\}", css, re.M).group(1)
-    tabs = re.search(r"^\.tabs \{([^}]*)\}", css, re.M).group(1)
+    top = re.search(r"^\.top \{([^}]*)\}", css, re.MULTILINE).group(1)
+    tabs = re.search(r"^\.tabs \{([^}]*)\}", css, re.MULTILINE).group(1)
     assert "flex-wrap: wrap" in top
     assert "flex: 1 0 100%" in tabs and "order: 3" in tabs and "flex-wrap: nowrap" in tabs and "overflow-x: auto" in tabs
-    assert re.search(r"^\.top #theme \{[^}]*margin-left: auto", css, re.M)
-    assert re.search(r"^\.brand \{[^}]*flex: 0 0 300px", css, re.M)  # the sections start at the same place on every page
-    assert re.search(r"^\.tabs button \{[^}]*white-space: nowrap", css, re.M)
+    assert re.search(r"^\.top #theme \{[^}]*margin-left: auto", css, re.MULTILINE)
+    assert re.search(r"^\.brand \{[^}]*flex: 0 0 300px", css, re.MULTILINE)  # the sections start at the same place on every page
+    assert re.search(r"^\.tabs button \{[^}]*white-space: nowrap", css, re.MULTILINE)

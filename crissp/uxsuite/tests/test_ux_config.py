@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import PERSONAS, REPO, WALK, make_product, ux_config  # noqa: E402
+from ux_kit import PERSONAS, REPO, WALK, make_product, ux_config
 
 
 def test_a_minimal_team_gets_its_defaults(tmp_path):

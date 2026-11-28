@@ -28,7 +28,7 @@ def configured(tmp_path: Path, *parts: str) -> tuple[dict, Path]:
 
 
 def test_the_testsuite_skeleton_is_a_valid_configuration(tmp_path):
-    conf, root = configured(tmp_path)
+    conf, _ = configured(tmp_path)
     assert conf["product"] == "Example"
     assert all(s["label"].startswith("CRISSP: ") for s in conf["steps"])  # what the project fills in is marked
 

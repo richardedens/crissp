@@ -19,7 +19,7 @@ EPIC_FILE = re.compile(r"^crissp/backlog/(?:done/)?E[^/]*\.md$")
 
 
 def _git(root: Path, *args: str) -> bytes | None:
-    done = subprocess.run(["git", "-C", str(root), "-c", "core.quotepath=off", *args], capture_output=True)
+    done = subprocess.run(["git", "-C", str(root), "-c", "core.quotepath=off", *args], capture_output=True, check=False)
     return done.stdout if done.returncode == 0 else None
 
 

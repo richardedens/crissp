@@ -207,10 +207,10 @@ def fix_crissp_md(root: Path) -> Repair | None:
 
 def span(text: str, heading: str) -> tuple[int, int] | None:
     """Where the section under heading lies: from its heading up to the next one (or the end); None when absent."""
-    m = re.search(rf"^{re.escape(heading)}$", text, re.M)
+    m = re.search(rf"^{re.escape(heading)}$", text, re.MULTILINE)
     if not m:
         return None
-    nxt = re.search(r"^## ", text[m.end():], re.M)
+    nxt = re.search(r"^## ", text[m.end():], re.MULTILINE)
     return m.start(), m.end() + nxt.start() if nxt else len(text)
 
 

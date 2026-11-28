@@ -29,7 +29,7 @@ def test_ruff_is_configured_in_pyproject_for_the_python_crissp_supports():
 
 
 def test_the_lint_step_runs_the_pinned_ruff_over_src_crissp_and_site():
-    pinned = re.search(r"^ruff==\S+$", (ROOT / "crissp/testsuite/requirements.txt").read_text(), re.M)
+    pinned = re.search(r"^ruff==\S+$", (ROOT / "crissp/testsuite/requirements.txt").read_text(), re.MULTILINE)
     assert pinned, "ruff is pinned with the other test tools"
     lint = _lint(_conf())
     assert lint["dir"] == "." and not lint["gate"] and not lint["full_only"]

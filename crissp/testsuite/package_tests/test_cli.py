@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from crissp import cli  # noqa: E402
+from crissp import cli
 
 
 @pytest.fixture
@@ -59,11 +59,12 @@ def test_the_engine_is_told_it_runs_as_the_crissp_command(tmp_path):
                                          (["repair", "\u2014yes"], ["--yes"]), (["repair", "\u2013yes"], ["--yes"])])
 def test_repair_runs_the_engines_repair_for_the_project(monkeypatch, tmp_path, argv, passed):
     calls = []
-    monkeypatch.setattr(cli.subprocess, "run", lambda cmd, cwd, env: calls.append((cmd, cwd, env["CRISSP_ROOT"]))
+    monkeypatch.setattr(cli.subprocess, "run", lambda cmd, cwd, env, check: calls.append((cmd, cwd, env["CRISSP_ROOT"], check))
                         or type("Done", (), {"returncode": 1})())
     monkeypatch.chdir(tmp_path)
     assert cli.main(argv, env={}) == 1
-    (cmd, cwd, root), = calls
+    (cmd, cwd, root, check), = calls
+    assert check is False  # its exit code is the answer, not an exception
     assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "repair.py"), *passed] and str(cwd) == root == str(tmp_path.resolve())
 
 
@@ -183,7 +184,7 @@ def test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_igno
     (project / ".vibe" / "cache.json").write_text("{}")
 
     def ignored(rel: str) -> bool:
-        return subprocess.run(["git", "-C", str(project), "check-ignore", "-q", rel]).returncode == 0
+        return subprocess.run(["git", "-C", str(project), "check-ignore", "-q", rel], check=False).returncode == 0
     assert not ignored(".vibe/config.toml") and ignored(".vibe/cache.json")
 
 
