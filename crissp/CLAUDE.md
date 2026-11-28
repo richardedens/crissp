@@ -55,7 +55,7 @@ This project's steps (`crissp/testsuite/suites.json`):
   and Node.js (20 or newer), and says FAILED, never a silent pass, without them.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
-- `secrets`: gitleaks (pinned) over the git history of `HEAD`; it says where a secret is, never its value. A finding that
+- `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that
   is no secret goes into `.gitleaksignore` by fingerprint, with a comment saying why.
 - `sast`: Semgrep (pinned) with crissp's own rules on `src`, `crissp` and `site`, after the rules' own tests
   (`crissp/testsuite/sast/tests`). An ERROR blocks, a WARNING is listed for review.

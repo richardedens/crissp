@@ -124,8 +124,7 @@ on a machine's `PATH` is never used. `python3 crissp/testsuite/lib/tools.py path
 
 ## Secrets (lib/audit.py secrets)
 
-`audit secrets` runs the pinned gitleaks over the git history of what is checked out (`HEAD`, not
-every branch a clone fetched; over the files when there is no git) and writes
+`audit secrets` runs the pinned gitleaks over the whole git history (over the files when there is no git) and writes
 `results/secrets.json`. A finding says where (file, line, commit) and which rule, never the value: gitleaks redacts it
 and crissp never reads it. Every finding blocks. The project's own gitleaks configuration counts, as gitleaks reads
 it: `.gitleaks.toml` (rules, allowed paths), `.gitleaksignore` (fingerprints of findings that are no secret, from
