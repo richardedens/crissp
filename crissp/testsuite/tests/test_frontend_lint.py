@@ -43,7 +43,6 @@ def test_the_toolkit_pins_every_tool_at_one_exact_version_and_its_lockfile_agree
     assert '"react/no-danger": "error"' in eslint and "react.configs" not in eslint  # React's plugin: no-danger only
 
 
-
 def test_the_project_kit_lints_css_as_crissp_lints_its_own_mistakes_not_layout():
     """F-151: the kit extended stylelint's standard set: about 7,800 findings in one project's hand-written CSS, nearly
     all layout (one declaration per line, empty lines before rules) or descending specificity. Now it holds the rules
@@ -75,18 +74,51 @@ def test_a_project_that_uses_the_react_compiler_says_so_and_gets_its_rules(tmp_p
 
 
 class Npm:
-    """Stand-in for npm and the two tools: records each call, and npm ci makes the binaries it would install."""
+    """Stand-in for npm and the two tools: records each call (without its report file), npm ci makes the binaries it
+    would install, and ESLint and stylelint write a JSON report as the real ones do, with the findings `found` names
+    per file ({file: [rule, …]}). A tool in `fail` crashes: an exit code that means it did not run, and no report."""
 
-    def __init__(self, fail: set[str] = frozenset()):
-        self.calls, self.envs, self.fail = [], [], fail
+    def __init__(self, fail: set[str] = frozenset(), found: dict[str, list[str]] | None = None):
+        self.calls, self.envs, self.fail, self.found = [], [], fail, found or {}
 
     def __call__(self, argv: list[str], cwd: Path, env: dict | None = None) -> int:
         tool = Path(argv[0]).name
-        self.calls.append((tool, argv[1:], Path(cwd)))
+        rest = list(argv[1:])
+        out = None
+        if "--output-file" in rest:
+            i = rest.index("--output-file")
+            out = Path(rest[i + 1])
+            del rest[i : i + 2]
+        self.calls.append((tool, rest, Path(cwd)))
         self.envs.append(env)
-        if tool == "npm" and "npm" not in self.fail:
+        if tool == "npm":
+            if "npm" in self.fail:
+                return 1
             (Path(cwd) / "node_modules/.bin").mkdir(parents=True)
-        return 1 if tool in self.fail else 0
+            return 0
+        if tool in self.fail:
+            return 2 if tool == "eslint" else 78
+        files = [a for a in rest if not a.startswith("-") and (Path(cwd) / a).is_file()]
+        mine = {f: self.found.get(f, []) for f in files}
+        if tool == "eslint":
+            report = [
+                {
+                    "filePath": str(Path(cwd) / f),
+                    "messages": [{"ruleId": r, "line": 1, "column": 2, "message": "m"} for r in rules],
+                }
+                for f, rules in mine.items()
+            ]
+        else:
+            report = [
+                {
+                    "source": str(Path(cwd) / f),
+                    "warnings": [{"rule": r, "line": 3, "column": 4, "text": f"bad ({r})"} for r in rules],
+                    "invalidOptionWarnings": [],
+                }
+                for f, rules in mine.items()
+            ]
+        out.write_text(json.dumps(report))
+        return (1 if tool == "eslint" else 2) if any(mine.values()) else 0
 
 
 def lint(tmp_path: Path, npm: Npm, argv: list[str] | None = None, which=lambda name: f"/usr/bin/{name}") -> int:
@@ -114,7 +146,7 @@ STYLE = ["src/app.css"]
 
 
 def eslint_argv(place: Path, *files: str) -> list[str]:
-    return ["--config", str(place / "eslint.config.mjs"), "--max-warnings", "0", "--no-warn-ignored", *files]
+    return ["--config", str(place / "eslint.config.mjs"), "--no-warn-ignored", "--format", "json", *files]
 
 
 def stylelint_argv(place: Path, *files: str) -> list[str]:
@@ -124,6 +156,8 @@ def stylelint_argv(place: Path, *files: str) -> list[str]:
         "--config-basedir",
         str(place),
         "--allow-empty-input",
+        "--formatter",
+        "json",
         *files,
     ]
 
@@ -192,19 +226,43 @@ def test_many_files_are_linted_in_batches_and_one_red_batch_makes_the_step_red(t
         [*(f"src/file-{n:02}.js" for n in range(30)), *SOURCE]
     )
 
-    class RedOnce(Npm):
-        def __call__(self, argv, cwd, env=None):
-            code = super().__call__(argv, cwd, env)
-            return 1 if Path(argv[0]).name == "eslint" and len(self.calls) == 2 else code
-
-    assert lint(tmp_path, RedOnce()) == 1
+    npm = Npm(found={"src/file-29.js": ["no-undef"]})  # in the last batch: every batch's findings count
+    assert lint(tmp_path, npm) == 1
 
 
-def test_a_red_eslint_still_runs_stylelint_and_the_step_is_red(tmp_path, frontend):
-    npm = Npm(fail={"eslint"})
+def test_a_red_eslint_still_runs_stylelint_and_the_step_is_red(tmp_path, frontend, capsys):
+    npm = Npm(found={"src/main.tsx": ["no-undef"]})
     assert lint(tmp_path, npm) == 1
     assert [tool for tool, _, _ in npm.calls] == ["npm", "eslint", "stylelint"]
-    assert lint(tmp_path, Npm(fail={"stylelint"})) == 1
+    out = capsys.readouterr().out
+    assert "src/main.tsx:1:2: error: m [no-undef]\n" in out and "Found 1 error." in out
+    assert "frontend_lint --baseline" in out  # how a project with code switches the lint on
+    assert lint(tmp_path, Npm(found={"src/app.css": ["block-no-empty", "block-no-empty"]})) == 1
+    assert "src/app.css:3:4: error: bad [block-no-empty]\n" in capsys.readouterr().out  # the rule said once
+
+
+def test_a_tool_that_cannot_run_is_red_never_a_pass(tmp_path, frontend, capsys):
+    """A crash (a broken config, a missing plugin) writes no report: red, with the tool named, never green."""
+    for tool in ("eslint", "stylelint"):
+        npm = Npm(fail={tool})
+        assert lint(tmp_path, npm) == 1
+        assert [t for t, _, _ in npm.calls][-2:] == ["eslint", "stylelint"]  # the other still runs
+        assert f"{tool} could not run (exit {2 if tool == 'eslint' else 78})" in capsys.readouterr().out
+
+
+def test_stylelint_s_invalid_options_are_a_problem(tmp_path, frontend, capsys):
+    class Broken(Npm):
+        def __call__(self, argv, cwd, env=None):
+            code = super().__call__(argv, cwd, env)
+            if Path(argv[0]).name == "stylelint":
+                out = Path(argv[argv.index("--output-file") + 1])
+                out.write_text(
+                    json.dumps([{"source": "x.css", "warnings": [], "invalidOptionWarnings": [{"text": "bad"}]}])
+                )
+            return code
+
+    assert lint(tmp_path, Broken()) == 1
+    assert "frontend-lint: stylelint: bad" in capsys.readouterr().out
 
 
 def test_a_failed_install_is_tried_again_next_time(tmp_path, frontend, capsys):
@@ -251,9 +309,13 @@ def test_with_no_folder_it_lints_the_current_one(tmp_path, frontend):
     assert npm.calls[-1][2] == frontend
 
 
-def test_the_real_runner_runs_a_command_in_its_folder(tmp_path):
+def test_the_real_runner_runs_a_command_in_its_folder(tmp_path, capfd):
     assert frontend_lint.call([sys.executable, "-c", "import os; open('here', 'w')"], tmp_path) == 0
     assert (tmp_path / "here").exists()
+    report = [sys.executable, "-c", "print('report'); import sys; print('why', file=sys.stderr)", "--output-file", "x"]
+    assert frontend_lint.call(report, tmp_path) == 0
+    out, err = capfd.readouterr()
+    assert "report" not in out and "why" in err  # the report is in its file; why a tool failed stays in sight
 
 
 def test_the_step_helper_runs_it_with_the_pinned_python(tmp_path):
@@ -269,3 +331,8 @@ def test_the_step_helper_runs_it_with_the_pinned_python(tmp_path):
         env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")},
     )
     assert done.stdout == f"py {LIB / 'frontend_lint.py'}\n"
+
+
+def test_a_reported_path_outside_the_folder_is_kept_as_it_is(tmp_path):
+    found, _ = frontend_lint.from_eslint([{"filePath": "/elsewhere/a.js", "messages": [{"ruleId": None}]}], tmp_path)
+    assert found == [{"file": "/elsewhere/a.js", "line": 0, "column": 0, "rule": "parse-error", "message": ""}]

@@ -15,6 +15,11 @@ What 0.2.0 showed on a real project: the frontend lint now works on a project th
   CSS does (no layout rules, no `no-descending-specificity`), and React hooks are held to `rules-of-hooks` and
   `exhaustive-deps`. A project that uses the React Compiler gets the compiler's rules too: `frontend_lint
   --react-compiler` in its `frontend-lint` step.
+- **Switch the frontend lint on in a project that already has code (F-152).** `frontend_lint --baseline`
+  writes what the lint finds now into `crissp/testsuite/lint-baseline.json` (commit it). From then on the findings
+  only go down, like coverage only goes up: an unchanged file may keep its count of each rule, a new or changed file
+  must be clean, and a green run with fewer findings shrinks the baseline. Without a baseline every finding blocks,
+  as before.
 
 ## 0.2.0 — 2026-11-28
 

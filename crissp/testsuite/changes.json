@@ -2104,6 +2104,23 @@
     "test_frontend_lint.py::test_react_hooks_are_held_to_their_two_rules_and_the_compiler_rules_are_opt_in",
     "test_frontend_lint.py::test_a_project_that_uses_the_react_compiler_says_so_and_gets_its_rules"
    ]
+  },
+  {
+   "id": "lint-ratchet",
+   "title": "F-152: the lint ratchet, findings only go down",
+   "problem": "A project with code could not switch the frontend lint on: every existing finding was red at once.",
+   "fix": "ESLint and stylelint write JSON reports that frontend_lint.py reads. frontend_lint --baseline writes crissp/testsuite/lint-baseline.json, per folder and file the sha256 and the count per rule. Then a count that rises in an unchanged file blocks, a new or changed file must be clean, and a green run with fewer findings shrinks the baseline; --baseline refuses a folder that has one. A tool that writes no report is red, never a pass.",
+   "sources": [
+    "crissp/testsuite/lib/lint_ratchet.py",
+    "crissp/testsuite/lib/frontend_lint.py"
+   ],
+   "tests": [
+    "test_lint_ratchet.py::test_without_a_baseline_every_finding_blocks_and_the_baseline_switches_the_lint_on",
+    "test_lint_ratchet.py::test_one_more_finding_of_a_rule_in_an_unchanged_file_blocks",
+    "test_lint_ratchet.py::test_a_new_or_changed_file_is_clean",
+    "test_lint_ratchet.py::test_fewer_findings_shrink_the_baseline_and_it_never_grows_back",
+    "test_frontend_lint.py::test_a_tool_that_cannot_run_is_red_never_a_pass"
+   ]
   }
  ],
  "gaps": [
