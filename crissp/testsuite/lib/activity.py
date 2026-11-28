@@ -84,7 +84,7 @@ def session(path: Path, root: Path, now: float) -> dict:
                            "type": info.get("agentType") or given.get("subagent_type", "agent"), "running": running,
                            **step})
     old = [a for a in agents if not a["running"] and a["since"]
-           and now - datetime.fromisoformat(a["since"].replace("Z", "+00:00")).timestamp() > FINISHED_S]
+           and now - datetime.fromisoformat(a["since"]).timestamp() > FINISHED_S]
     agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
     sized = [r for r in main if r.get("type") == "assistant" and (r.get("message") or {}).get("usage")]
     history = measure.history(sized[-1]) if sized else 0

@@ -9,6 +9,9 @@
 #       then combine): the gate sees the same numbers on every machine. With WORKERS above 1 (a parallel step, lib/run.py:
 #       what this machine gives it) the tests spread over that many pytest-xdist workers, a file on one (--dist loadfile).
 #       With CRISSP_PLUGINS (lib/run.py) it loads crissp_timing: every test as it finishes, per worker, for /workers.
+#   frontend_lint [<folder>]
+#       the frontend linted with crissp's own pinned tools (lib/frontend_lint.py: ESLint and stylelint, installed once
+#       into crissp's cache, never into the project), in the step's folder.
 py() {
   if [ -n "${PY:-}" ]; then "$PY" "$@"; else uv run --quiet --no-project --with-requirements "$TOOLS" python "$@"; fi
 }
@@ -29,4 +32,7 @@ covered() {
   py -m coverage json --rcfile="$rc" -q -o "$COVERAGE_JSON" || status=1  # also on red: the gate says what dropped
   py -m coverage report --rcfile="$rc" --show-missing ${COVERAGE_FAIL_UNDER:+--fail-under="$COVERAGE_FAIL_UNDER"} || status=1
   return $status
+}
+frontend_lint() {
+  py "$(dirname "${BASH_SOURCE[0]}")/frontend_lint.py" "$@"
 }

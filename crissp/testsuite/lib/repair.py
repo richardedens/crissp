@@ -21,6 +21,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
                so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
     vibe-pin   .vibe/config.toml pins an older crissp than the one that repairs (F-27): the pin moves, as in .mcp.json
+    git-hook   .githooks/pre-commit is not there, or core.hooksPath is not set (F-50): the template's hook, and
+               core.hooksPath .githooks, so git runs the lint steps before every commit; never over a core.hooksPath
+               or .git/hooks of the project's own (said instead). The framework's own checkout: only turned on
     vibe       .vibe/config.toml is not there, or the project is not trusted in Vibe's trusted_folders.toml
                (F-24; VIBE_HOME, else ~/.vibe): the config is made from the template with this crissp's pin, and the
                folder is added to the trusted list (never removed; a folder marked untrusted, or a file crissp does
@@ -44,6 +47,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import hook  # F-50: the lint before every commit, shared with crissp init
 import vibe  # F-26: Vibe's trusted folders, shared with crissp init
 
 ENGINE = Path(__file__).resolve().parents[2]  # the engine: crissp/ in the framework's checkout, crissp/engine/ installed
@@ -207,10 +211,10 @@ def fix_crissp_md(root: Path) -> Repair | None:
 
 def span(text: str, heading: str) -> tuple[int, int] | None:
     """Where the section under heading lies: from its heading up to the next one (or the end); None when absent."""
-    m = re.search(rf"^{re.escape(heading)}$", text, re.M)
+    m = re.search(rf"^{re.escape(heading)}$", text, re.MULTILINE)
     if not m:
         return None
-    nxt = re.search(r"^## ", text[m.end():], re.M)
+    nxt = re.search(r"^## ", text[m.end():], re.MULTILINE)
     return m.start(), m.end() + nxt.start() if nxt else len(text)
 
 
@@ -349,11 +353,35 @@ def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | Non
     return Repair("vibe", "; ".join(parts), do)
 
 
+def fix_hook(root: Path) -> Repair | None:
+    """F-50: .githooks/pre-commit (the template's) and core.hooksPath on it, so git lints before every commit. The
+    framework's own checkout commits its hook: there it is only turned on. Hooks of the project's own: needs()."""
+    if not (brought_in(root) or is_engine(root)):
+        return None
+    path = root / hook.HOOKS / "pre-commit"
+    make = not is_engine(root) and not path.exists()
+    on = hook.state(root) == "off"
+    if not make and not on:
+        return None
+    parts = [f"{hook.HOOKS}/pre-commit is not there → from the template (the lint steps before every commit)"] * make
+    parts += [f"core.hooksPath is not set → {hook.HOOKS} (git runs the lint before every commit)"] * on
+
+    def do() -> None:
+        if make:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(TEMPLATE / "githooks" / "pre-commit", path)
+            path.chmod(0o755)
+        if on:
+            hook.turn_on(root)
+
+    return Repair("git-hook", "; ".join(parts), do)
+
+
 def find(root: Path, version: str | None = None, home: Path | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
     return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
                         fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
-                        fix_vibe_pin(root, version), fix_vibe(root, version, home)) if r]
+                        fix_vibe_pin(root, version), fix_vibe(root, version, home), fix_hook(root)) if r]
 
 
 def committed(root: Path) -> bool:
@@ -370,6 +398,8 @@ def needs(root: Path) -> list[str]:
            for p in extras(root) if (root / "docs/ux" / p.name).exists()]
     if not (root / "crissp").is_dir():
         out.append("not brought in: no crissp/ here; crissp init brings it in")
+    if hook.needs(root):
+        out.append(hook.needs(root))
     if not committed(root):
         out.append("no commit yet: the checks test what is committed; review the diff and commit")
     if not is_engine(root) and not (root / "docker-compose.yml").exists():

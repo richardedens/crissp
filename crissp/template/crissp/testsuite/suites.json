@@ -9,8 +9,8 @@
    "run": "py -m ruff check --no-cache .", "seconds": 3, "when": "app/backend"},
   {"key": "frontend", "label": "CRISSP: the frontend's tests", "dir": "app/frontend", "run": "npm test",
    "seconds": 20, "when": "app/frontend/package.json"},
-  {"key": "frontend-lint", "label": "CRISSP: the frontend's lint (the package's lint script)", "dir": "app/frontend",
-   "run": "npm run --silent lint", "seconds": 5, "when": "app/frontend/package.json"}
+  {"key": "frontend-lint", "label": "CRISSP: the frontend's lint (ESLint and stylelint, crissp's own)",
+   "dir": "app/frontend", "run": "frontend_lint", "seconds": 10, "when": "app/frontend/package.json"}
  ],
  "paths": [
   {"match": "app/backend/", "steps": ["backend", "backend-lint"]},
@@ -18,6 +18,7 @@
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},
+  {"match": ".githooks/", "why": "what git runs before every commit (the lint steps)"},
   {"match": "*/Dockerfile", "why": "what goes into an image"},
   {"match": "*/requirements.txt", "why": "the dependencies"},
   {"match": "*/package-lock.json", "why": "the frontend's dependencies"}

@@ -216,7 +216,8 @@ def test_no_run_yet_and_no_configuration_still_show_the_machine(tmp_path, monkey
 
 def test_a_process_is_alive_only_while_it_runs():
     assert workers.alive(os.getpid())
-    done = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True)
+    done = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True,
+                          check=False)
     assert not workers.alive(int(done.stdout))
     assert not workers.alive(None) and not workers.alive("12")
 

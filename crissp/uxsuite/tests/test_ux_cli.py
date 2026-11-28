@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import REPO, ROUND, add_shots, finish, make_product, product, ux_team  # noqa: E402,F401
+from ux_kit import REPO, ROUND, add_shots, finish, make_product, product, ux_team  # noqa: F401
 
-import cli  # noqa: E402
+# isort: split
+import cli  # ux_kit put the uxsuite on sys.path
 
 
 def test_list_names_the_team_and_the_walks(product, capsys):
@@ -78,7 +79,7 @@ def _copy_suite(tmp_path) -> Path:
 
 def sh(root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run([str(root / "crissp" / "ux.sh"), *args], cwd=root, capture_output=True, text=True, timeout=60,
-                          env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""})  # the copy, never the project a run came from
+                          check=False, env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""})  # the copy, never the project a run came from
 
 
 def test_ux_sh_lists_reports_and_refuses_what_it_does_not_know(tmp_path):

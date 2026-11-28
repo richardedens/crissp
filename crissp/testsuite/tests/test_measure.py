@@ -241,9 +241,9 @@ def test_the_dashboard_names_utf_8_wherever_it_reads_or_writes_text():
     loose = []
     for name in DASHBOARD:
         for node in ast.walk(ast.parse((LIB / name).read_text(encoding="utf-8"))):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("read_text", "write_text"):
-                if not any(k.arg == "encoding" for k in node.keywords):
-                    loose.append(f"{name}:{node.lineno} {node.func.attr}")
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("read_text", "write_text") and not any(k.arg == "encoding" for k in node.keywords)):
+                loose.append(f"{name}:{node.lineno} {node.func.attr}")
     assert loose == []
 
 
@@ -251,7 +251,7 @@ def test_the_pages_build_under_a_latin_1_locale(tmp_path):
     """E2-F1-01: the sessions page under LC_ALL=en_US.ISO8859-1 (where the machine has that locale)."""
     env = {"PATH": os.environ["PATH"], "LC_ALL": "en_US.ISO8859-1", "PYTHONUTF8": "0", "HOME": str(tmp_path)}
     probe = subprocess.run([sys.executable, "-c", "import locale; print(locale.getencoding())"], env=env,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, check=False)
     if "8859" not in probe.stdout:
         pytest.skip("this machine has no Latin-1 locale")
     repo = tmp_path / "repo"
@@ -259,6 +259,6 @@ def test_the_pages_build_under_a_latin_1_locale(tmp_path):
     _session(repo, tmp_path / "p")
     done = subprocess.run([sys.executable, str(LIB / "measure.py"), "--projects", str(tmp_path / "p"), "--out",
                            str(tmp_path / "o")], cwd=repo, env={**env, "CRISSP_ROOT": str(repo)}, capture_output=True,
-                          text=True)
+                          text=True, check=False)
     assert done.returncode == 0, done.stderr
     assert "◐" in (tmp_path / "o" / "index.html").read_text(encoding="utf-8")

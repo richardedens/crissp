@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
+import project
 
 # written by the run itself: may differ between the tested and the deployed code
 GENERATED = ("crissp/testsuite/coverage-baseline.json",)

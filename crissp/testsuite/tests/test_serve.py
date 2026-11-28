@@ -128,7 +128,7 @@ def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
 def test_a_failed_rebuild_is_said_on_the_page(world):
     """F-32: the page says live while its data no longer is; the stamp carries why the data was not rebuilt."""
     root, _, _ = world
-    httpd, base, calls = _serve(world, FakeUx())
+    httpd, base, _ = _serve(world, FakeUx())
     try:
         assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == ""
         live = httpd.RequestHandlerClass.func.live
@@ -280,7 +280,7 @@ def test_main_serves_until_stopped_and_starts_the_ux_queue(monkeypatch):
 
 
 def test_workers_is_the_page_and_its_data_is_this_machine_and_this_project_s_runs(world, monkeypatch):  # E1-F1-04
-    root, engine, _ = world
+    _, engine, _ = world
     (engine / "dashboard" / "workers.html").write_text("<title>Workers</title>")
     found = {"cpus": 4, "cpu_from": "os.process_cpu_count", "memory_mb": 8192, "available_mb": 4096, "memory_from": "x"}
     monkeypatch.setattr(sv.workers, "machine", lambda: found)

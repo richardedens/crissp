@@ -36,7 +36,7 @@ GREEN = "Green: crissp/deploy.sh may go."
 
 
 def git(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
 
 
 def is_checkout(root: Path) -> bool:

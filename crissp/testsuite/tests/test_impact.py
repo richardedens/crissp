@@ -94,17 +94,23 @@ def test_a_file_name_rule_matches_the_exact_name_anywhere(shop):
     assert impact.classify("app/frontend/src/NOTES.md", conf) == ("nothing", "")
 
 
+TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python lives there: its lint comes along
+
+
 @pytest.mark.parametrize("path, steps", [
-    ("crissp/testsuite/lib/collect.py", ["tools", "gate"]), ("crissp/testsuite/tests/test_gate.py", ["tools", "gate"]),
-    ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]), ("crissp/testsuite/changes.json", ["tools", "gate"]),
-    ("crissp/uxsuite/ux_team.py", ["tools", "gate"]), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
-    ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", ["tools", "gate"]), ("crissp/look/look.css", ["tools", "gate", "lint"]),
-    ("crissp/template/crissp/uxsuite/team.json", ["tools", "gate"]), ("crissp/testsuite/accepted-risks.json", ["audit"]),
-    ("crissp/deploy/helm/app/values.yaml", ["deploy"]), ("crissp/deploy/check.sh", ["deploy", "lint"]), ("crissp/deploy.sh", ["deploy", "lint"]),
-    ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
+    ("crissp/testsuite/lib/collect.py", LINTED), ("crissp/testsuite/tests/test_gate.py", LINTED),
+    ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]), ("crissp/testsuite/changes.json", LINTED),
+    ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
+    ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", LINTED),
+    ("crissp/look/look.css", ["tools", "gate", "lint"]),
+    ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
+    ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "lint"]),
+    ("crissp/deploy.sh", ["deploy", "lint"]), ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
+    ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
+    (".githooks/pre-commit", ["tools", "gate", "lint"]),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
-    """The framework is a product of its own: its tests, its deploy template, the lint of its bash and JavaScript (F-30),
+    """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its bash and JavaScript (F-38),
     the audit of its pinned tools."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
