@@ -7,6 +7,7 @@ request under /ux): its page, what the team did and does, and the product owner'
                                    queue and what the team does now
     GET  /ux/results/shots/…       the walks' screenshots
     GET  /ux/results/proposals/…   the team's designs; their HTML in a sandbox of its own (never this origin)
+    GET  /ux/results/map/…         the map's pictures: the crawl's and the copied test screenshots (ux_map)
     POST /ux/api/verdict           {id, verdict, reason}: a verdict (ux_verdicts), and what it sets going
     POST /ux/api/request           {kind: round|proposal, walk, focus}: start it now, or queue it
     POST /ux/api/persona           {persona: {key?, name, role, device, moderator, on, brief, jobs}} or {remove: key}:
@@ -32,6 +33,7 @@ if str(HERE) not in sys.path:
 import ux_backlog  # noqa: E402
 import ux_cards  # noqa: E402
 import ux_config  # noqa: E402
+import ux_map  # noqa: E402
 import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
 
@@ -62,7 +64,7 @@ def state(suite: ux_config.Suite) -> dict:
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
             "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
             "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "verdicts": verdicts, "queue": ux_team.queue(suite),
+            "walks": walks, "map": ux_map.load(suite), "verdicts": verdicts, "queue": ux_team.queue(suite),
             "team": ux_team.state(suite, conf)}
 
 
@@ -102,7 +104,7 @@ def handle(handler, method: str, suite: ux_config.Suite | None = None) -> None:
         return _json(handler, 200, state(suite))
     if path.startswith("/ux/results/"):
         rest = path[len("/ux/results/"):]
-        return _file(handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals"))
+        return _file(handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals", suite.results / "map"))
     return _file(handler, WEB / path[len("/ux/"):], (WEB,))
 
 

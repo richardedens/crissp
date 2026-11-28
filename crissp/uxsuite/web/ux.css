@@ -92,3 +92,12 @@ dialog.viewer[open] { display: flex; flex-direction: column; }
 .viewer-body .mock { position: relative; overflow: hidden; background: #fff; }
 .viewer-body .mock iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
 @media (max-width: 800px) { .viewer-body.two { grid-template-columns: 1fr; } dialog.viewer { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; } }
+
+/* The map (E7-F3-01): areas of screen cards, a gap stands out */
+.area { margin: 18px 0; } .area h3 { margin: 0 0 8px; }
+.screens { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.screen { display: grid; gap: 6px; align-content: start; }
+.screen.gap { border-color: var(--red); }
+.screen .thumb { padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); aspect-ratio: 16 / 10; width: 100%; }
+.screen .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.screen .thumb.none { display: grid; place-items: center; }

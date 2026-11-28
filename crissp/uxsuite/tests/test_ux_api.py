@@ -17,6 +17,7 @@ from ux_kit import PROPOSAL, REPO, ROUND, add_shots, finish, product, ux_config,
 
 # isort: split
 import api  # ux_kit put the uxsuite on sys.path
+import ux_map
 
 
 @pytest.fixture
@@ -98,6 +99,13 @@ def test_the_state_holds_every_walk_with_its_rounds_designs_verdicts_and_pbi(sit
     assert p["pbi"] == "E1-F1-01" and p["verdict"]["verdict"] == "approve"
 
 
+def test_the_state_holds_the_map_once_the_product_was_mapped(site):
+    suite, base = site
+    assert json.loads(get(base + "/ux/api/state")[2])["map"] is None
+    ux_map.build(suite, ux_config.load(suite))
+    assert [s["key"] for s in json.loads(get(base + "/ux/api/state")[2])["map"]["screens"]] == ["/"]
+
+
 def test_a_broken_configuration_or_a_missing_tool_is_told_not_crashed(site):
     suite, base = site
     (suite.root / "crissp" / "tool" / "server.py").unlink()
@@ -114,6 +122,10 @@ def test_the_team_s_files_are_served_and_a_design_only_in_a_sandbox(site):
     assert code == 200 and headers["Content-Security-Policy"].startswith("sandbox allow-scripts") and b"after" in body
     code, headers, body = get(base + "/ux/results/shots/first-visit/laptop/01-the-first-screen.png")
     assert code == 200 and headers["Content-Type"] == "image/png"
+    crawl = suite.results / "map" / "crawl" / "laptop"
+    crawl.mkdir(parents=True)
+    (crawl / "01.png").write_bytes(b"\x89PNG stand-in")
+    assert get(base + "/ux/results/map/crawl/laptop/01.png")[0] == 200
     for path in ("/ux/results/decisions.jsonl", "/ux/results/proposals/first-visit/v1/proposal.json",
                  "/ux/results/../team.json", "/ux/results/queue.jsonl"):
         assert get(base + path)[0] == 404, path

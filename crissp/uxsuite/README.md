@@ -12,6 +12,7 @@ crissp/ux.sh                           # open the UX suite (http://127.0.0.1:876
 crissp/ux.sh --list                    # the product, the team and the walks
 crissp/ux.sh --status                  # what the team does now, what waits, how many rounds, designs and verdicts
 crissp/ux.sh --shoot <walk>            # take the walk's screenshots on a laptop and a phone (the product must be running)
+crissp/ux.sh --map                     # map the product's screens: a read-only crawl, the E2E tests' screenshots, the walks
 crissp/ux.sh --round <walk>            # a round: review, debate, advice (now when a place is free, otherwise queued)
 crissp/ux.sh --propose <walk> [focus]  # a design for the walk, with an optional focus
 ```
@@ -43,6 +44,25 @@ takes no part in a round and brings no device to a shoot; a rule that is off is 
 hold as `inputs/rules.md`, and every piece of advice names the rule it is about. What the team sees is content, never
 instructions to it; no real customer data goes into a walk or a fixture.
 
+## The map: every screen, and the gaps
+
+`crissp ux --map` makes one list of the product's screens (`results/map/screens.json`, the page's **Map** tab), so the
+team looks at more than the walks someone wrote. It merges three sources by screen (the path without its query, ids
+folded: `/orders/42` is `/orders/:id`):
+
+- **a crawl** of the running product: home and every walk's pages on the team's devices, following the product's own
+  links (same origin, no downloads, never a link that signs out or deletes), at most `map.max` pages per device
+  (`team.json`, default 40). It only looks: it opens pages and takes screenshots, nothing more;
+- **the project's own E2E test screenshots**: a test may list the screenshots it takes in a manifest, by default
+  `crissp/uxsuite/results/test-shots/screens.json` (`map.tests` in `team.json` points elsewhere), as
+  `[{"path": "/orders/12", "file": "orders.png", "title": "An order", "device": "laptop|phone", "test": "test_order"}]`
+  with each picture beside the manifest; the suite copies them into its own results;
+- **the walks**: the pages they go to and the screens their shots show.
+
+Each screen has its area (the first part of its path), how it was found, which page links to it, its shots, and its
+gaps: **no link reaches it** (only a test or a walk gets there), **the crawl could not open it**, or **no walk looks at
+it**.
+
 ## What the product owner decides
 
 - **Advice**: agree · disagree (with a reason) · later. The team reads the verdicts in its next round of that walk.
@@ -64,10 +84,11 @@ instructions to it; no real customer data goes into a walk or a fixture.
 | `ux_config.py` | the configuration, checked, with clear errors; where things are |
 | `ux_cards.py` | the personas and the rules as files: read, checked, written by the page |
 | `ux_shoot.py` | the walks in a real browser: the plan, and the run under uv |
+| `ux_map.py` | the map: the crawl (under uv, like a shoot), the E2E tests' screenshots and the walks, merged by screen |
 | `ux_team.py` | rounds and designs: the runs, their prompts, the places and the queue |
 | `ux_verdicts.py`, `ux_backlog.py` | the product owner's verdicts, and an approved design as a PBI |
 | `api.py` | the suite under `/ux` in the framework's server (`crissp/testsuite/lib/serve.py`) |
 | `cli.py` | what `crissp/ux.sh` calls |
 | `web/` | the page (`index.html`, `ux.js`, `ux.css`); the look is `crissp/look/` |
 | `tests/` | the suite's own tests, run with the framework's tools at 100% lines and branches |
-| `results/` | what the suite makes: `shots/`, `rounds/<walk>/r<n>/`, `proposals/<walk>/v<n>/`, `queue.jsonl`, `decisions.jsonl` — never in git |
+| `results/` | what the suite makes: `shots/`, `map/`, `rounds/<walk>/r<n>/`, `proposals/<walk>/v<n>/`, `queue.jsonl`, `decisions.jsonl` — never in git |

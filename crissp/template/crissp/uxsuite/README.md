@@ -12,11 +12,14 @@ To fill in when CRISSPifying (the `CRISSP:` hints in `team.json`):
 2. `walks/`: one file per path a person takes through the product (`goto`, `click`, `fill`, `press`, `wait`, `shot`).
    `first-visit.json` is the first.
 3. `PRINCIPLES.md`: the design principles, in the product owner's words.
+4. Optional: let the E2E tests list the screenshots they take in `results/test-shots/screens.json`
+   (`[{"path", "file", "title", "device", "test"}]`, each picture beside it); the map adds them as screens.
 
 Then:
 
 ```bash
 crissp/ux.sh --list                    # check the configuration
+crissp/ux.sh --map                     # every screen: a read-only crawl, your E2E tests' screenshots, the walks
 crissp/ux.sh --shoot first-visit       # the screenshots (the product must be running)
 crissp/ux.sh --round first-visit       # the first round
 crissp/ux.sh                           # the suite, next to the Tests dashboard

@@ -1,4 +1,4 @@
-"""The UX suite from the terminal: cli.main (list, status, round, propose, shoot) and crissp/ux.sh around it."""
+"""The UX suite from the terminal: cli.main (list, status, round, propose, shoot, map) and crissp/ux.sh around it."""
 
 import json
 import os
@@ -55,6 +55,15 @@ def test_shoot_says_what_the_browser_did(product, capsys):
         return subprocess.CompletedProcess(cmd, 0, "", "")
     assert cli.main(["shoot", "first-visit"], product, run=browser) == 0
     assert "first-visit: 0 screenshot(s)" in capsys.readouterr().out
+
+
+def test_map_says_what_the_crawl_found(product, capsys):
+    def browser(cmd, **kw):
+        (Path(cmd[-1]).parent / "crawl.json").write_text(json.dumps([{"path": "/", "title": "Home", "device": "laptop",
+                                                                       "file": "", "from": None, "links": []}]))
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    assert cli.main(["map"], product, run=browser) == 0
+    assert capsys.readouterr().out.startswith("1 screen(s) in 1 area(s), 0 gap(s)")
 
 
 def test_a_wrong_command_shows_the_help(product, capsys):

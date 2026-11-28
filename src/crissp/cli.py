@@ -12,7 +12,7 @@
     crissp check-all          the full run (crissp/check-all.sh)
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
     crissp dashboard          the Tests dashboard and the UX suite on one local server (crissp/test.sh --dashboard)
-    crissp ux [...]           the UX suite (crissp/ux.sh: --list, --status, --shoot, --round, --propose)
+    crissp ux [...]           the UX suite (crissp/ux.sh: --list, --status, --shoot, --map, --round, --propose)
     crissp repair [--yes]     say what this project has out of place (old steps on src/, a UX suite walking a dev
                               server, files in crissp/uxsuite/); --yes puts it in place, never deleting or committing
     crissp hook               the lint steps, as git runs them before every commit (.githooks/pre-commit; F-50)
@@ -222,7 +222,7 @@ def parser() -> argparse.ArgumentParser:
     i.add_argument("--no-deploy", action="store_true", help="leave out the Helm chart and Terraform")
     for name, help_ in (("check", "test what changed (--plan)"), ("check-all", "the full run"),
                         ("deploy", "deploy behind the release gate (--plan, --cluster, --cluster-plan)"),
-                        ("ux", "the UX suite (--list, --status, --shoot, --round, --propose)")):
+                        ("ux", "the UX suite (--list, --status, --shoot, --map, --round, --propose)")):
         sub.add_parser(name, help=help_, add_help=False)  # its options belong to the guard: passed on untouched
     sub.add_parser("dashboard", help="the Tests dashboard and the UX suite on 127.0.0.1")
     sub.add_parser("hook", help="the lint steps, as git runs them before every commit (.githooks/pre-commit)")

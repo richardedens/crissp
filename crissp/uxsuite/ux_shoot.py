@@ -67,6 +67,8 @@ def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[i
 
 
 def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real browser; shoot() and plan() are tested with a stand-in
+    from urllib.parse import urlsplit
+
     from playwright.sync_api import sync_playwright
 
     p = json.loads(plan_file.read_text())
@@ -94,7 +96,8 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                         n += 1
                         file = f"{device}/{n:02d}-{slug(step['title'])}.png"
                         page.screenshot(path=str(out / file))
-                        shots.append({"device": device, "n": n, "title": step["title"], "file": file})
+                        shots.append({"device": device, "n": n, "title": step["title"], "file": file,
+                                      "path": urlsplit(page.url).path or "/"})  # the screen it shows, for the map
                 except Exception as e:  # noqa: BLE001  a dead end is a finding: the team sees where it got stuck
                     shots.append({"device": device, "n": n + 1, "title": step.get("title", step["do"]), "file": "",
                                   "error": f"Stuck at step {i} ({step['do']}): {str(e).splitlines()[0][:200]}"})

@@ -4,6 +4,12 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **A map of every screen, and the gaps (E7-F3-01).** `crissp ux --map` lists the product's screens in the UX page's new
+  **Map** tab, so the team looks at more than the walks someone wrote. It crawls the running product read-only (its own
+  links only, never one that signs out or deletes, at most `map.max` pages per device), adds the screenshots your E2E
+  tests list in `crissp/uxsuite/results/test-shots/screens.json` (`map.tests` points elsewhere), and the walks' own. Per
+  area you see every screen with its pictures, how it was found and its gaps: no link reaches it, the crawl could not
+  open it, or no walk looks at it.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

@@ -1316,6 +1316,38 @@
    "tests": [
     "test_ux_team::test_a_round_carries_its_debate_as_it_grows"
    ]
+  },
+  {
+   "id": "ux-map-of-the-screens",
+   "title": "The UX suite only ever looked at the screens someone wrote a walk for",
+   "problem": "Nothing listed the product's screens: a screen without a walk was never looked at, and nobody could see which screens no link reaches (E7-F3-01).",
+   "fix": "ux_map: crissp ux --map crawls the running product read-only (its own links only, never sign-out or delete, map.max pages per device, under uv with Playwright like a shoot), reads the screenshots the project's E2E tests list in a manifest (copied into the suite's results), and merges them with the walks by screen (ids folded) into results/map/screens.json with area, how found, linked from, shots and gaps. The page's Map tab shows them by area with the gaps; a shoot now records the page each shot shows.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def build("
+    },
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def follow("
+    },
+    {
+     "file": "crissp/uxsuite/ux_map.py",
+     "symbol": "def crawl("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function mapTab("
+    }
+   ],
+   "tests": [
+    "test_ux_map::test_a_crawl_runs_the_browser_under_uv_and_builds_the_screen_list",
+    "test_ux_map::test_the_crawl_follows_only_the_product_s_own_pages",
+    "test_ux_map::test_the_project_s_own_test_screenshots_are_screens_too",
+    "test_ux_map::test_after_a_crawl_a_screen_only_the_tests_reach_is_a_gap",
+    "test_ux_api::test_the_state_holds_the_map_once_the_product_was_mapped",
+    "test_ux_cli::test_map_says_what_the_crawl_found"
+   ]
   }
  ],
  "gaps": [

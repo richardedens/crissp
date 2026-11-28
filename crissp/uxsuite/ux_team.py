@@ -102,6 +102,7 @@ def shots(suite: Suite, walk: str) -> list[dict]:
         path = suite.results / "shots" / walk / str(s.get("file", ""))
         found = not s.get("error") and path.is_file()
         out.append({"device": s.get("device"), "n": s.get("n"), "title": s.get("title", ""), "error": s.get("error"),
+                    "at": s.get("path"),
                     "path": str(path) if found else None, "url": f"/ux/results/shots/{walk}/{s['file']}" if found else None})
     return out
 

@@ -8,7 +8,7 @@ with personas and rules as files the project owns and edits in the page.
 Why        Who looks at the product is the product owner's choice: personas must be easy to add, change and switch off,
            and carry the jobs they come to do.
 
-### E7-F1-01 · Personas as files, and a Team tab to edit them                            [todo] [M]
+### E7-F1-01 · Personas as files, and a Team tab to edit them                            [review] [M]
 Why        team.json's persona array can only be edited by hand, in JSON.
 What       crissp/uxsuite/personas/<key>.md per persona (frontmatter: name, role, device, moderator, on; the body is the
            brief, and a Jobs list). The page's Team tab lists them, and adds, edits, switches off and removes one
@@ -24,7 +24,7 @@ Depends    —
 Why        The rules the team judges by are the product's own: added, weighed and switched off by the product owner,
            some measured by the browser itself.
 
-### E7-F2-01 · Rules as files, and a Rules tab to edit them                              [todo] [M]
+### E7-F2-01 · Rules as files, and a Rules tab to edit them                              [review] [M]
 Why        PRINCIPLES.md is one prose file: a rule cannot be added, weighed or switched off, and advice never says which
            rule it is about.
 What       crissp/uxsuite/rules/<id>.md per rule (frontmatter: title, severity must, should or could, on; the body says
@@ -50,7 +50,7 @@ Depends    E7-F2-01
 Why        The suite should not only judge the walks someone wrote: it finds the product's screens, shows the ones
            nothing reaches, and asks per persona whether their job can be done.
 
-### E7-F3-01 · One screen list from a crawl and the project's own test screenshots       [todo] [L]
+### E7-F3-01 · One screen list from a crawl and the project's own test screenshots       [review] [L]
 Why        Only screens someone wrote a walk for are ever looked at.
 What       crissp ux --map crawls the running product read-only (same-origin links, laptop and phone) and reads a
            screenshot manifest the project's E2E tests may write; screens.json lists every screen with its area, how it

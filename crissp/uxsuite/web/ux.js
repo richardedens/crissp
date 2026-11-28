@@ -5,7 +5,7 @@
   const $ = (sel, el = document) => el.querySelector(sel);
   const { esc, badge } = window.Look;
   let S = null, tab = "overview", query = new URLSearchParams();
-  const TABS = [["overview", "Overview"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
+  const TABS = [["overview", "Overview"], ["map", "Map"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
 
   const api = async (path, body) => {
     const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -49,6 +49,40 @@
             <button class="ghost" data-request="proposal" data-walk="${esc(w.id)}">Ask for a design</button>
             <a href="#rounds?walk=${encodeURIComponent(w.id)}">Advice</a></div></article>`;
       }).join("") || '<div class="card">No walks yet: add one to <code>crissp/uxsuite/walks/</code>.</div>'}</div>`;
+  }
+
+  /* The map (E7-F3-01): every screen the crawl, the project's own E2E tests and the walks found, by area, with its gaps:
+     a screen no link reaches, one the crawl could not open, one no walk looks at. A shot opens enlarged. */
+  const REACH = ["no link reaches it", "the crawl could not open it"];
+  const unreached = s => s.gaps.some(g => REACH.some(r => g.startsWith(r)));
+  function mapTab() {
+    const m = S.map;
+    if (!m) return `<div class="card"><h3>The product is not mapped yet</h3><p>Run <code>crissp ux --map</code> while the product runs on <code>${esc(S.url)}</code>. It opens home and every walk's pages on the team's devices, follows the product's own links (read-only: it never signs out or deletes), adds the screenshots your E2E tests list in <code>crissp/uxsuite/results/test-shots/screens.json</code>, and the walks' own.</p></div>`;
+    const show = query.get("show") || "all", list = m.screens.filter(s => show === "gaps" ? unreached(s) : show === "unwalked" ? !s.walks.length : true);
+    const unwalked = m.screens.filter(s => !s.walks.length).length;
+    const areas = [...new Set(list.map(s => s.area))];
+    const seg = [["all", `All ${m.screens.length}`], ["gaps", `Not reached ${m.gaps}`], ["unwalked", `No walk ${unwalked}`]];
+    return `<div class="grid kpis" style="margin-bottom:14px">
+        <div class="card kpi"><div class="l">Screens</div><div class="v">${m.screens.length}</div><div class="s">in ${Object.keys(m.areas).length} area(s)</div></div>
+        <div class="card kpi"><div class="l">Not reached</div><div class="v">${m.gaps}</div><div class="s">${m.crawled ? "no link gets there, or the crawl could not open it" : "no crawl yet: crissp ux --map"}</div></div>
+        <div class="card kpi"><div class="l">No walk</div><div class="v">${unwalked}</div><div class="s">the team never looks at these</div></div>
+        <div class="card kpi"><div class="l">Mapped</div><div class="v small">${esc((m.at || "").replace("T", " ").slice(0, 16))}</div><div class="s">${esc(m.url || "")}</div></div></div>
+      <div class="toolbar"><span class="seg" role="group" aria-label="Show">${seg.map(([k, l]) => `<button class="ghost small" data-goto="map?show=${k}" aria-pressed="${k === show}">${l}</button>`).join("")}</span>
+        <span class="small muted">Map again: <code>crissp ux --map</code></span></div>
+      ${(m.skipped || []).length ? `<details class="card"><summary>${m.skipped.length} test screenshot(s) skipped</summary><ul class="small">${m.skipped.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+      ${areas.map(a => `<section class="area"><h3>${esc(a)} <span class="small muted">${list.filter(s => s.area === a).length} screen(s)</span></h3>
+        <div class="screens">${list.filter(s => s.area === a).map(s => {
+          const first = s.shots.find(x => x.device === "laptop") || s.shots[0];
+          return `<article class="card screen ${unreached(s) ? "gap" : ""}">
+            ${first ? `<button class="shot thumb" data-view="map" data-key="${esc(s.key)}" data-i="${s.shots.indexOf(first)}" title="Enlarge"><img src="${esc(first.url)}" alt="${esc(s.title)}" loading="lazy"></button>` : '<div class="thumb none small muted">no picture</div>'}
+            <div class="row"><b>${esc(s.title)}</b></div><code class="small muted">${esc(s.key)}</code>
+            <div class="row">${s.found_by.map(f => badge("ver", f === "test" ? "E2E test" : f)).join("")}${s.gaps.map(g => badge(REACH.some(r => g.startsWith(r)) ? "failed" : "missing", g)).join("")}</div>
+            ${s.linked_from.length ? `<p class="small muted">Linked from ${s.linked_from.map(esc).join(", ")}</p>` : ""}
+            ${s.walks.length ? `<p class="small">Walks: ${s.walks.map(w => `<a href="#rounds?walk=${encodeURIComponent(w)}">${esc(w)}</a>`).join(", ")}</p>` : ""}
+            ${s.tests.length ? `<p class="small muted">Tests: ${s.tests.map(esc).join(", ")}</p>` : ""}
+            ${s.shots.length > 1 ? `<div class="row">${s.shots.map((x, i) => `<button class="link small" data-view="map" data-key="${esc(s.key)}" data-i="${i}">${esc(x.device)} · ${esc(x.source === "test" ? "E2E test" : x.source)} ⤢</button>`).join("")}</div>` : ""}
+          </article>`;
+        }).join("")}</div></section>`).join("") || '<div class="card">Nothing to show here.</div>'}`;
   }
 
   const walkPicker = (w, to) => `<div class="toolbar"><select id="walk" data-to="${to}" aria-label="Walk">${S.walks.map(x => `<option value="${esc(x.id)}" ${x === w ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></div>`;
@@ -283,7 +317,7 @@
 
   function render() {
     $("#tabs").innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("");
-    const view = { overview, rounds, proposals, team, rules: rulesTab }[tab] || overview;
+    const view = { overview, map: mapTab, rounds, proposals, team, rules: rulesTab }[tab] || overview;
     $("#view").innerHTML = view();
     fit();
     if (query.get("key")) $(`[id="p-${CSS.escape(query.get("key"))}"]`)?.scrollIntoView();
@@ -317,6 +351,11 @@
     const dv = e.target.closest("[data-device]:not([data-view])");
     if (dv) { query.set("device", dv.dataset.device); render(); return; }  // Before on the laptop or the phone
     const vw = e.target.closest("[data-view]");
+    if (vw && vw.dataset.view === "map") {
+      const sc = S.map.screens.find(x => x.key === vw.dataset.key), s = sc.shots[Number(vw.dataset.i)];
+      openViewer({ title: `${sc.title} · ${sc.key} · ${s.device}, ${s.source === "test" ? "E2E test" : s.source}`, before: s, after: null, mode: "before" });
+      return;
+    }
     if (vw) {
       const w = walkOf(vw.dataset.walk);
       if (vw.dataset.view === "shot") {
