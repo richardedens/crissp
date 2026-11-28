@@ -37,11 +37,14 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     conf, root = configured(tmp_path)  # D-02: a project just brought in has no part yet, so no step fails on nothing
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
-    assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend"]
+    assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
+                                                              "frontend-lint"]
     assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
-                                                         "frontend": "app/frontend"}
+                                                         "frontend": "app/frontend", "frontend-lint": "app/frontend"}
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [("app/backend/", ["backend", "backend-lint"]),
-                                                                ("app/frontend/", ["frontend"])]
+                                                                ("app/frontend/", ["frontend", "frontend-lint"])]
+    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
+    assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
 

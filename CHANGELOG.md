@@ -4,6 +4,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
+  `backend-lint`: `npm run --silent lint` in `app/frontend`, there once `app/frontend/package.json` is, and run by
+  `crissp check` for every change under `app/frontend/`. The linter is the frontend's own `lint` script (ESLint,
+  Biome …), so a frontend's `package.json` needs one. `crissp repair` gives projects with no steps the same default.
 - **`crissp init` onboards Mistral Vibe as well as Claude Code (F-24).** A new project also gets `.vibe/config.toml` —
   the same crissp MCP server, pinned `uvx crissp==<version> mcp` like `.mcp.json`.
   When Vibe is installed (`VIBE_HOME`, else `~/.vibe`), init also adds the project folder to `trusted_folders.toml`,

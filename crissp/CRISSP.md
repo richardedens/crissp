@@ -221,9 +221,10 @@ page. A new capability is documented by a journey in the same piece of work.
   Compose service, and gives each worker a database of its own, named after `PYTEST_XDIST_WORKER` (`test_gw0`,
   `test_gw1`, …, `test_main` without xdist): a database per worker, created when the worker starts, dropped or
   emptied when it ends, so no worker sees another's rows.
-- **The template expects it**: the testsuite's steps (`backend`, `backend-lint`, `frontend`) exist once their part does,
-  so a project that was just brought in runs green with no code yet; the UX suite walks the local stack
-  (`compose.url`, `http://127.0.0.1:8080`).
+- **The template expects it**: the testsuite's steps (`backend`, `backend-lint`, `frontend`, `frontend-lint`) exist
+  once their part does, so a project that was just brought in runs green with no code yet; the UX suite walks the
+  local stack (`compose.url`, `http://127.0.0.1:8080`). The frontend's lint is its package's `lint` script
+  (`npm run --silent lint`), so a frontend picks its own linter (ESLint, Biome …).
 - **The first PBIs build the skeleton**: the two parts and the stack, each with a test, before any screen. Until it
   runs, the UX suite has nothing to walk; a look at a screen before it is built is `crissp ux --propose <walk>` (a
   mockup in `crissp/uxsuite/results/`), never a prototype written into `crissp/uxsuite/`, which holds only its
