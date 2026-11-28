@@ -54,6 +54,7 @@ only-include = [
   "crissp/template",
   "crissp/testsuite/lib",
   "crissp/testsuite/dashboard",
+  "crissp/testsuite/frontend-lint",
   "crissp/testsuite/run.sh",
   "crissp/testsuite/setup.sh",
   "crissp/testsuite/requirements.txt",

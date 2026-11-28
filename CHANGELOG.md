@@ -5,9 +5,13 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 ## 0.1.10 — 2026-11-26
 
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
-  `backend-lint`: `npm run --silent lint` in `app/frontend`, there once `app/frontend/package.json` is, and run by
-  `crissp check` for every change under `app/frontend/`. The linter is the frontend's own `lint` script (ESLint,
-  Biome …), so a frontend's `package.json` needs one. `crissp repair` gives projects with no steps the same default.
+  `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
+  `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint
+  9.39.5 with `@eslint/js`, typescript-eslint 8.72.2 (TypeScript 6.0.3), eslint-plugin-react-hooks 7.1.1,
+  eslint-plugin-jsx-a11y 6.10.2 and eslint-plugin-react 7.37.5 (only `react/no-danger`), and stylelint 17.16.0 with
+  stylelint-config-standard 40.0.0. They are pinned with their lockfile in crissp, installed once into crissp's cache
+  (`~/.cache/crissp`) with `npm ci`, and never touch the project's `package.json`. It needs Node.js (`npm`).
+  `crissp repair` gives projects with no steps the same default.
 - **The dashboard no longer misses a change, and the board shows the open decisions and findings (F-32).** The open
   page already rebuilt its data when the backlog, `changes.json` or a run's results changed, but a change made while a
   rebuild ran was skipped until the next one; now it is picked up. When a rebuild fails, the page says "not current"
