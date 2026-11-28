@@ -977,6 +977,31 @@
     "test_changes::test_every_test_that_proves_a_change_is_reported_to_the_dashboard",
     "test_changes::test_a_step_without_junit_leaves_its_tests_unreported"
    ]
+  },
+  {
+   "id": "lint-on-the-dashboard",
+   "title": "Lint was only a passed or failed line, and the Suites table called it 0 tests (F-41)",
+   "problem": "The dashboard had no place for lint: a lint step (backend-lint, frontend-lint) showed only as passed or failed among the steps, its problems only in its log, and the Suites table listed it as a suite of 0 tests, 0 failed, even when it failed.",
+   "fix": "collect.py treats a step whose key is lint or ends in -lint as a lint step: it gives the dashboard each one with its state and the number of problems its log reports (ruff, Biome, ESLint, Stylelint, shellcheck), and leaves it out of the suites. The Overview shows a Lint tile: clean, or the problems per part, red when one failed.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def lint_problems("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def _lint("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function lintCard("
+    }
+   ],
+   "tests": [
+    "test_collect::test_a_lint_log_says_how_many_problems_it_found",
+    "test_collect::test_a_failed_lint_step_without_a_count_is_not_called_clean",
+    "test_collect::test_lint_steps_are_shown_as_lint_and_not_as_suites_of_zero_tests"
+   ]
   }
  ],
  "gaps": [

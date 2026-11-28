@@ -65,6 +65,19 @@
   window.addEventListener("hashchange", () => { const [k, q] = location.hash.slice(1).split("?"); if (k && k !== tab) { tab = k; drawTabs(); render(q || ""); } });
 
   // ---------------------------------------------------------------- views
+  // F-41: the lint steps (backend-lint, frontend-lint …): clean or how many problems each found, red when one failed
+  function lintCard(ring) {
+    const lint = S.lint || [];
+    if (!lint.length) return "";
+    const clean = lint.filter(l => l.status === "passed").length, failing = lint.filter(l => l.status === "failed").length;
+    const found = lint.reduce((n, l) => n + (l.problems || 0), 0);
+    const what = l => l.status === "passed" ? "clean" : l.status === "failed" ? (l.problems === null ? "failed" : `${l.problems} problem${l.problems === 1 ? "" : "s"}`) : esc(l.status);
+    const tint = l => l.status === "passed" ? "var(--green)" : l.status === "failed" ? "var(--red)" : "var(--muted)";
+    return `<div class="card kpi row click" data-go="steps" style="cursor:pointer">${ring(pct(clean, lint.length), `${clean}/${lint.length}`, failing ? "var(--red)" : clean === lint.length ? "var(--green)" : "var(--amber)")}
+      <div><div class="l">Lint</div><div class="v">${!failing ? "Clean" : found ? `${found}<span class="muted small"> problem${found === 1 ? "" : "s"}</span>` : `${failing}<span class="muted small"> failing</span>`}</div>
+      <div class="s">${lint.map(l => `${esc(l.label.replace(/^CRISSP: /, ""))}: <b style="color:${tint(l)}">${what(l)}</b>`).join("<br>")}</div></div></div>`;
+  }
+
   function overview() {
     const keys = S.coverageKeys || [], cov = S.coverage[keys[0]], pcov = S.coverage[keys[1]];
     const named = k => esc(S.suites[k]?.label ?? k);
@@ -77,6 +90,7 @@
         <div class="card kpi row">${ring(totalPass, totalPass + "%", failed ? "var(--red)" : "var(--green)")}<div><div class="l">Tests passing</div>
           <div class="v">${tests.length - failed - tests.filter(t => t.status === "skipped").length}<span class="muted small"> / ${tests.length}</span></div>
           <div class="s">${failed ? `<b style="color:var(--red)">${failed} failing</b>` : "none failing"} · ${tests.filter(t => t.status === "skipped").length} skipped</div></div></div>
+        ${lintCard(ring)}
         ${cov ? `<div class="card kpi row">${ring(cov.linePercent ?? cov.percent, (cov.linePercent ?? cov.percent) + "%", color(cov.linePercent ?? cov.percent))}<div><div class="l">${named(keys[0])} · line coverage</div>
           <div class="v">${cov.linePercent ?? cov.percent}%</div><div class="s">${cov.covered.toLocaleString()} of ${cov.statements.toLocaleString()} lines · ${cov.full ?? "?"} of ${cov.files.length} files at 100%</div></div></div>` : ""}
         ${cov?.branches ? `<div class="card kpi row">${ring(cov.branchPercent, cov.branchPercent + "%", color(cov.branchPercent))}<div><div class="l">${named(keys[0])} · branch coverage</div>
