@@ -27,7 +27,7 @@ jobs:
       - name: Git can commit (the package test commits in a throwaway project)
         run: git config --global user.name "ci" && git config --global user.email "ci@example.org"
       - name: Tools, gate, Python lint, deploy template, lint, package, secrets and SAST
-        run: crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package secrets sast
+        run: crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package secrets sast quality
       - name: The logs of a red run
         if: failure()
         run: tail -n 60 crissp/testsuite/results/*.log

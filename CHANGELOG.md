@@ -2,6 +2,29 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
+## 0.2.1 — 2026-11-28
+
+- **Code quality, held by a ratchet (F-142).** A new `quality` step measures the cyclomatic complexity of every
+  function (lizard, pinned) and the copied blocks (ten lines or more, in any language), in `crissp check` for every
+  change under `app/`. A new complex function (above 15), a more complex one or more duplicated lines fail it; old code
+  does not, and a green run lowers the baseline (`crissp/testsuite/quality-baseline.json`). For an honest reason:
+  `python3 crissp/testsuite/lib/quality.py --accept "why"`. The dashboard has a Code quality tile beside the gate.
+- **The running app is scanned (F-143).** The full run of a project with a `docker-compose.yml` runs OWASP ZAP (the
+  image pinned by digest) on a throwaway stack of its own (built fresh, removed with its volumes afterwards). A canary
+  comes first: ZAP must find the missing headers of a page crissp serves, else the scan proves nothing. Then the
+  passive baseline of `http://127.0.0.1:8080`, and where `audit.dast` says so, a sign-in through the app's first-run
+  setup (a fresh password per run; the token goes to ZAP from a private file) and the API scan of its OpenAPI
+  definition. A high or medium risk blocks unless accepted in `accepted-risks.json`; the project's own
+  `zap/rules.tsv` can make a rule FAIL or IGNORE it. It needs Docker.
+- **Licences checked and an SBOM (F-144).** The full run checks the licence of every dependency (`package-lock.json`,
+  and the requirements resolved with their transitive packages, licences from PyPI) and writes a CycloneDX SBOM to
+  `crissp/testsuite/results/sbom.cdx.json`. GPL, AGPL, SSPL and other licences a product may not ship block;
+  LGPL, MPL and unknown licences are listed; dev-only packages never block. `audit.licenses.allow` allows a package
+  for good, with why.
+- **`crissp repair` and `crissp init` turn the new steps on in projects brought in earlier (F-145).** It adds the template's `quality`,
+  `licenses` and `dast` steps and their `audit` settings to a project's `suites.json` where they are missing, and
+  leaves the project's own steps and settings as they are; `crissp init` over such a project does the same.
+
 ## 0.2.0 — 2026-11-28
 
 The first minor release: crissp now lints and secures what it tests, shows where the work is in six stages, works

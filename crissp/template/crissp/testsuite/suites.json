@@ -16,11 +16,17 @@
   {"key": "secrets", "label": "CRISSP: secrets in the git history (gitleaks)", "run": "audit secrets", "seconds": 5,
    "when": "app"},
   {"key": "sast", "label": "CRISSP: unsafe code (Semgrep with crissp's rules)", "run": "audit sast", "seconds": 15,
-   "when": "app"}
+   "when": "app"},
+  {"key": "quality", "label": "CRISSP: code quality, complexity and duplication may only get better (lizard)",
+   "run": "quality", "seconds": 10, "when": "app"},
+  {"key": "licenses", "label": "CRISSP: licences of every dependency, and the SBOM (CycloneDX)",
+   "run": "audit licenses", "seconds": 30, "full_only": true, "when": "app"},
+  {"key": "dast", "label": "CRISSP: the running app, scanned passively (OWASP ZAP baseline)", "run": "audit dast",
+   "seconds": 180, "full_only": true, "when": "docker-compose.yml"}
  ],
  "paths": [
-  {"match": "app/backend/", "steps": ["backend", "backend-lint", "secrets", "sast"]},
-  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint", "secrets", "sast"]}
+  {"match": "app/backend/", "steps": ["backend", "backend-lint", "secrets", "sast", "quality"]},
+  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint", "secrets", "sast", "quality"]}
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},
@@ -36,6 +42,8 @@
            "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
            "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
            "own_images": {"values": "crissp/deploy/helm/app/values.yaml", "parts": ["backend", "frontend"]},
-           "sast": ["app"], "sast_rules": []},
+           "sast": ["app"], "sast_rules": [], "quality": {"paths": ["app"], "exclude": []},
+           "dast": {"targets": ["http://127.0.0.1:8080"], "compose": "docker-compose.yml", "rules": "zap/rules.tsv"},
+           "licenses": {"allow": {}, "block": []}},
  "texts": {}
 }

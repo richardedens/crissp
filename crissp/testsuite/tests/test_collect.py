@@ -348,6 +348,7 @@ def test_the_dashboard_data_from_a_whole_run(collect, capsys):
         json.dumps([{"name": "api", "status": "failed"}, {"name": "web", "status": "passed"}]),
     )
     _write(collect.RESULTS / "gate.json", json.dumps({"ok": True}))
+    _write(collect.RESULTS / "quality.json", json.dumps({"ok": True, "functions_over": 2}))
     _write(
         collect.SUITE / "threats.json",
         json.dumps(
@@ -395,6 +396,7 @@ def test_the_dashboard_data_from_a_whole_run(collect, capsys):
     assert (api["tests"], api["passed"], api["failed"], api["skipped"]) == (6, 3, 2, 1) and data["suites"]["web"][
         "tests"
     ] == 0
+    assert data["quality"] == {"ok": True, "functions_over": 2}  # F-142: the Code quality tile
     assert data["gate"] == {"ok": True} and data["gaps"] == ["one known gap"] and data["screenshots"] == ["login.png"]
     assert data["coverage"] == {"api": None, "web": None, "admin": None} and data["capabilities"] == []
     assert (
@@ -413,6 +415,7 @@ def test_a_first_run_without_steps_gate_threats_or_shots(collect, capsys):
     assert (
         data["steps"] == []
         and data["gate"] is None
+        and data["quality"] is None
         and data["threats"] == {"boundaries": []}
         and data["screenshots"] == []
     )
@@ -684,6 +687,9 @@ def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(co
             },
             {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "dir": ".", "run": "audit secrets"},
             {"key": "sast", "label": "Unsafe code (Semgrep)", "dir": ".", "run": "audit sast"},
+            {"key": "dast", "label": "The running app (ZAP)", "dir": ".", "run": "audit dast"},
+            {"key": "licenses", "label": "Licences (SBOM)", "dir": ".", "run": "audit licenses"},
+            {"key": "quality", "label": "Code quality", "dir": ".", "run": "quality"},
         ],
     }
     (collect.ROOT / "crissp/testsuite/suites.json").write_text(json.dumps(config))
@@ -726,10 +732,11 @@ def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(co
             "seconds": 1,
         },
         {"key": "sast", "label": "Unsafe code (Semgrep)", "status": "not run", "blocking": None, "seconds": None},
+        {"key": "dast", "label": "The running app (ZAP)", "status": "not run", "blocking": None, "seconds": None},
+        {"key": "licenses", "label": "Licences (SBOM)", "status": "not run", "blocking": None, "seconds": None},
     ]
-    assert not {"audit", "secrets", "sast"} & set(data["suites"]) and not {"audit", "secrets", "sast"} & set(
-        data["unitSuites"]
-    )
+    scans = {"audit", "secrets", "sast", "dast", "licenses", "quality"}  # quality has a tile of its own (F-142)
+    assert not scans & set(data["suites"]) and not scans & set(data["unitSuites"])
     assert data["lint"] == []
 
 

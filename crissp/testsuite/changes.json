@@ -2072,6 +2072,151 @@
    "tests": [
     "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
    ]
+  },
+  {
+   "id": "quality-ratchet",
+   "title": "Complexity and duplication were measured nowhere (F-142, E6-F4-01)",
+   "problem": "A function with forty branches or a block copied into three files went through every step, in crissp and in every project: nothing measured either, and nothing kept them from growing.",
+   "fix": "lib/quality.py measures the cyclomatic complexity of every function with the pinned lizard (through uv, many languages) and counts copied blocks itself (ten counted lines or more, whatever their indent, blank lines, comments and brackets left out). crissp/testsuite/quality-baseline.json holds the complex functions and the duplicated lines: a new complex function, a more complex one or more copies fail; a green run lowers it; --accept takes the numbers with why. A quality step in crissp and in the template (every change under app/), results/quality.json, and a Code quality tile on the dashboard.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/quality.py",
+     "symbol": "def judge("
+    },
+    {
+     "file": "crissp/testsuite/lib/quality.py",
+     "symbol": "def duplication("
+    },
+    {
+     "file": "crissp/testsuite/lib/quality.py",
+     "symbol": "def complexity("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function qualityCard("
+    }
+   ],
+   "tests": [
+    "test_quality::test_files_are_the_code_under_the_paths_without_tests_or_vendored_code",
+    "test_quality::test_files_are_the_tracked_ones_in_a_git_repository",
+    "test_quality::test_a_path_that_is_not_there_yet_is_listed_never_a_failure",
+    "test_quality::test_complexity_comes_from_the_pinned_lizard_per_function",
+    "test_quality::test_a_lizard_that_cannot_run_is_a_problem_never_a_pass",
+    "test_quality::test_duplication_finds_the_same_lines_in_two_files_whatever_their_indent",
+    "test_quality::test_duplication_skips_blank_lines_braces_and_comments_and_blocks_below_the_minimum",
+    "test_quality::test_a_copy_inside_one_file_counts_too",
+    "test_quality::test_the_first_run_sets_the_baseline",
+    "test_quality::test_a_new_complex_function_more_complexity_or_more_copies_fail",
+    "test_quality::test_a_green_run_ratchets_the_baseline_down",
+    "test_quality::test_accept_takes_the_numbers_as_they_are_with_the_reason",
+    "test_quality::test_main_measures_writes_the_results_and_ratchets",
+    "test_quality::test_main_says_a_problem_and_a_wrong_call",
+    "test_quality::test_without_paths_there_is_nothing_to_measure",
+    "test_quality::test_the_runner_runs_the_command",
+    "test_dashboard_page::test_code_quality_has_a_tile_that_says_whether_the_ratchet_holds",
+    "test_collect::test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests",
+    "test_template::test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences"
+   ]
+  },
+  {
+   "id": "dast-zap-baseline",
+   "title": "Nothing scanned the running app (F-143, E6-F5-01)",
+   "problem": "The scans read code and dependencies only: a missing Content-Security-Policy, a cookie without HttpOnly or Secure, or an error page that leaks a stack trace was only seen in production.",
+   "fix": "audit dast runs OWASP ZAP (the image pinned by digest): first a canary, a page without any security header served on this machine on which ZAP must find something; then, on a throwaway compose stack (crissp-dast, built fresh, removed with its volumes), a sign-in through the app's first-run setup (a fresh password per run, the token in a private mode-600 env file), the passive baseline of every target and the API scan of its definition. High and medium risks and the project's FAIL rules block unless accepted; an app that does not answer, a failed sign-in or a canary without findings is a problem. A full-run step in the template, when docker-compose.yml is there.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def dast_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def from_zap("
+    }
+   ],
+   "tests": [
+    "test_dast::test_the_baseline_scans_the_app_with_the_pinned_image_and_high_and_medium_block",
+    "test_dast::test_a_canary_comes_first_and_a_zap_that_finds_nothing_on_it_proves_nothing",
+    "test_dast::test_the_canary_is_a_real_page_without_any_security_header",
+    "test_dast::test_on_a_mac_the_container_reaches_the_app_through_the_docker_host",
+    "test_dast::test_the_projects_own_zap_rules_are_used_and_a_fail_rule_blocks",
+    "test_dast::test_a_file_audit_dast_names_that_is_not_there_is_absent_or_a_problem",
+    "test_dast::test_with_a_compose_file_the_scan_runs_on_a_throwaway_stack_removed_with_its_volumes",
+    "test_dast::test_an_app_that_already_answers_is_never_the_throwaway_stack",
+    "test_dast::test_a_stack_that_does_not_start_or_answer_is_a_problem_and_is_still_removed",
+    "test_dast::test_an_app_that_does_not_answer_is_a_problem_never_a_pass",
+    "test_dast::test_the_stack_is_signed_in_through_first_run_setup_and_zap_sends_the_token",
+    "test_dast::test_a_sign_in_that_fails_or_gives_no_token_is_a_problem",
+    "test_dast::test_the_api_is_scanned_on_the_throwaway_stack",
+    "test_dast::test_the_api_scan_and_the_sign_in_never_run_against_an_app_crissp_did_not_start",
+    "test_dast::test_a_zap_that_writes_no_report_is_a_problem",
+    "test_dast::test_without_targets_there_is_nothing_to_scan_and_a_target_is_http",
+    "test_dast::test_a_finding_is_accepted_for_a_while_by_its_rule_and_site",
+    "test_dast::test_reachable_is_any_answer_and_never_a_refused_connection",
+    "test_dast::test_post_json_sends_json_and_reads_the_answer",
+    "test_dast::test_main_runs_dast_into_its_own_results",
+    "test_template::test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences"
+   ]
+  },
+  {
+   "id": "licences-and-sbom",
+   "title": "No licence check and no SBOM (F-144, E6-F6-01)",
+   "problem": "A GPL or AGPL package could reach a product's dependencies, and ship, without any step noticing; and there was no list of what a release contains.",
+   "fix": "audit licenses reads every package of the audit's npm lock files and pip requirements (resolved with every transitive package by uv pip compile), its licence from the lock file or from PyPI (SPDX expression, licence field, classifiers; cached), and classifies it: forbidden and copyleft block, weak copyleft and unknown are listed, a dev-only package only listed; audit.licenses.allow and block are the project's policy. It writes results/licenses.json and a CycloneDX 1.6 SBOM, results/sbom.cdx.json. A full-run step in crissp (its pinned tools) and in the template.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def licenses_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def kind("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def sbom("
+    }
+   ],
+   "tests": [
+    "test_licenses::test_a_licence_expression_is_as_free_as_its_best_choice_and_its_worst_part",
+    "test_licenses::test_npm_components_come_from_the_lock_file_with_their_licence",
+    "test_licenses::test_a_pypi_licence_is_its_spdx_expression_else_a_short_licence_else_its_classifiers",
+    "test_licenses::test_pypi_is_asked_once_per_release_and_kept_in_the_cache",
+    "test_licenses::test_copyleft_and_forbidden_licences_block_weak_and_unknown_are_listed_dev_only_never_blocks",
+    "test_licenses::test_a_package_allowed_with_why_and_more_licences_blocked_by_the_project",
+    "test_licenses::test_the_sbom_is_cyclonedx_with_every_component_its_purl_and_licence",
+    "test_licenses::test_a_place_that_is_not_there_is_absent_or_a_problem_and_an_unpinned_line_is_a_problem",
+    "test_licenses::test_requirements_are_resolved_with_every_transitive_package_first",
+    "test_licenses::test_pypi_that_cannot_answer_is_a_problem_never_a_pass",
+    "test_licenses::test_a_clean_report_says_where_the_sbom_is",
+    "test_licenses::test_main_writes_the_licences_and_the_sbom",
+    "test_template::test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences"
+   ]
+  },
+  {
+   "id": "new-steps-for-earlier-projects",
+   "title": "A project brought in earlier never got the new steps (F-145)",
+   "problem": "suites.json is the project's own once crissp init wrote it, so the quality, licenses and dast steps the template gained never reached a project brought in before: crissp said nothing of DAST there.",
+   "fix": "lib/upgrade.py adds what is missing and nothing else: the template's step, its audit settings, and quality on a path rule that runs sast. crissp repair says and adds it (new-steps, and with the old-steps repair too); crissp init adds it to a suites.json it keeps. The project's own steps, rules and settings stay.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/upgrade.py",
+     "symbol": "add"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_new_steps"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "add_new_steps"
+    }
+   ],
+   "tests": [
+    "test_repair::test_a_project_brought_in_earlier_gets_the_new_steps_and_keeps_its_own",
+    "test_repair::test_new_steps_are_only_said_where_the_steps_are_the_projects_own",
+    "test_upgrade::test_a_step_the_project_has_is_never_added_again_nor_put_on_its_rules",
+    "test_cli::test_init_over_a_project_brought_in_earlier_adds_the_new_steps"
+   ]
   }
  ],
  "gaps": [
