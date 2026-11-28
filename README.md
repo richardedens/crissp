@@ -1,6 +1,12 @@
 # C.R.I.S.S.P.
 
-**The agentic SDLC framework for Claude Code: AI colleagues build, guards prove, a person decides.**
+[![Works with Claude Code](https://img.shields.io/badge/works_with-Claude_Code-D97757?logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![Works with Mistral Vibe](https://img.shields.io/badge/works_with-Mistral_Vibe-FA520F?logo=mistralai&logoColor=white)](https://github.com/mistralai/mistral-vibe)
+
+**The agentic SDLC framework for Claude Code and Mistral Vibe: AI colleagues build, guards prove, a person decides.**
+
+**Works with Claude Code and Mistral Vibe.** Both get the same crissp tools (`brief`, `stage`, `backlog`, `run`, …),
+the same agreement and the same UX team: use the one you have, or both on the same project.
 
 [![PyPI](https://img.shields.io/pypi/v/crissp)](https://pypi.org/project/crissp/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
