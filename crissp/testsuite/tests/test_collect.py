@@ -323,3 +323,86 @@ def test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool
     _write(collect.SUITE / "changes.json", '{"changes": []}')
     collect.main(root)
     assert '"backlog": {"epics": [{"id": "E1"' in (collect.RESULTS / "data.js").read_text()
+
+
+@pytest.mark.parametrize("log, problems", [
+    ("All checks passed!\n", 0),
+    ("F401 `os` imported but unused\n --> shop/__init__.py:2:8\nFound 1 error.\n[*] 1 fixable\n", 1),
+    ("Found 12 errors.\n", 12),
+    (("/src/a.js\n  5:7  error  'x' is assigned a value but never used  no-unused-vars\n\n"
+      "✖ 3 problems (2 errors, 1 warning)\n"), 3),
+    ("✖ 1 problem (1 error, 0 warnings)\n", 1),
+    ("Checked 4 files in 3ms. No fixes applied.\nFound 2 errors.\n", 2),
+    ("a.sh:1:1: error: Add a shebang [SC2148]\nb.sh:3:5: warning: quote this [SC2086]\nb.sh:4:1: note: x [SC2034]\n", 3),
+    ("> lint\n> eslint .\n\n", 0),
+    ("npm error Missing script: \"lint\"\n", None),
+    ("", None),
+])
+def test_a_lint_log_says_how_many_problems_it_found(log, problems):
+    """F-41: ruff, ESLint, Stylelint, Biome and shellcheck (gcc format) say it in their own words; a clean ESLint says
+    nothing. A log that says neither (the linter did not run) gives no number."""
+    assert _module().lint_problems(log, "passed" if problems == 0 else "failed") == problems
+
+
+def test_a_failed_lint_step_without_a_count_is_not_called_clean():
+    assert _module().lint_problems("> lint\n> eslint .\n", "failed") is None
+
+
+def test_lint_steps_are_shown_as_lint_and_not_as_suites_of_zero_tests(collect):
+    """F-41: a lint step (its key is lint or ends in -lint) runs no tests; the Suites table listed it as 0 tests even
+    when it failed. The dashboard gets each lint step with its state and the problems it found instead."""
+    config = {**SHOP, "steps": SHOP["steps"] + [
+        {"key": "backend-lint", "label": "Backend lint (ruff)", "dir": "api", "run": "ruff check ."},
+        {"key": "frontend-lint", "label": "Frontend lint", "dir": "web", "run": "npm run lint"},
+        {"key": "lint", "label": "Shell lint", "dir": ".", "run": "shellcheck *.sh"},
+        {"key": "linter-docs", "label": "Not a lint step", "dir": ".", "run": "true"}]}
+    (collect.ROOT / "crissp/testsuite/suites.json").write_text(json.dumps(config))
+    collect.configure(collect.ROOT)
+    _write(collect.RESULTS / "steps.jsonl", "\n".join(json.dumps(s) for s in [
+        {"key": "api", "label": "API", "status": "passed", "seconds": 1},
+        {"key": "backend-lint", "label": "Backend lint (ruff)", "status": "failed", "seconds": 0},
+        {"key": "frontend-lint", "label": "Frontend lint", "status": "passed", "seconds": 2}]) + "\n")
+    _write(collect.RESULTS / "steps.json", json.dumps({"api": "passed", "backend-lint": "failed", "frontend-lint": "passed"}))
+    _write(collect.RESULTS / "backend-lint.log", "Found 2 errors.\n")
+    _write(collect.RESULTS / "frontend-lint.log", "> eslint .\n")
+    assert collect.main(collect.ROOT) == 0
+    data = json.loads((collect.RESULTS / "data.js").read_text()[len("window.SUITE = "):-2])
+    assert data["lint"] == [
+        {"key": "backend-lint", "label": "Backend lint (ruff)", "status": "failed", "problems": 2, "seconds": 0},
+        {"key": "frontend-lint", "label": "Frontend lint", "status": "passed", "problems": 0, "seconds": 2},
+        {"key": "lint", "label": "Shell lint", "status": "not run", "problems": None, "seconds": None}]
+    assert "backend-lint" not in data["suites"] and "lint" not in data["suites"] and "linter-docs" in data["suites"]
+    assert "frontend-lint" not in data["unitSuites"] and "api" in data["unitSuites"]
+
+
+def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(collect):
+    """F-73: the scans (audit, secrets, sast) run no tests either; the Suites table listed each as 0 tests even when one
+    found a leaked secret. The dashboard gets each scan with its state and how many findings block the release."""
+    config = {**SHOP, "steps": SHOP["steps"] + [
+        {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "dir": ".", "run": "audit run"},
+        {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "dir": ".", "run": "audit secrets"},
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "dir": ".", "run": "audit sast"}]}
+    (collect.ROOT / "crissp/testsuite/suites.json").write_text(json.dumps(config))
+    collect.configure(collect.ROOT)
+    _write(collect.RESULTS / "steps.json", json.dumps({"audit": "passed", "secrets": "failed"}))
+    _write(collect.RESULTS / "steps.jsonl", "\n".join(json.dumps(s) for s in [
+        {"key": "audit", "label": "x", "status": "passed", "seconds": 15},
+        {"key": "secrets", "label": "x", "status": "failed", "seconds": 1}]) + "\n")
+    _write(collect.RESULTS / "audit.log", "Scanned: 2 — trivy fs app/backend\nNo known vulnerability blocks (0 listed).\n")
+    _write(collect.RESULTS / "secrets.log", "Scanned: 1 — gitleaks git history\nBLOCKING HIGH  stripe-access-token  a.env line 1\n"
+                                            "BLOCKING HIGH  generic-api-key  b.py line 2\nreview   LOW  x\nNot green: a secret leaked.\n")
+    assert collect.main(collect.ROOT) == 0
+    data = json.loads((collect.RESULTS / "data.js").read_text()[len("window.SUITE = "):-2])
+    assert data["security"] == [
+        {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "status": "passed",
+         "blocking": 0, "seconds": 15},
+        {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "status": "failed", "blocking": 2, "seconds": 1},
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "status": "not run", "blocking": None, "seconds": None}]
+    assert not {"audit", "secrets", "sast"} & set(data["suites"]) and not {"audit", "secrets", "sast"} & set(data["unitSuites"])
+    assert data["lint"] == []
+
+
+def test_a_failed_scan_that_lists_nothing_has_no_count():
+    module = _module()
+    assert module.blocking_findings("trivy: command not found\n", "failed") is None
+    assert module.blocking_findings("", "passed") == 0

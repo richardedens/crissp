@@ -65,57 +65,97 @@
   window.addEventListener("hashchange", () => { const [k, q] = location.hash.slice(1).split("?"); if (k && k !== tab) { tab = k; drawTabs(); render(q || ""); } });
 
   // ---------------------------------------------------------------- views
+  // F-41, F-73: a step that runs no tests has a tile of its own. Its label without the template's "CRISSP: " and the
+  // tool in brackets reads as a name; the brackets stay in the tooltip.
+  const short = label => String(label ?? "").replace(/^CRISSP: /, "").replace(/\s*\([^)]*\)\s*$/, "").replace(/^./, c => c.toUpperCase());
+  const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+  const tint = st => st === "passed" ? "var(--green)" : st === "failed" ? "var(--red)" : "var(--muted)";
+  const ring = (p, label, c) => `<div class="ring" style="--p:${p};--c:${c}" data-label="${esc(label)}"></div>`;
+  const stepLink = (key, inner) => `<a href="#steps?step=${encodeURIComponent(key)}" class="steplink">${inner}</a>`;
+
+  function partsCard(title, parts, field, noun, okWord) {
+    if (!parts.length) return "";
+    const ok = parts.filter(x => x.status === "passed").length, failing = parts.filter(x => x.status === "failed").length;
+    const found = parts.reduce((n, x) => n + (x[field] || 0), 0);
+    const what = x => x.status === "passed" ? okWord : x.status === "failed" ? (x[field] === null ? "failed" : plural(x[field], noun)) : esc(x.status);
+    const head = !failing ? (ok === parts.length ? okWord[0].toUpperCase() + okWord.slice(1) : "Not run")
+      : found ? `${found}<span class="unit">${found === 1 ? noun : noun + "s"}</span>` : `${failing}<span class="unit">failing</span>`;
+    return `<div class="card kpi row">${ring(failing ? 100 : pct(ok, parts.length), `${ok}/${parts.length}`, failing ? "var(--red)" : ok === parts.length ? "var(--green)" : "var(--amber)")}
+      <div class="kbody"><div class="l">${title}</div><div class="v">${head}</div>
+      <ul class="parts">${parts.map(x => `<li title="${esc(x.label)}">${stepLink(x.key, `<span>${esc(short(x.label))}</span><b style="color:${tint(x.status)}">${what(x)}</b>`)}</li>`).join("")}</ul></div></div>`;
+  }
+
+  // F-70: the first thing on the page is the answer: may this go out, and if not, what stops it
+  function verdict() {
+    const ran = S.steps.filter(s => s.status === "passed" || s.status === "failed");
+    if (!ran.length) return `<section class="verdict none"><div class="vicon">…</div><div><h2>No run yet</h2><p class="muted">Run <code>crissp/check-all.sh</code>; this page shows the result as soon as it is there.</p></div></section>`;
+    const red = S.steps.filter(s => s.status === "failed");
+    if (!red.length) return `<section class="verdict ok"><div class="vicon">✓</div><div><h2>Green: ready to release</h2>
+      <p class="muted">All ${plural(ran.length, "step")} of the last run passed.</p></div></section>`;
+    return `<section class="verdict bad"><div class="vicon">✗</div><div><h2>Not ready to release</h2>
+      <p class="muted">${red.length} of ${plural(ran.length, "step")} failed. Fix these first:</p>
+      <div class="redlist">${red.map(s => stepLink(s.key, `${esc(short(s.label))}<span>log ›</span>`)).join("")}</div></div></section>`;
+  }
+
   function overview() {
     const keys = S.coverageKeys || [], cov = S.coverage[keys[0]], pcov = S.coverage[keys[1]];
-    const named = k => esc(S.suites[k]?.label ?? k);
-    const ring = (p, label, c) => `<div class="ring" style="--p:${p};--c:${c}" data-label="${label}"></div>`;
-    const totalPass = pct(tests.filter(t => t.status === "passed").length, tests.filter(t => t.status !== "skipped").length);
+    const named = k => esc(short(S.suites[k]?.label ?? k));
+    const skipped = tests.filter(t => t.status === "skipped").length;
+    const totalPass = pct(tests.filter(t => t.status === "passed").length, tests.length - skipped);
     const touchedFiles = (cov?.files || []).filter(f => touched.has(f.file));
     const tCov = pct(touchedFiles.reduce((a, f) => a + f.covered, 0), touchedFiles.reduce((a, f) => a + f.statements, 0));
-    return `
+    const open = S.changes.length - proven;
+    const covCard = (k, c) => c ? `<div class="card kpi row click" data-go="coverage" data-q="suite=${k}">${ring(c.linePercent ?? c.percent, (c.linePercent ?? c.percent) + "%", color(c.linePercent ?? c.percent))}
+      <div class="kbody"><div class="l">Coverage · ${named(k)}</div><div class="v">${c.linePercent ?? c.percent}%<span class="unit">of lines</span></div>
+      <div class="s">${c.branches ? `${c.branchPercent}% of branches · ` : ""}${c.full ?? "?"} of ${c.files.length} files at 100%</div></div></div>` : "";
+    const suites = Object.entries(S.suites).filter(([, s]) => s.tests);
+    return `${verdict()}
       <div class="grid kpis">
-        <div class="card kpi row">${ring(totalPass, totalPass + "%", failed ? "var(--red)" : "var(--green)")}<div><div class="l">Tests passing</div>
-          <div class="v">${tests.length - failed - tests.filter(t => t.status === "skipped").length}<span class="muted small"> / ${tests.length}</span></div>
-          <div class="s">${failed ? `<b style="color:var(--red)">${failed} failing</b>` : "none failing"} · ${tests.filter(t => t.status === "skipped").length} skipped</div></div></div>
-        ${cov ? `<div class="card kpi row">${ring(cov.linePercent ?? cov.percent, (cov.linePercent ?? cov.percent) + "%", color(cov.linePercent ?? cov.percent))}<div><div class="l">${named(keys[0])} · line coverage</div>
-          <div class="v">${cov.linePercent ?? cov.percent}%</div><div class="s">${cov.covered.toLocaleString()} of ${cov.statements.toLocaleString()} lines · ${cov.full ?? "?"} of ${cov.files.length} files at 100%</div></div></div>` : ""}
-        ${cov?.branches ? `<div class="card kpi row">${ring(cov.branchPercent, cov.branchPercent + "%", color(cov.branchPercent))}<div><div class="l">${named(keys[0])} · branch coverage</div>
-          <div class="v">${cov.branchPercent}%</div><div class="s">${cov.branchesCovered.toLocaleString()} of ${cov.branches.toLocaleString()} decision paths</div></div></div>` : ""}
-        ${cov ? `<div class="card kpi row">${ring(tCov, tCov + "%", color(tCov))}<div><div class="l">Coverage of touched files</div>
-          <div class="v">${tCov}%</div><div class="s">${touchedFiles.length} Python files changed in these releases</div></div></div>` : ""}
-        ${pcov ? `<div class="card kpi row">${ring(pcov.linePercent ?? pcov.percent, (pcov.linePercent ?? pcov.percent) + "%", color(pcov.linePercent ?? pcov.percent))}<div><div class="l">${named(keys[1])} · line coverage</div>
-          <div class="v">${pcov.linePercent ?? pcov.percent}%<span class="muted small"> lines</span></div><div class="s">${pcov.branches ? pcov.branchPercent + "% of branches · " : ""}${pcov.full ?? "?"} of ${pcov.files.length} files at 100%</div></div></div>` : ""}
-        <div class="card kpi row">${ring(pct(proven, S.changes.length), `${proven}/${S.changes.length}`, proven === S.changes.length ? "var(--green)" : "var(--amber)")}
-          <div><div class="l">Changes proven</div><div class="v">${proven}<span class="muted small"> / ${S.changes.length}</span></div><div class="s">every change has passing tests</div></div></div>
-        ${S.gate ? `<div class="card kpi row click" data-go="coverage" style="cursor:pointer">${ring(S.gate.ok ? 100 : 0, S.gate.ok ? "✓" : "✗", S.gate.ok ? "var(--green)" : "var(--red)")}
-          <div><div class="l">Coverage gate</div><div class="v" style="font-size:22px">${S.gate.ok ? "May only go up" : `${S.gate.problems.length} drop(s)`}</div>
-          <div class="s">${S.gate.raised.length} file(s) raised this run · ${S.gate.exceptions.length} exception(s) with a reason${diffLine(S.gate.diff)}</div></div></div>` : ""}
-        ${e2e.length ? `<div class="card kpi row">${ring(pct(e2e.filter(t => t.status === "passed").length, e2e.length), `${e2e.filter(t => t.status === "passed").length}/${e2e.length}`, "var(--teal)")}
-          <div><div class="l">E2E in a browser</div><div class="v">${e2e.length}</div><div class="s">${S.screenshots.length} screenshots</div></div></div>` : ""}
+        ${tests.length ? `<div class="card kpi row click" data-go="tests" data-q="${failed ? "status=failed" : ""}">${ring(totalPass, totalPass + "%", failed ? "var(--red)" : "var(--green)")}<div class="kbody"><div class="l">Tests</div>
+          <div class="v">${tests.length - failed - skipped}<span class="unit">of ${tests.length} pass</span></div>
+          <div class="s">${failed ? `<b style="color:var(--red)">${failed} failing</b>` : "none failing"}${skipped ? ` · ${skipped} skipped` : ""}</div></div></div>` : ""}
+        ${partsCard("Lint", S.lint || [], "problems", "problem", "clean")}
+        ${partsCard("Security", S.security || [], "blocking", "finding", "nothing found")}
+        ${covCard(keys[0], cov)}${covCard(keys[1], pcov)}
+        ${cov ? `<div class="card kpi row">${touchedFiles.length ? ring(tCov, tCov + "%", color(tCov)) : ring(100, "–", "var(--line)")}<div class="kbody"><div class="l">Changed files</div>
+          <div class="v">${touchedFiles.length ? `${tCov}%<span class="unit">covered</span>` : "None"}</div><div class="s">${touchedFiles.length ? plural(touchedFiles.length, "Python file") + " changed in these releases" : "no Python file changed in these releases"}</div></div></div>` : ""}
+        ${S.changes.length ? `<div class="card kpi row click" data-go="changes" data-q="${open ? "open=1" : ""}">${ring(pct(proven, S.changes.length), `${proven}/${S.changes.length}`, open ? "var(--amber)" : "var(--green)")}
+          <div class="kbody"><div class="l">Changes proven</div><div class="v">${proven}<span class="unit">of ${S.changes.length}</span></div>
+          <div class="s">${open ? `<b style="color:var(--amber)">${plural(open, "change")} without a passing test</b>` : "every change has passing tests"}</div></div></div>` : ""}
+        ${S.gate ? `<div class="card kpi row click" data-go="coverage">${ring(100, S.gate.ok ? "✓" : "✗", S.gate.ok ? "var(--green)" : "var(--red)")}
+          <div class="kbody"><div class="l">Coverage gate</div><div class="v">${S.gate.ok ? "Holds" : plural(S.gate.problems.length, "drop")}</div>
+          <div class="s">coverage may only go up${diffLine(S.gate.diff)}</div></div></div>` : ""}
+        ${e2e.length ? `<div class="card kpi row click" data-go="e2e">${ring(pct(e2e.filter(t => t.status === "passed").length, e2e.length), `${e2e.filter(t => t.status === "passed").length}/${e2e.length}`, "var(--teal)")}
+          <div class="kbody"><div class="l">E2E in a browser</div><div class="v">${e2e.length}</div><div class="s">${plural(S.screenshots.length, "screenshot")}</div></div></div>` : ""}
       </div>
-      <h2>Suites</h2>
-      <div class="card"><table><thead><tr><th>Suite</th><th>Tests</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Time</th></tr></thead><tbody>
-        ${Object.entries(S.suites).map(([k, s]) => `<tr class="click" data-go="${k === "e2e" ? "e2e" : "tests"}" data-q="${k === "e2e" ? "" : "suite=" + k}">
-          <td><b>${esc(s.label)}</b></td><td>${s.tests}</td><td>${badge("passed", s.passed)}</td><td>${s.failed ? badge("failed", s.failed) : "0"}</td>
-          <td>${s.skipped}</td><td>${s.time}s</td></tr>`).join("")}
-      </tbody></table></div>
-      <h2>Steps of this run</h2>
-      <div class="card"><table><tbody>${S.steps.map(s => `<tr class="click" data-go="steps"><td>${badge(s.status)}</td><td>${esc(s.label)}</td><td class="muted">${s.seconds}s</td></tr>`).join("")
-        || `<tr><td class="muted">No step log (collect.py was run on its own).</td></tr>`}</tbody></table></div>
-      <h2>Changes by area</h2>
-      <div class="grid kpis">${[...new Set(S.changes.map(c => c.area))].map(a => {
-        const cs = S.changes.filter(c => c.area === a), ok = cs.filter(c => c.verdict === "passed").length;
-        return `<div class="card click" data-go="changes" data-q="area=${encodeURIComponent(a)}" style="cursor:pointer"><div class="l label">${esc(a)}</div>
-          <div class="v" style="font-size:22px;font-weight:700">${ok}/${cs.length}</div><div class="small muted">${cs.map(c => esc(c.title)).join(" · ")}</div></div>`;
-      }).join("")}</div>`;
+      <div class="cols2">
+        <section><h2>Steps of the last run</h2>
+          <div class="card flush"><ul class="steplist">${S.steps.map(s => `<li>${stepLink(s.key, `${badge(s.status)}<span class="sname" title="${esc(s.label)}">${esc(short(s.label))}</span><span class="muted small">${s.seconds}s</span>`)}</li>`).join("")
+            || `<li class="muted">No step log (collect.py was run on its own).</li>`}</ul></div></section>
+        ${suites.length ? `<section><h2>Test suites</h2>
+          <div class="card flush"><table class="suites"><thead><tr><th>Suite</th><th class="num">Tests</th><th class="num">Failed</th><th class="num">Time</th></tr></thead><tbody>
+          ${suites.map(([k, s]) => `<tr class="click" data-go="${k === "e2e" ? "e2e" : "tests"}" data-q="${k === "e2e" ? "" : "suite=" + k}">
+            <td title="${esc(s.label)}"><b>${esc(short(s.label))}</b></td><td class="num">${s.tests}${s.skipped ? `<span class="muted small"> · ${s.skipped} skipped</span>` : ""}</td>
+            <td class="num">${s.failed ? badge("failed", s.failed) : '<span class="muted">0</span>'}</td><td class="num muted">${s.time}s</td></tr>`).join("")}
+          </tbody></table></div></section>` : ""}
+      </div>
+      ${new Set(S.changes.map(c => c.area)).size > 1 ? `<h2>Changes by area</h2>
+      <div class="grid areas">${[...new Set(S.changes.map(c => c.area))].map(a => {
+        const cs = S.changes.filter(c => c.area === a), notyet = cs.filter(c => c.verdict !== "passed");
+        return `<div class="card click area-card" data-go="changes" data-q="area=${encodeURIComponent(a)}"><div class="label">${esc(a)}</div>
+          <div class="v">${cs.length - notyet.length}<span class="unit">of ${cs.length} proven</span></div>
+          ${notyet.length ? `<ul class="small">${notyet.slice(0, 6).map(c => `<li>${badge(c.verdict)} ${esc(c.title)}</li>`).join("")}${notyet.length > 6 ? `<li class="muted">and ${notyet.length - 6} more</li>` : ""}</ul>`
+            : '<div class="small muted">every change in this area has passing tests</div>'}</div>`;
+      }).join("")}</div>` : ""}`;
   }
 
   function changes(query) {
     const params = new URLSearchParams(query);
     const area = params.get("area") || "";
     const areas = [...new Set(S.changes.map(c => c.area))];
-    const list = S.changes.filter(c => !area || c.area === area);
-    return `<div class="toolbar"><select id="area"><option value="">All areas</option>${areas.map(a => `<option ${a === area ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>
+    const open = params.get("open");  // F-70: the Overview's "without a passing test" links here
+    const list = S.changes.filter(c => (!area || c.area === area) && (!open || c.verdict !== "passed"));
+    return `${open ? `<p class="note">Showing the ${list.length} change(s) without a passing test. <a href="#changes">Show all</a></p>` : ""}<div class="toolbar"><select id="area"><option value="">All areas</option>${areas.map(a => `<option ${a === area ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>
       <span class="muted small">Each change: what was wrong, how it is fixed, where the code is (click to open in VS Code), and the tests that prove it.</span></div>
       <div class="grid">${list.map(change).join("")}</div>`;
   }
@@ -151,11 +191,13 @@
     const q = ($("#q")?.value || "").toLowerCase(), suite = $("#suite")?.value || "", status = $("#status")?.value || "";
     const list = pool.filter(t => (!suite || t.suite === suite) && (!status || t.status === status) &&
       (!q || [t.name, t.module, t.doc, t.moduleDoc, t.file].join(" ").toLowerCase().includes(q)) && (!filter || filter(t)));
+    const order = { failed: 0, skipped: 2 };  // F-71: what failed comes first
+    list.sort((a, b) => (order[a.status] ?? 1) - (order[b.status] ?? 1));
     $("#count").textContent = `${list.length} of ${pool.length}`;
     $("#rows").innerHTML = list.map((t, i) => `<tr class="click" data-i="${i}"><td>${badge(t.status)}</td>
-      <td><b>${human(t.name)}</b><div class="small muted">${esc(t.doc || t.moduleDoc).slice(0, 260)}</div></td>
+      <td class="tname"><b>${human(t.name)}</b><div class="small muted clamp">${esc(t.doc || t.moduleDoc)}</div></td>
       <td class="small">${where(t.file, t.abs, t.line)}</td><td class="muted small">${t.time}s</td></tr>
-      ${t.status === "failed" ? `<tr class="detail"><td colspan="4"><pre class="log">${esc(t.detail)}</pre></td></tr>` : ""}`).join("")
+      ${t.status === "failed" ? `<tr class="detail"><td colspan="4"><pre class="log wrap">${esc(t.detail)}</pre></td></tr>` : ""}`).join("")
       || `<tr><td colspan="4" class="muted">Nothing matches.</td></tr>`;
   }
 
@@ -398,9 +440,11 @@
       </tbody></table></div>`).join("")}`;
   }
 
+  // F-70: a failed step's log is open, a passed one folded; the Overview links straight to a step
   function stepsView() {
-    return S.steps.map(s => `<div class="card" style="margin-bottom:14px"><header style="display:flex;gap:10px;align-items:center">${badge(s.status)}<h3>${esc(s.label)}</h3>
-      <span class="muted small">${s.seconds}s · results/${esc(s.key)}.log</span></header><pre class="log">${esc(s.log)}</pre></div>`).join("") || '<p class="muted">No step log.</p>';
+    return S.steps.map(s => `<details class="card steplog ${esc(s.status)}" id="step-${esc(s.key)}" ${s.status === "failed" ? "open" : ""}>
+      <summary>${badge(s.status)}<h3 title="${esc(s.label)}">${esc(short(s.label))}</h3><span class="muted small">${s.seconds}s · results/${esc(s.key)}.log</span></summary>
+      <pre class="log wrap">${esc(s.log)}</pre></details>`).join("") || '<p class="muted">No step log.</p>';
   }
 
   function gapsView() {
@@ -423,7 +467,11 @@
       ["#q", "#suite", "#status"].forEach(s => $(s).oninput = redraw); redraw();
     } else if (tab === "coverage") { v.innerHTML = coverageView(query); ["#cs", "#cq", "#ct", "#sort"].forEach(s => $(s).oninput = fillCoverage); fillCoverage(); }
     else if (tab === "e2e") { v.innerHTML = e2eView(); $("#rows").innerHTML = ""; fillE2e(); }
-    else if (tab === "steps") v.innerHTML = stepsView();
+    else if (tab === "steps") {
+      v.innerHTML = stepsView();
+      const at = new URLSearchParams(query).get("step"), el = at && document.getElementById("step-" + at);
+      if (el) { el.open = true; requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); }
+    }
     else if (tab === "threats") v.innerHTML = threatsView();
     else if (tab === "journeys") v.innerHTML = journeysView();
     else if (tab === "capabilities") { v.innerHTML = capabilitiesView(query); $("#cq2").oninput = $("#cg").oninput = $("#cs2").oninput = () => fillCapabilities(); fillCapabilities(); }

@@ -6,7 +6,7 @@
 
 :root {
   --bg: #0b0c12; --panel: #15161d; --panel2: #1b1d26; --line: #2a2c38; --text: #e6e7ea; --muted: #9a9cab;
-  --accent: #9b7bff; --teal: #2dd4bf; --green: #34d399; --red: #ff6b6b; --amber: #fbbf24; --blue: #60a5fa;
+  --accent: #9b7bff; --on-accent: #0b0c12; --teal: #2dd4bf; --green: #34d399; --red: #ff6b6b; --amber: #fbbf24; --blue: #60a5fa;
   --must: var(--red); --should: var(--amber); --could: var(--teal);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -14,7 +14,7 @@
 }
 :root[data-theme="light"] {
   --bg: #f6f7fb; --panel: #ffffff; --panel2: #f1f2f7; --line: #e2e4ec; --text: #1c1d24; --muted: #5d6071;
-  --accent: #6d3cf0; --teal: #0d9488; --green: #047857; --red: #c62828; --amber: #a34d00; --blue: #1d5fd6;
+  --accent: #6d3cf0; --on-accent: #ffffff; --teal: #0d9488; --green: #047857; --red: #c62828; --amber: #a34d00; --blue: #1d5fd6;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -34,7 +34,7 @@ h3 { font-size: 15px; margin: 0; }
 .brand { display: flex; gap: 12px; align-items: center; min-width: 0; flex: 0 0 300px; }
 .brand > div { min-width: 0; }
 .brand p { margin: 0; color: var(--muted); font-size: 12px; max-width: 46ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff;
+.logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: var(--on-accent);
   font-weight: 800; flex: none; }
 .sections { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; }
 .sections a { color: var(--muted); padding: 5px 12px; border-radius: 7px; font: 600 13px var(--font); }
@@ -48,7 +48,8 @@ h3 { font-size: 15px; margin: 0; }
 .tabs button[aria-selected="true"] { background: var(--panel2); color: var(--text); }
 .tabs button .n { margin-left: 6px; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--line); }
 .ghost { border: 1px solid var(--line); background: none; color: var(--text); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: 13px var(--font); }
-.primary { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 7px 14px; cursor: pointer; font: 600 13px var(--font); }
+/* F-72: text on the accent is dark in the dark theme (6.2:1) and white in the light one (5.9:1); white on the light purple was 3.2:1 */
+.primary { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 7px 14px; cursor: pointer; font: 600 13px var(--font); }
 .primary:disabled, .ghost:disabled { opacity: .5; cursor: not-allowed; }
 main { max-width: 1320px; margin: 0 auto; padding: 24px; }
 
@@ -101,5 +102,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .55); }
 :root[data-theme="light"] .water i { background: radial-gradient(1200px 700px at 78% -10%, rgba(124,77,255,.14), transparent 60%),
   linear-gradient(180deg, rgba(246,247,251,.3), rgba(246,247,251,.82) 85%); }
 
-@media (max-width: 800px) { main { padding: 16px; } input[type=search] { min-width: 0; } .top { padding: 12px 16px; } .brand { flex: 1 1 auto; } }
+@media (max-width: 800px) { main { padding: 16px; } input[type=search] { min-width: 0; } .top { padding: 12px 16px; gap: 10px 12px; } .brand { flex: 1 1 0; }
+  /* F-72: on a phone the sections get a row of their own and scroll sideways, so the page never does */
+  .sections { order: 2; flex: 1 0 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .sections a { flex: none; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }

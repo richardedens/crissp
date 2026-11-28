@@ -4,6 +4,18 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
+  and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
+  yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share
+  one tile; steps and test suites sit side by side. On Runs & logs a failed step's log is open and a passed one folded.
+- **A Security tile (F-73).** The CVE audit, the secrets scan and the unsafe-code scan get a tile with what each found
+  ("nothing found", or how many findings block the release), next to the Lint tile. Scans and suites without tests no
+  longer appear in the suites table as "0 tests".
+- **The Tests tab shows failures first and stays in the page (F-71).** One long failing assertion no longer makes the
+  table thousands of pixels wide.
+- **Easier on a phone, and readable buttons (F-72).** The top bar no longer makes pages scroll sideways on a phone: the
+  sections get a row of their own. Text on the purple accent is dark in the dark theme, so primary buttons pass WCAG AA
+  contrast.
 - **git lints before every commit (F-50).** `crissp init` writes `.githooks/pre-commit` and sets
   `core.hooksPath .githooks`, so a commit runs the project's lint steps first (`lint` and every `*-lint` step, such as
   `backend-lint` and `frontend-lint`) and a red lint stops it. The hook runs the crissp `.mcp.json` pins (the new
@@ -11,6 +23,13 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
   ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
   what to do instead. `git commit --no-verify` skips the hook once.
+- **Lint has its own tile on the dashboard (F-41).** The Overview shows a Lint tile next to the tests: "Clean", or
+  how many problems each lint step found (ruff, Biome, ESLint, Stylelint and shellcheck are read from their logs),
+  red when one failed. A lint step is a step whose key is `lint` or ends in `-lint`, like the template's
+  `backend-lint` and `frontend-lint`. Lint steps no longer appear in the Suites table as "0 tests".
+- **"Changes proven" on this repository's dashboard counts the package tests (F-40).** The `package` step now writes
+  its test results for the dashboard, so the changes proven by `test_cli` and `test_package` no longer show as
+  "missing" while they pass.
 - **The UX suite's team and rules are yours to edit (E7-F1-01, E7-F2-01).** The UX page has a **Team** tab that adds,
   edits, switches off and removes a persona (name, role, device, moderator, the brief and the jobs they come to do),
   and a **Rules** tab that does the same for the rules the team judges by (title, weight must · should · could, on or

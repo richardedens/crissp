@@ -125,3 +125,35 @@ def test_the_manifest_is_this_repository_s_with_its_gaps():
     assert isinstance(data["changes"], list) and len(data["gaps"]) >= 3
     text = json.dumps(data)
     assert not re.search(r"a[e]gis|cvew[a]tch|b[r]idge|sm[a]sh|py[o]dide|w[a]ndvol|\\bF[l]ow\\b", text, re.IGNORECASE)
+
+
+def _writes_junit(step: dict) -> bool:
+    return bool(re.search(r"(^|\s)covered(\s|$)|\$JUNIT|\$\{JUNIT\}", step["run"]))
+
+
+def unreported(root: Path, data: dict) -> list[str]:
+    """The tests a change names that no step writing JUnit runs: the dashboard can never see them pass."""
+    sys.path.insert(0, str(root / "crissp/testsuite/lib"))
+    import project
+    steps = project.load(root)["steps"]
+    refs = sorted({ref for c in data.get("changes", []) for ref in c.get("tests", [])})
+    return [ref for ref in refs if find_test(ref, [root / t for s in steps for t in s["tests"]])
+            and not any(_writes_junit(s) and find_test(ref, [root / t for t in s["tests"]]) for s in steps)]
+
+
+def test_every_test_that_proves_a_change_is_reported_to_the_dashboard():
+    """F-40: the dashboard reads which tests passed from each step's JUnit file ($JUNIT; `covered` writes it). The
+    package step wrote none, so the changes its tests prove stayed 'missing' on the dashboard although they passed."""
+    assert unreported(ROOT, json.loads(MANIFEST.read_text())) == []
+
+
+def test_a_step_without_junit_leaves_its_tests_unreported(tmp_path):
+    (tmp_path / "crissp/testsuite/a").mkdir(parents=True)
+    (tmp_path / "crissp/testsuite/b").mkdir()
+    (tmp_path / "crissp/testsuite/a/test_a.py").write_text("def test_one(): pass\n")
+    (tmp_path / "crissp/testsuite/b/test_b.py").write_text("def test_two(): pass\n")
+    (tmp_path / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "P", "steps": [
+        {"key": "a", "label": "A", "dir": ".", "run": "covered crissp/testsuite/a", "tests": ["crissp/testsuite/a"]},
+        {"key": "b", "label": "B", "dir": ".", "run": "pytest crissp/testsuite/b", "tests": ["crissp/testsuite/b"]}]}))
+    data = {"changes": [{"tests": ["test_a::test_one", "test_b::test_two", "test_c"]}]}
+    assert unreported(tmp_path, data) == ["test_b::test_two"]

@@ -52,8 +52,13 @@ One local server (`crissp dashboard`, on 127.0.0.1) shows the tests, the backlog
 what Claude is doing now, under one top bar (Tests · Backlog · UX · Workers · Activity · Sessions) in one dark look (a
 light theme is one click away). It never runs a test and loads nothing from the internet.
 
-**What the last run proved**: tests, line and branch coverage, the coverage gate, every step.
+**Ready to release?** The answer comes first: green, or which steps stop the release, each linked to its log. Then the
+tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code),
+line and branch coverage, the coverage gate and every step.
 ![The Tests dashboard](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/dashboard.jpg)
+
+**And when it is not**: the failed steps, and what lint and the scans found in each part.
+![The Tests dashboard when a run is red](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/dashboard-red.jpg)
 
 **What Claude is doing now** (Activity): per session the question asked, what the orchestrator does at this moment and
 for how long, and every agent it started, running ones first, each with its own current step. Read live from Claude
@@ -78,10 +83,13 @@ same size, with *Approve · Approve with a remark… · Again, with… · Reject
 item, and your remark is the first thing the builder reads in it.
 ![A design: before and after](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-design.jpg)
 
-**The team**: who they are, which device they use and what they look for, configured per product.
+**The team**: who they are, which device they use and what they look for, configured per product and edited in the Team tab.
 ![The UX team](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-team.jpg)
 
-<sub>The pictures show a demo project made with `crissp init` (0.1.4). Its backlog and its moves, test run, workers and
+**The rules**: what every screen must do, checked on each round and edited in the Rules tab.
+![The UX rules](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-rules.jpg)
+
+<sub>The pictures show demo projects made with `crissp init` (the Tests dashboard with 0.1.10, the rest with 0.1.4). Its backlog and its moves, test run, workers and
 screenshots are real; the UX round's and the design's text and the Claude session on the Activity page are samples,
 because a real round runs on your own Claude login and costs tokens.</sub>
 
