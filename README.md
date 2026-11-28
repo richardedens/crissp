@@ -52,6 +52,11 @@ One local server (`crissp dashboard`, on 127.0.0.1) shows the tests, the backlog
 what Claude is doing now, under one top bar (Tests · Backlog · UX · Workers · Activity · Sessions) in one dark look (a
 light theme is one click away). It never runs a test and loads nothing from the internet.
 
+**Where the work is**: the six stages, Discover, Plan, Build, Verify, Review and Release, on the Stages page
+(`/stages`), each with what is in it and whose move it is, read from the backlog, the checks, git and the UX team. Ask
+Claude or Ask Vibe gives you the command that starts a session on that stage; every session also opens by saying the
+stage and offering its help.
+
 **Ready to release?** The answer comes first: green, or which steps stop the release, each linked to its log. Then the
 tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code),
 line and branch coverage, the coverage gate and every step.
@@ -126,7 +131,7 @@ diff first.
 | `crissp check [--plan]` | Runs only what the changes since the last green state can affect, then moves the certificate to this commit |
 | `crissp check-all` | The full run, with the coverage gate |
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
-| `crissp dashboard` | The Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
+| `crissp dashboard` | Where the work is in the six stages (`/stages`), the Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
 | `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set); `--yes` puts it in place, never deleting or committing. Run it after an update: `uvx crissp==<new> repair --yes` |
 | `crissp hook` | The project's lint steps (`lint` and every `*-lint` step), as git runs them before every commit from `.githooks/pre-commit`; `git commit --no-verify` skips it once |

@@ -7,6 +7,9 @@ than the repository says, and what it writes is plain Markdown in the backlog's 
 Tools
 - brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the number of open
             findings. Small enough to load at the start of every session.
+- stage     where the work is in the six stages (Discover, Plan, Build, Verify, Review, Release; F-130), read from the
+            backlog, the certificate, git and the UX suite (crissp/testsuite/lib/stages.py, the Stages page's own logic);
+            with a stage, what is in it and what to do to help the product owner with it.
 - backlog   exactly what is asked: one finding, decision, epic, feature or PBI by its id (F-12, D-05, E8, E8-F1,
             E8-F1-01), the features and PBIs with a status, or the open findings or decisions.
 - finding   writes a new finding (the next F-number) into FINDINGS.md.
@@ -36,6 +39,7 @@ It works for the project CRISSP_ROOT names, or the current directory (Claude Cod
 """
 
 import datetime
+import importlib.util
 import json
 import os
 import re
@@ -44,6 +48,7 @@ import sys
 import textwrap
 import threading
 import time
+import types
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -75,6 +80,14 @@ TOOLS = [
      "description": "Where the work on this repository stands: version, commit, release certificate, backlog items doing "
                     "/ in review / next, open decisions, the number of open findings. Call it first in a session.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "stage",
+     "description": "Where the work is in the six stages of the agentic SDLC (Discover, Plan, Build, Verify, Review, "
+                    "Release): what is in each and whose move it is. With a stage: what is in it and the instructions "
+                    "for helping the product owner with it. Call it at the start of a session, on a <!-- CRISSP --> "
+                    "prompt, and when asked for help with a stage (\"crissp: help me with Plan\").",
+     "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
+         "stage": {"type": "string", "enum": ["discover", "plan", "build", "verify", "review", "release"],
+                   "description": "one stage: what is in it and how to help with it"}}}},
     {"name": "backlog",
      "description": "Exactly the backlog lines asked for, instead of reading the backlog files: one finding, decision or "
                     "item by id (F-12, D-05, E7-01), the items with a status, or the open findings or decisions.",
@@ -240,6 +253,20 @@ def brief(root: Path) -> str:
         f"Open findings: {len(open_findings(root))} (the backlog tool with open=findings lists them)",
         "Ask the backlog tool for any F-/D-/E- id instead of reading the backlog files.",
     ])
+
+
+def stage(root: Path, args: dict) -> str:
+    """F-130: the six stages, from lib/stages.py: the project's own (a repository that carries the framework), else the
+    engine's (an installed crissp)."""
+    path = next((p for p in (root / "crissp" / "testsuite" / "lib" / "stages.py", ENGINE / "testsuite" / "lib" / "stages.py")
+                 if p.is_file()), None)
+    if path is None:
+        raise LookupError("crissp/testsuite/lib/stages.py is missing")
+    spec = importlib.util.spec_from_file_location("crissp_stages_for_the_tool", path)
+    stages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(stages)
+    this = types.SimpleNamespace(items=items, open_findings=open_findings, open_decisions=open_decisions)  # one parser
+    return stages.text(stages.state(root, this), args.get("stage"))
 
 
 def backlog(root: Path, args: dict) -> str:
@@ -591,6 +618,8 @@ def call(root: Path, name: str, args: dict) -> dict:
     try:
         if name == "brief":
             text = brief(root)
+        elif name == "stage":
+            text = stage(root, args)
         elif name == "backlog":
             text = backlog(root, args)
         elif name == "finding":
@@ -624,7 +653,10 @@ def handle(root: Path, msg: dict) -> dict | None:
     if method == "initialize":
         result = {"protocolVersion": (msg.get("params") or {}).get("protocolVersion", PROTOCOL),
                   "capabilities": {"tools": {}}, "serverInfo": {"name": "crissp", "version": "0.1.0"},
-                  "instructions": "The way of working of this repository. Call brief at the start; ask backlog for "
+                  "instructions": "The way of working of this repository. Call brief and stage at the start, and call stage "
+                                  "on a <!-- CRISSP --> prompt: say which stage the work is in and offer to help "
+                                  "with it (\"crissp: help me with <stage>\" asks for it; call stage with that stage "
+                                  "and do what it says). Ask backlog for "
                                   "F-/D-/E- ids instead of reading crissp/backlog files; write findings, decisions, "
                                   "epics, features and PBIs with finding, decision, epic, feature and item instead of "
                                   "editing them; start the checks with run, wait for them with status (wait: true), "
