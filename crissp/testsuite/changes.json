@@ -1308,6 +1308,22 @@
    "tests": [
     "test_python_lint::test_a_pytest_raises_match_with_regex_signs_is_escaped_or_raw"
    ]
+  },
+  {
+   "id": "served-opens-only-localhost",
+   "title": "The dashboard probe opened any address it was handed (F-91)",
+   "problem": "served() passed the address from the dashboard log straight to urllib, so a file: URL or another host in that log would have been opened by the crissp tool.",
+   "fix": "served() opens an address only when it is http on 127.0.0.1, the one address the dashboard listens on; anything else is not the dashboard.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def served("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_served_opens_only_this_machines_address",
+    "test_crissp_tool::test_served_means_the_dashboard_itself_answers"
+   ]
   }
  ],
  "gaps": [

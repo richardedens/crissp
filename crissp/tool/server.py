@@ -44,6 +44,7 @@ import sys
 import textwrap
 import threading
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -548,7 +549,11 @@ def status(root: Path, args: dict | None = None) -> str:
 
 def served(url: str, root: Path | None = None) -> bool:
     """The address answers with the dashboard itself, not with an error page or another program; given a project, its
-    stamp names that project too (F-09: never another project's dashboard)."""
+    stamp names that project too (F-09: never another project's dashboard). Only this machine's address is opened
+    (F-91): the address is read from a log the project's own script writes."""
+    where = urllib.parse.urlsplit(url)
+    if where.scheme != "http" or where.hostname != "127.0.0.1":
+        return False
     try:
         with urllib.request.urlopen(url, timeout=2) as answer:
             if 'id="sessions"' not in answer.read(65536).decode(errors="replace"):

@@ -4,6 +4,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The crissp tool only probes this machine's dashboard (F-91).** Checking whether the dashboard is up, it now opens
+  only `http://127.0.0.1` addresses, never a file or another host named in the dashboard's log.
 - **A test that could not fail now can (F-90).** A `pytest.raises(match="cannot hold a |")` matched every message,
   since `match=` is a regular expression. ruff's RUF043 is now part of crissp's own lint, and 19 patterns are escaped
   or made raw.

@@ -480,6 +480,16 @@ def test_served_means_the_dashboard_itself_answers(tmp_path):
     assert srv.served(f"http://127.0.0.1:{_free_port()}/dashboard/") is False  # nothing listens
 
 
+def test_served_opens_only_this_machines_address(tmp_path):
+    """F-91: the address comes from a log line the project's own test.sh writes; served() opened whatever it said, a
+    file: URL or another host too. It opens http://127.0.0.1 alone, as the dashboard only listens there."""
+    secret = tmp_path / "index.html"
+    secret.write_text('<a id="sessions"></a>')
+    assert srv.served(secret.as_uri()) is False  # a file, read without a server
+    assert srv.served("http://example.invalid/dashboard/") is False
+    assert srv.served("http://127.0.0.1.example.invalid:8766/dashboard/") is False  # a host that only starts alike
+
+
 def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
