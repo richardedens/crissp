@@ -64,7 +64,7 @@ def world(tmp_path: Path) -> tuple[Path, Path]:
 
 def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
     repo, projects = world(tmp_path)
-    found = activity.state(repo, projects, now=NOW)
+    found = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")
     assert found["now"] == NOW and [s["id"] for s in found["sessions"]] == ["s1"]  # the old session is left out
     s = found["sessions"][0]
     assert (s["title"], s["prompt"], s["busy"]) == ("The board moves", "Build the board", True)
@@ -79,13 +79,13 @@ def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
 
 def test_a_quiet_session_and_no_sessions_at_all(tmp_path):
     repo, projects = world(tmp_path)
-    quiet = activity.state(repo, projects, now=NOW + 300)["sessions"][0]
+    quiet = activity.state(repo, projects, now=NOW + 300, vibe_home=tmp_path / "no-vibe")["sessions"][0]
     assert quiet["busy"] is False  # nothing written for five minutes: still listed, no longer busy
-    assert activity.state(repo, tmp_path / "nowhere", now=NOW) == {"sessions": [], "now": NOW, "product": "repo",
+    assert activity.state(repo, tmp_path / "nowhere", now=NOW, vibe_home=tmp_path / "no-vibe") == {"sessions": [], "now": NOW, "product": "repo",
                                                                     "monogram": "R"}  # no suites.json: the folder's name
     (repo / "crissp" / "testsuite").mkdir(parents=True)
     (repo / "crissp" / "testsuite" / "suites.json").write_text('{"product": "Shop", "monogram": "S", "steps": []}')
-    assert activity.state(repo, projects, now=NOW)["product"] == "Shop"
+    assert activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["product"] == "Shop"
 
 
 def test_a_session_whose_last_step_started_an_agent(tmp_path):
@@ -93,7 +93,30 @@ def test_a_session_whose_last_step_started_an_agent(tmp_path):
     repo.mkdir()
     lines(sv.project_dir(repo, projects) / "s2.jsonl",
           [use("Agent", {"description": "Review", "subagent_type": "general-purpose"}, "a1", 5, history=12_000)], NOW)
-    s = activity.state(repo, projects, now=NOW)["sessions"][0]
+    s = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["sessions"][0]
     assert s["main"] == {"tool": "Agent", "kind": "agent", "text": "started an agent: Review", "since": T.format(5)}
     assert s["title"] == "" and s["prompt"] == ""
     assert (s["history"], s["long"]) == (12_000, False)
+
+
+def test_screenshots_and_whole_big_files_in_the_main_thread_are_flagged(tmp_path):
+    """F-104 (F-18): the context-budget habits as checks. Images in the main thread (screenshots belong in a subagent
+    that reports text) and big files read whole (offset/limit reads a part) are counted; past IMAGES images, or any
+    whole read of a file past BIG_LINES lines, the session says so."""
+    repo, projects = tmp_path / "repo", tmp_path / "projects"
+    (repo / "big.py").parent.mkdir(parents=True)
+    (repo / "big.py").write_text("x\n" * (activity.BIG_LINES + 1))
+    (repo / "small.py").write_text("x\n")
+    shot = {"type": "user", "timestamp": T.format(5), "message": {"content": [
+        {"type": "tool_result", "tool_use_id": "s", "content": [{"type": "image", "source": {}}]}]}}
+    lines(sv.project_dir(repo, projects) / "s.jsonl", [
+        {"type": "user", "timestamp": T.format(1), "message": {"content": "check the page"}},
+        *[shot] * activity.IMAGES,
+        use("Read", {"file_path": str(repo / "big.py")}, "r1", 6),
+        use("Read", {"file_path": str(repo / "big.py"), "offset": 1, "limit": 50}, "r2", 6),
+        use("Read", {"file_path": str(repo / "small.py")}, "r3", 6),
+        {**use("Read", {"file_path": str(repo / "big.py")}, "r4", 6, sidechain=True)},  # a subagent's: its own context
+    ], NOW - 30)
+    s = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["sessions"][0]
+    assert s["images"] == activity.IMAGES and s["whole"] == ["big.py"]
+    assert activity.budget(s["images"] - 1, []) == [] and len(activity.budget(s["images"], ["big.py"])) == 2

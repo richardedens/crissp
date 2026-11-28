@@ -723,7 +723,7 @@
     }
    ],
    "tests": [
-    "test_cli.py::test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored",
+    "test_cli.py::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
     "test_package.py::test_init_makes_a_crissp_project_that_is_green"
    ]
   },
@@ -1450,6 +1450,152 @@
    "tests": [
     "test_lint::test_the_step_lints_every_css_file_of_this_repository_with_stylelint",
     "test_lint::test_this_repository_has_a_lint_step_with_its_own_dev_only_tools"
+   ]
+  },
+  {
+   "id": "vibe-desktop-mcp-tools",
+   "title": "A Vibe desktop session got no crissp tools: the config named no folder (F-100)",
+   "problem": "Vibe's desktop app starts MCP servers from its own app server: the server's working directory is the config's cwd, else the app server's own folder, and its environment only HOME, PATH, SHELL, TERM, USER and LOGNAME plus the config's env. .vibe/config.toml gave a relative server path (this repository) or `uvx crissp==x mcp` without CRISSP_ROOT (a project), so the server was not found or did not know the project, and search_tool_functions showed only Vibe's own tools.",
+   "fix": "lib/vibe.py writes .vibe/config.toml for this machine: cwd and [mcp_servers.env] CRISSP_ROOT name the project's folder, uvx by its full path (the checkout's own server with the Python that repairs, in the framework's repository), startup_timeout_sec 60 for the first uvx download. crissp init and repair write it; repair writes a config anew that does not name the folder when it holds only crissp's server, and says what to do for one with servers of its own or one still in git. The file names one machine's folder, so .vibe/ is git-ignored as a whole (F-29 reversed).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def config("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def server("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_vibe("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def vibe_needs("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def init("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_a_relative_server_path_is_not_found_from_vibes_app_server",
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere",
+    "test_vibe::test_a_windows_path_stays_valid_toml_in_the_config",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew",
+    "test_repair::test_a_vibe_config_with_servers_of_its_own_is_said_not_written",
+    "test_repair::test_a_vibe_config_in_git_is_said",
+    "test_repair::test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server",
+    "test_cli::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
+    "test_vibe_session::test_a_vibe_session_in_a_brought_in_project_finds_brief_and_backlog"
+   ]
+  },
+  {
+   "id": "sessions-section-vibe",
+   "title": "'Sessions that stay small' spoke only Claude Code (F-102)",
+   "problem": "The agreement's habits for short sessions named only Claude Code's commands (/clear, /compact, the Explore agent), so a Vibe session had no stated way to keep its context small.",
+   "fix": "The section, in CRISSP.md, this agreement and the template's (which crissp repair keeps in step, F-21), names Vibe's own: /clear or a new desktop session per item, /compact <what to keep>, its auto_compact_threshold, the task tool with the explore agent for heavy output, and the crissp tools from .vibe/config.toml.",
+   "sources": [
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "## Sessions that stay small"
+    }
+   ],
+   "tests": [
+    "test_template::test_the_sessions_section_names_the_vibe_way_too"
+   ]
+  },
+  {
+   "id": "activity-reads-vibe",
+   "title": "The Activity page saw only Claude Code's sessions (F-101)",
+   "problem": "lib/activity.py read only ~/.claude/projects: a Mistral Vibe session in the repository was invisible on /activity, and its 300k-token 'start fresh' warning could never fire.",
+   "fix": "lib/vibesessions.py reads Vibe's own session folders (VIBE_HOME, else ~/.vibe: logs/session/unified/<id>/meta.json and the journal) for the sessions of this repository written in the last half hour: title, last prompt, the latest tool call (masked), its subagents (sessions that name it as parent), and the last request's input tokens (else the context breakdown) against the 300k line. activity.state lists them beside Claude's, each with its source; the page names the source and gives Vibe's own advice for a long history.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def sessions("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/activity.js",
+     "symbol": "function session("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_busy_vibe_session_with_its_prompt_step_agents_and_long_history",
+    "test_vibesessions::test_the_activity_page_lists_vibe_sessions_next_to_claudes",
+    "test_vibesessions::test_a_session_without_a_journal_or_usage_still_shows",
+    "test_activity_page::test_vibe_sessions_show_beside_claudes_with_their_own_advice",
+    "test_activity_page::test_no_session_at_all_names_both"
+   ]
+  },
+  {
+   "id": "context-budget-checks",
+   "title": "The context-budget habits were advice only (F-104)",
+   "problem": "F-18 measured one session whose context was mostly 47 screenshots and re-read files; the agreement asks for browser checks in a subagent and narrow reads, but nothing told a session, Claude's or Vibe's, that it was doing otherwise.",
+   "fix": "measure.py counts the images in a session's main thread and the repository files longer than 800 lines it read whole (no offset or limit); activity.py does so for Claude's transcripts and vibesessions.py for Vibe's journal. Past 10 images, or any whole read of a big file, the session's card on /activity says so (context budget), next to the 300k-token history warning.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def budget("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def images("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def whole("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def session("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    }
+   ],
+   "tests": [
+    "test_activity::test_screenshots_and_whole_big_files_in_the_main_thread_are_flagged",
+    "test_vibesessions::test_a_vibe_sessions_images_and_whole_big_reads_are_counted",
+    "test_activity_page::test_the_context_budget_warnings_show"
+   ]
+  },
+  {
+   "id": "ux-team-on-any-cli",
+   "title": "The UX team ran only on Claude Code (F-103)",
+   "problem": "ux_team._launch always started `claude -p`: a team with only Mistral Vibe installed could not walk, and CRISSP.md said the personas are Claude Code.",
+   "fix": "ux_team.runner() picks the agent CLI: CRISSP_UX_CLI (claude or vibe), else Claude Code when it is installed, else Vibe; an unknown name is said before anything is made. The Vibe run is headless in the run's own folder (its working directory, VIBE_OUTSIDE_WORKDIR=deny refuses writes elsewhere), with only read_file, write_file and edit, MCP off (VIBE_ENABLE_MCP=false), reads allowed only in the UX suite and the agreement and never a .env, and is told to play the personas itself (Vibe has no agents there). _launch keeps its arguments.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def runner("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _vibe("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _launch("
+    }
+   ],
+   "tests": [
+    "test_ux_team::test_a_round_runs_on_mistral_vibe_read_only_without_mcp",
+    "test_ux_team::test_the_runner_is_the_one_asked_for_else_the_one_installed"
    ]
   }
  ],

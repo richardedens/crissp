@@ -38,8 +38,7 @@ site/_site/
 .ruff_cache/
 .pytest_cache/
 dist/
+# Vibe: .vibe/config.toml names this machine's folder (F-100); python3 crissp/testsuite/lib/repair.py --yes writes it
+.vibe/
 build/
 *.egg-info/
-# Vibe: .vibe/config.toml is committed like .mcp.json; the rest of .vibe/ stays local
-.vibe/*
-!.vibe/config.toml
