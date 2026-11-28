@@ -26,8 +26,10 @@ import ux_verdicts  # noqa: E402
 
 def listing(conf: dict) -> str:
     lines = [f"{conf['product']}: {conf['about']}".rstrip(": "), f"Runs against {conf['url']}.", "", "The team:"]
-    lines += [f"  {p['key']:<10} {p['name']}, {p['role']} ({p['device']}){' — moderator' if p['moderator'] else ''}{'' if p.get('on', True) else ' — off'}"
-              for p in conf["personas"]]
+    lines += [
+        f"  {p['key']:<10} {p['name']}, {p['role']} ({p['device']}){' — moderator' if p['moderator'] else ''}{'' if p.get('on', True) else ' — off'}"
+        for p in conf["personas"]
+    ]
     lines += ["", "The walks:"] + [f"  {w['id']:<18} {w['title']}" for w in conf["walks"].values()]
     return "\n".join(lines if conf["walks"] else [*lines[:-1], "  none yet: add one to crissp/uxsuite/walks/"])
 
@@ -36,7 +38,9 @@ def status(suite: ux_config.Suite, conf: dict) -> str:
     st = ux_team.state(suite, conf)
     count = {k: sum(len(ux_team.versions(suite, k, w)) for w in conf["walks"]) for k in ux_team.KINDS}
     lines = [st["text"]] + [f"  running: {x}" for x in st["running"]] + [f"  waiting: {x}" for x in st["waiting"]]
-    lines.append(f"{count['round']} round(s), {count['proposal']} design(s), {len(ux_verdicts.latest(suite))} verdict(s).")
+    lines.append(
+        f"{count['round']} round(s), {count['proposal']} design(s), {len(ux_verdicts.latest(suite))} verdict(s)."
+    )
     return "\n".join(lines)
 
 
@@ -44,14 +48,18 @@ def ask(suite: ux_config.Suite, conf: dict, kind: str, walk: str, focus: str) ->
     out = ux_team.request(suite, conf, kind, walk, focus)
     if "started" in out:
         return f"Started: {kind} {out['started']['version']} of {walk} (results/{ux_team.FOLDER[kind]}/{walk})."
-    return (f"Queued as number {out['queued']} ({out['why']}). The open suite starts it as soon as it can: "
-            "crissp/ux.sh opens it.")
+    return (
+        f"Queued as number {out['queued']} ({out['why']}). The open suite starts it as soon as it can: "
+        "crissp/ux.sh opens it."
+    )
 
 
 def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int:
     suite = suite or ux_config.default_suite()
     cmd, args = (argv[0] if argv else ""), argv[1:]
-    if cmd not in ("list", "status", "round", "propose", "shoot") or (cmd in ("round", "propose", "shoot") and not args):
+    if cmd not in ("list", "status", "round", "propose", "shoot") or (
+        cmd in ("round", "propose", "shoot") and not args
+    ):
         print(__doc__, file=sys.stderr)
         return 2
     try:

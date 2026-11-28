@@ -16,10 +16,12 @@ sys.path.insert(0, str(ENGINE / "testsuite" / "lib"))
 import sessionview as sv
 
 SECTIONS = ["tests", "backlog", "ux", "workers", "activity", "sessions"]
-PAGES = {ENGINE / "testsuite" / "dashboard" / "index.html": "tests",
-         ENGINE / "testsuite" / "dashboard" / "workers.html": "workers",
-         ENGINE / "testsuite" / "dashboard" / "activity.html": "activity",
-         ENGINE / "uxsuite" / "web" / "index.html": "ux"}
+PAGES = {
+    ENGINE / "testsuite" / "dashboard" / "index.html": "tests",
+    ENGINE / "testsuite" / "dashboard" / "workers.html": "workers",
+    ENGINE / "testsuite" / "dashboard" / "activity.html": "activity",
+    ENGINE / "uxsuite" / "web" / "index.html": "ux",
+}
 NAV = re.compile(r'<nav class="?sections"?[^>]*>(.*?)</nav>', re.DOTALL)
 
 
@@ -61,23 +63,36 @@ location.hash = "#tests"; handlers.hashchange && handlers.hashchange();
 console.log(JSON.stringify({first, titled, sections: window.Look.SECTIONS.map(s => s[0]), after: navs[0].innerHTML,
                             retitled: h1.textContent}));
 """
+
     def run(current: str, hash_: str) -> dict:
-        done = subprocess.run(["node", "-e", stand_in % (current, hash_, json.dumps(str(LOOK_JS)))],
-                              capture_output=True, text=True, timeout=30, check=False)
+        done = subprocess.run(
+            ["node", "-e", stand_in % (current, hash_, json.dumps(str(LOOK_JS)))],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
         assert done.returncode == 0, done.stderr
         return json.loads(done.stdout)
 
     out = run("workers", "")
     assert out["sections"] == SECTIONS
     links = re.findall(r'<a href="([^"]+)"( aria-current="page")?>([^<]+)</a>', out["first"])
-    assert [(h, t) for h, _, t in links] == [("/dashboard/", "Tests"), ("/dashboard/#board", "Backlog"), ("/ux/", "UX"),
-                                             ("/dashboard/workers.html", "Workers"), ("/dashboard/activity.html", "Activity"),
-                                             ("/results/sessions/index.html", "Sessions")]
+    assert [(h, t) for h, _, t in links] == [
+        ("/dashboard/", "Tests"),
+        ("/dashboard/#board", "Backlog"),
+        ("/ux/", "UX"),
+        ("/dashboard/workers.html", "Workers"),
+        ("/dashboard/activity.html", "Activity"),
+        ("/results/sessions/index.html", "Sessions"),
+    ]
     assert [t for _, cur, t in links if cur] == ["Workers"]
     board = run("tests", "#board")  # the board is the Tests page opened on its Backlog tab: Backlog is the open section
     assert 'aria-current="page">Backlog' in board["first"] and 'aria-current="page">Tests' in board["after"]
     assert len(re.findall(r"aria-current", board["after"])) == 1
-    assert board["titled"] == "Shop · Backlog" and board["retitled"] == "Shop · Tests"  # the title follows the open section
+    assert (
+        board["titled"] == "Shop · Backlog" and board["retitled"] == "Shop · Tests"
+    )  # the title follows the open section
     assert out["titled"] == "Shop · Workers"
 
 
@@ -88,14 +103,18 @@ def test_a_page_s_own_tabs_get_a_row_of_their_own_on_one_line():
     top = re.search(r"^\.top \{([^}]*)\}", css, re.MULTILINE).group(1)
     tabs = re.search(r"^\.tabs \{([^}]*)\}", css, re.MULTILINE).group(1)
     assert "flex-wrap: wrap" in top
-    assert "flex: 1 0 100%" in tabs and "order: 3" in tabs and "flex-wrap: nowrap" in tabs and "overflow-x: auto" in tabs
+    assert (
+        "flex: 1 0 100%" in tabs and "order: 3" in tabs and "flex-wrap: nowrap" in tabs and "overflow-x: auto" in tabs
+    )
     assert re.search(r"^\.top #theme \{[^}]*margin-left: auto", css, re.MULTILINE)
-    assert re.search(r"^\.brand \{[^}]*flex: 0 0 300px", css, re.MULTILINE)  # the sections start at the same place on every page
+    assert re.search(
+        r"^\.brand \{[^}]*flex: 0 0 300px", css, re.MULTILINE
+    )  # the sections start at the same place on every page
     assert re.search(r"^\.tabs button \{[^}]*white-space: nowrap", css, re.MULTILINE)
 
 
 def _luminance(hex_: str) -> float:
-    rgb = [int(hex_.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    rgb = [int(hex_.lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
     lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
     return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
 
@@ -120,4 +139,9 @@ def test_on_a_phone_the_sections_scroll_in_their_own_row_and_the_page_never_side
     css = (ENGINE / "look" / "look.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 800px) {", 1)[1].split("@media", 1)[0]
     rule = re.search(r"\.sections \{([^}]*)\}", phone)
-    assert rule and "flex: 1 0 100%" in rule.group(1) and "overflow-x: auto" in rule.group(1) and "min-width: 0" in rule.group(1)
+    assert (
+        rule
+        and "flex: 1 0 100%" in rule.group(1)
+        and "overflow-x: auto" in rule.group(1)
+        and "min-width: 0" in rule.group(1)
+    )

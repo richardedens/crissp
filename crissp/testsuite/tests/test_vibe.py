@@ -54,7 +54,7 @@ def test_an_untrusted_folder_stays_untrusted(tmp_path):
 
 
 def test_a_file_it_does_not_know_is_left_alone(tmp_path):
-    for text in ("trusted = [\n", 'trusted = "/a"\n', 'trusted = []\nother = 1\n', "trusted = [1]\n"):
+    for text in ("trusted = [\n", 'trusted = "/a"\n', "trusted = []\nother = 1\n", "trusted = [1]\n"):
         db(tmp_path).write_text(text)
         assert vibe.state(tmp_path, Path("/a")) == "unreadable"
         assert "left alone" in vibe.trust(tmp_path, Path("/a"))

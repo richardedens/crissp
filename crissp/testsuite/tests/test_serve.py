@@ -51,7 +51,8 @@ def _builder(root: Path, calls: list):
         calls.append(1)
         data = root / "crissp" / "testsuite" / "results" / "data.js"
         data.parent.mkdir(parents=True, exist_ok=True)
-        data.write_text(f"window.SUITE = {{\"build\": {len(calls)}}};\n")
+        data.write_text(f'window.SUITE = {{"build": {len(calls)}}};\n')
+
     return rebuild
 
 
@@ -68,7 +69,9 @@ def test_what_the_dashboard_shows_is_watched(world):
     assert not any("sessions" in n for n in names)
     assert sv.newest([]) == 0.0 and sv.newest([root / "missing"]) == 0.0
     (root / ".git" / "logs").mkdir(parents=True)
-    (root / ".git" / "logs" / "HEAD").write_text("")  # E3-F2-01: a commit moves "not committed" on the board to its commit
+    (root / ".git" / "logs" / "HEAD").write_text(
+        ""
+    )  # E3-F2-01: a commit moves "not committed" on the board to its commit
     assert ".git/logs/HEAD" in [str(p.relative_to(root)) for p in sv.watched(root)]
 
 
@@ -94,11 +97,11 @@ def test_a_failed_rebuild_keeps_the_last_good_data(world, capsys):
 
     def broken():
         raise ValueError("changes.json is not JSON")
+
     live.rebuild = broken
     before = live.built()
     assert live.stamp() == before and live.data.read_text() == "window.SUITE = {};\n"
     assert "dashboard data not rebuilt: changes.json is not JSON" in capsys.readouterr().err
-
 
 
 def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
@@ -118,6 +121,7 @@ def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
             findings.write_text("| F-01 | here | old | x |\n| F-02 | there | new | y |\n")
             _age(findings, 30)  # it landed during the rebuild: newer than what was read, older than the data.js written
         build()
+
     live = sv.Live(root, slow)
     first = live.stamp()
     assert calls == [1] and sv.newest([findings]) < live.built()
@@ -136,6 +140,7 @@ def test_a_failed_rebuild_is_said_on_the_page(world):
 
         def broken():
             raise ValueError("changes.json is not JSON")
+
         live.rebuild = broken
         _age(root / "crissp/testsuite/results/data.js", 60)
         (root / "crissp/testsuite/changes.json").write_text("{")
@@ -147,6 +152,7 @@ def test_a_failed_rebuild_is_said_on_the_page(world):
     finally:
         httpd.shutdown()
         httpd.server_close()
+
 
 class FakeUx:
     """The UX suite's handler, stood in: answers every request with what it was asked."""
@@ -179,6 +185,7 @@ def _get(url: str, data: bytes | None = None) -> tuple[int, dict, bytes]:
     class Stay(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args):
             return None
+
     try:
         with urllib.request.build_opener(Stay).open(urllib.request.Request(url, data=data)) as r:
             return r.status, dict(r.headers), r.read()
@@ -214,8 +221,18 @@ def test_one_server_serves_the_dashboard_its_data_the_look_and_the_ux_suite(worl
     assert httpd.server_address[0] == "127.0.0.1"  # never on another interface
 
 
-@pytest.mark.parametrize("path", ["/lib/serve.py", "/../secret.txt", "/look/../secret.txt", "/look/missing.css",
-                                  "/dashboard/../lib/serve.py", "/results/../suites.json", "/crissp/backlog/E1-quality.md"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/lib/serve.py",
+        "/../secret.txt",
+        "/look/../secret.txt",
+        "/look/missing.css",
+        "/dashboard/../lib/serve.py",
+        "/results/../suites.json",
+        "/crissp/backlog/E1-quality.md",
+    ],
+)
 def test_nothing_else_of_the_repository_is_served(world, path):
     httpd, base, _ = _serve(world, FakeUx())
     try:
@@ -247,7 +264,9 @@ def test_the_ux_suite_is_the_one_beside_this_engine(tmp_path):
 def test_by_default_it_rebuilds_with_collect_for_the_project_it_is_given(tmp_path, monkeypatch):
     lib = tmp_path / "lib"
     lib.mkdir()
-    (lib / "collect.py").write_text("from pathlib import Path\n\ndef main():\n    (Path(__file__).parent / 'ran').write_text('yes')\n")
+    (lib / "collect.py").write_text(
+        "from pathlib import Path\n\ndef main():\n    (Path(__file__).parent / 'ran').write_text('yes')\n"
+    )
     monkeypatch.setattr(sv, "SUITE", tmp_path)
     sv.collect()
     assert (lib / "ran").read_text() == "yes"
@@ -311,7 +330,9 @@ def test_activity_is_the_page_and_its_data_is_this_project_s_live_sessions(world
         assert code == 302 and headers["Location"] == "/dashboard/activity.html"
         assert _get(base + "/dashboard/activity.html")[2] == b"<title>Activity</title>"
         code, headers, body = _get(base + "/dashboard/activity.json")
-        assert code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body) == {"sessions": [], "now": 1.0}
+        assert (
+            code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body) == {"sessions": [], "now": 1.0}
+        )
         assert asked == [root]
     finally:
         httpd.shutdown()

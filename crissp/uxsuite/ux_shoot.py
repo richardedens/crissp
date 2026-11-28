@@ -22,7 +22,10 @@ from ux_config import Suite
 
 HERE = Path(__file__).resolve().parent
 PLAYWRIGHT = "playwright==1.55.0"
-VIEWPORTS = {"laptop": {"width": 1440, "height": 900, "touch": False}, "phone": {"width": 390, "height": 844, "touch": True}}
+VIEWPORTS = {
+    "laptop": {"width": 1440, "height": 900, "touch": False},
+    "phone": {"width": 390, "height": 844, "touch": True},
+}
 ON = {"desktop": ("laptop",), "mobile": ("phone",), "both": ("laptop", "phone")}
 
 
@@ -41,8 +44,13 @@ def plan(suite: Suite, conf: dict, walk_id: str) -> dict:
     walk = conf["walks"].get(walk_id)
     if walk is None:
         raise ValueError(f"unknown walk {walk_id!r} (known: {', '.join(conf['walks']) or 'none'})")
-    return {"url": conf["url"], "walk": walk_id, "out": str(suite.results / "shots" / walk_id),
-            "devices": {d: VIEWPORTS[d] for d in devices(conf)}, "steps": walk["steps"]}
+    return {
+        "url": conf["url"],
+        "walk": walk_id,
+        "out": str(suite.results / "shots" / walk_id),
+        "devices": {d: VIEWPORTS[d] for d in devices(conf)},
+        "steps": walk["steps"],
+    }
 
 
 def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[int, str]:
@@ -52,21 +60,40 @@ def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[i
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     (out / "plan.json").write_text(json.dumps(p, indent=1) + "\n")
-    done = run(["uv", "run", "--quiet", "--no-project", "--with", PLAYWRIGHT, "python", str(HERE / "ux_shoot.py"),
-                str(out / "plan.json")], capture_output=True, text=True)
+    done = run(
+        [
+            "uv",
+            "run",
+            "--quiet",
+            "--no-project",
+            "--with",
+            PLAYWRIGHT,
+            "python",
+            str(HERE / "ux_shoot.py"),
+            str(out / "plan.json"),
+        ],
+        capture_output=True,
+        text=True,
+    )
     if done.returncode:
-        return 1, (f"The walk could not be shot ({conf['url']} must be running): {(done.stderr or done.stdout).strip()[-600:]}\n"
-                   f"The browser comes once from: uv run --no-project --with {PLAYWRIGHT} playwright install chromium")
+        return 1, (
+            f"The walk could not be shot ({conf['url']} must be running): {(done.stderr or done.stdout).strip()[-600:]}\n"
+            f"The browser comes once from: uv run --no-project --with {PLAYWRIGHT} playwright install chromium"
+        )
     try:
         shots = json.loads((out / "shots.json").read_text())
     except (OSError, json.JSONDecodeError):
         return 1, "The browser ended without a list of shots (shots.json)."
     stuck = [f"{s['device']}: {s['error']}" for s in shots if s.get("error")]
-    return 0, (f"{walk_id}: {len(shots) - len(stuck)} screenshot(s) in {out.relative_to(suite.root)}"
-               + "".join(f"\n  {s}" for s in stuck))
+    return 0, (
+        f"{walk_id}: {len(shots) - len(stuck)} screenshot(s) in {out.relative_to(suite.root)}"
+        + "".join(f"\n  {s}" for s in stuck)
+    )
 
 
-def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real browser; shoot() and plan() are tested with a stand-in
+def capture(
+    plan_file: Path,
+) -> None:  # pragma: no cover — drives a real browser; shoot() and plan() are tested with a stand-in
     from playwright.sync_api import sync_playwright
 
     p = json.loads(plan_file.read_text())
@@ -75,15 +102,21 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
         browser = pw.chromium.launch()
         for device, vp in p["devices"].items():
             (out / device).mkdir(parents=True, exist_ok=True)
-            ctx = browser.new_context(viewport={"width": vp["width"], "height": vp["height"]}, has_touch=vp["touch"],
-                                      is_mobile=vp["touch"], reduced_motion="reduce")
+            ctx = browser.new_context(
+                viewport={"width": vp["width"], "height": vp["height"]},
+                has_touch=vp["touch"],
+                is_mobile=vp["touch"],
+                reduced_motion="reduce",
+            )
             page, n = ctx.new_page(), 0
             for i, step in enumerate(p["steps"], 1):
                 try:
                     if step["do"] == "goto":
                         page.goto(p["url"] + step["path"], wait_until="networkidle")
                     elif step["do"] == "click":
-                        (page.get_by_text(step["text"]).first if "text" in step else page.locator(step["selector"])).click()
+                        (
+                            page.get_by_text(step["text"]).first if "text" in step else page.locator(step["selector"])
+                        ).click()
                     elif step["do"] == "fill":
                         page.locator(step["selector"]).fill(str(step["value"]))
                     elif step["do"] == "press":
@@ -96,8 +129,15 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                         page.screenshot(path=str(out / file))
                         shots.append({"device": device, "n": n, "title": step["title"], "file": file})
                 except Exception as e:
-                    shots.append({"device": device, "n": n + 1, "title": step.get("title", step["do"]), "file": "",
-                                  "error": f"Stuck at step {i} ({step['do']}): {str(e).splitlines()[0][:200]}"})
+                    shots.append(
+                        {
+                            "device": device,
+                            "n": n + 1,
+                            "title": step.get("title", step["do"]),
+                            "file": "",
+                            "error": f"Stuck at step {i} ({step['do']}): {str(e).splitlines()[0][:200]}",
+                        }
+                    )
                     break
             ctx.close()
         browser.close()

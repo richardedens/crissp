@@ -49,32 +49,55 @@ def _session(tmp_path, repo: Path) -> Path:
     projects = tmp_path / "projects"
     path = sv.project_dir(repo, projects) / "s1.jsonl"
     old = str(tmp_path / "planner")  # the folder's name when the session ran
-    _write(path, [
-        _assistant(_use("Read", {"file_path": f"{repo}/CRISSP.md"}), cwd=old, ts="2026-10-23T08:58:00Z"),
-        _user("<system-reminder>noise</system-reminder>look at the findings"),
-        _user([{"type": "tool_result", "content": "out"}]),
-        _user("meta", isMeta=True),
-        _assistant(_use("Bash", {"command": "cat backlog/FINDINGS.md CLAUDE.md", "description": "Read findings"}),
-                   _use("Bash", {"command": "curl -H 'Authorization: Bearer abc123' x", "description": ""}),
-                   _use("Edit", {"file_path": f"{old}/backlog/FINDINGS.md", "old_string": "| F-01 | a | b | c |",
-                                 "new_string": "| F-01 | a | b | c |\n| F-02 | seen | no tests | E1 |"}),
-                   _use("Write", {"file_path": f"{repo}/backlog/DECISIONS.md",
-                                  "content": "| D-01 | q | a/b | a |\n| ~~D-02~~ | taken | 2026 |"}),
-                   _use("Bash", {"command": "cat >> backlog/FINDINGS.md <<EOF\n| F-02 | again | dup | x |\nEOF"}),
-                   _use("Agent", {"description": "Build the backend", "subagent_type": "fork"}, id_="ag1"),
-                   _use("Agent", {"description": "Lost agent"}, id_="ag2"),
-                   _use("AskUserQuestion", {"questions": [{"question": "Which?"}]}),
-                   _use("ToolSearch", {}), cwd=str(repo)),
-        _user("<task-notification><summary>Agent \"Build the backend\" completed</summary></task-notification>"),
-        _user("<task-notification>no summary</task-notification>"),
-        _assistant(_use("Read", {"file_path": "/elsewhere/file"}), isSidechain=True),
-        _user("x" * 400, ts="2026-10-23T10:00:00Z"),
-    ])
+    _write(
+        path,
+        [
+            _assistant(_use("Read", {"file_path": f"{repo}/CRISSP.md"}), cwd=old, ts="2026-10-23T08:58:00Z"),
+            _user("<system-reminder>noise</system-reminder>look at the findings"),
+            _user([{"type": "tool_result", "content": "out"}]),
+            _user("meta", isMeta=True),
+            _assistant(
+                _use("Bash", {"command": "cat backlog/FINDINGS.md CLAUDE.md", "description": "Read findings"}),
+                _use("Bash", {"command": "curl -H 'Authorization: Bearer abc123' x", "description": ""}),
+                _use(
+                    "Edit",
+                    {
+                        "file_path": f"{old}/backlog/FINDINGS.md",
+                        "old_string": "| F-01 | a | b | c |",
+                        "new_string": "| F-01 | a | b | c |\n| F-02 | seen | no tests | E1 |",
+                    },
+                ),
+                _use(
+                    "Write",
+                    {
+                        "file_path": f"{repo}/backlog/DECISIONS.md",
+                        "content": "| D-01 | q | a/b | a |\n| ~~D-02~~ | taken | 2026 |",
+                    },
+                ),
+                _use("Bash", {"command": "cat >> backlog/FINDINGS.md <<EOF\n| F-02 | again | dup | x |\nEOF"}),
+                _use("Agent", {"description": "Build the backend", "subagent_type": "fork"}, id_="ag1"),
+                _use("Agent", {"description": "Lost agent"}, id_="ag2"),
+                _use("AskUserQuestion", {"questions": [{"question": "Which?"}]}),
+                _use("ToolSearch", {}),
+                cwd=str(repo),
+            ),
+            _user('<task-notification><summary>Agent "Build the backend" completed</summary></task-notification>'),
+            _user("<task-notification>no summary</task-notification>"),
+            _assistant(_use("Read", {"file_path": "/elsewhere/file"}), isSidechain=True),
+            _user("x" * 400, ts="2026-10-23T10:00:00Z"),
+        ],
+    )
     sub = path.with_suffix("") / "subagents"
-    _write(sub / "a1.jsonl", [_assistant(_use("Agent", {}, id_="ag1")),
-                              _assistant(_use("Edit", {"file_path": f"{repo}/app/x.py"}), cwd=str(repo))])
-    (sub / "a1.meta.json").write_text(json.dumps({"description": "Build the backend", "agentType": "fork",
-                                                  "toolUseId": "ag1", "finished": True}))
+    _write(
+        sub / "a1.jsonl",
+        [
+            _assistant(_use("Agent", {}, id_="ag1")),
+            _assistant(_use("Edit", {"file_path": f"{repo}/app/x.py"}), cwd=str(repo)),
+        ],
+    )
+    (sub / "a1.meta.json").write_text(
+        json.dumps({"description": "Build the backend", "agentType": "fork", "toolUseId": "ag1", "finished": True})
+    )
     (sub / "a2.meta.json").write_text("{broken")
     return path
 
@@ -84,8 +107,10 @@ def test_the_transcripts_are_found_where_claude_code_keeps_them(tmp_path):
 
 
 def test_secrets_in_a_command_are_masked():
-    assert sv.mask("curl -H 'Authorization: Bearer abc123' --token=xyz") == \
-        "curl -H 'Authorization: Bearer •••' --token=•••"
+    assert (
+        sv.mask("curl -H 'Authorization: Bearer abc123' --token=xyz")
+        == "curl -H 'Authorization: Bearer •••' --token=•••"
+    )
 
 
 def test_only_what_the_person_typed_is_a_prompt():
@@ -109,14 +134,29 @@ def test_a_renamed_folder_still_counts_as_the_repository(tmp_path):
 
 
 def test_finding_and_decision_rows_are_read_from_what_is_written():
-    assert sv.rows("| F-03 | seen | what | to |\n| D-01 | q | o | r |", "F") == \
-        [{"id": "F-03", "text": "what", "taken": False}]
+    assert sv.rows("| F-03 | seen | what | to |\n| D-01 | q | o | r |", "F") == [
+        {"id": "F-03", "text": "what", "taken": False}
+    ]
     assert sv.rows("| ~~D-02~~ | decided | date |", "D") == [{"id": "D-02", "text": "decided", "taken": True}]
-    assert sv.written_rows("Edit", {"file_path": "x/FINDINGS.md", "old_string": "| F-1 | a | b | c |",
-                                    "new_string": "| F-1 | a | b | c |\n| F-2 | a | b | c |"}) == \
-        {"F": [{"id": "F-2", "text": "b", "taken": False}]}
-    assert sv.written_rows("Edit", {"file_path": "x/FINDINGS.md", "old_string": "| F-1 | a | b | c |",
-                                    "new_string": "| F-1 | a | changed | c |"}) == {}
+    assert sv.written_rows(
+        "Edit",
+        {
+            "file_path": "x/FINDINGS.md",
+            "old_string": "| F-1 | a | b | c |",
+            "new_string": "| F-1 | a | b | c |\n| F-2 | a | b | c |",
+        },
+    ) == {"F": [{"id": "F-2", "text": "b", "taken": False}]}
+    assert (
+        sv.written_rows(
+            "Edit",
+            {
+                "file_path": "x/FINDINGS.md",
+                "old_string": "| F-1 | a | b | c |",
+                "new_string": "| F-1 | a | changed | c |",
+            },
+        )
+        == {}
+    )
     assert sv.written_rows("Bash", {"command": "echo '| D-9 | q | o | r |' >> DECISIONS.md"})["D"][0]["id"] == "D-9"
     assert sv.written_rows("Bash", {"command": "ls"}) == {}
     assert sv.written_rows("Write", {"file_path": "README.md", "content": "| F-1 | a | b | c |"}) == {}
@@ -145,7 +185,9 @@ def test_a_session_becomes_columns_with_agents_findings_and_decisions(tmp_path):
     repo = _repo(tmp_path)
     s = sv.summary(_session(tmp_path, repo), repo)
     first, second, third = s["turns"]
-    assert first["prompt"] == "(before the first prompt)" and first["acts"][0]["text"] == "crissp/CRISSP.md"  # read at its old place
+    assert (
+        first["prompt"] == "(before the first prompt)" and first["acts"][0]["text"] == "crissp/CRISSP.md"
+    )  # read at its old place
     assert second["prompt"] == "look at the findings" and third["prompt"] == "x" * 400
     assert [a["kind"] for a in second["acts"]] == ["read", "run", "change", "change", "change", "ask", "other"]
     assert second["acts"][1]["text"] == "curl -H 'Authorization: Bearer •••' x"
@@ -154,8 +196,15 @@ def test_a_session_becomes_columns_with_agents_findings_and_decisions(tmp_path):
     built, lost = second["agents"]
     assert built["name"] == "Build the backend" and built["done"] and built["changed"] == ["app/x.py"]
     assert built["kinds"] == Counter({"change": 1})  # the call that started it is not its own work
-    assert lost == {"name": "Lost agent", "type": "agent", "kinds": Counter(), "changed": [], "acts": [], "done": False,
-                    "tokens": Counter()}
+    assert lost == {
+        "name": "Lost agent",
+        "type": "agent",
+        "kinds": Counter(),
+        "changed": [],
+        "acts": [],
+        "done": False,
+        "tokens": Counter(),
+    }
     assert second["reports"] == ['Agent "Build the backend" completed', "an agent reported"]
     assert s["read"] == Counter({"crissp/CRISSP.md": 1, "crissp/backlog/FINDINGS.md": 1, "CLAUDE.md": 1})
     assert s["changed"] == Counter({"crissp/backlog/FINDINGS.md": 2, "crissp/backlog/DECISIONS.md": 1})
@@ -171,8 +220,17 @@ def test_a_session_without_subagents_or_cwd(tmp_path):
     sub = tmp_path / "s" / "subagents"
     sub.mkdir(parents=True)
     (sub / "a.meta.json").write_text("{}")
-    assert sv.subagents(path, sv.Repo(tmp_path)) == {"a.meta.json": {
-        "name": "a", "type": "agent", "kinds": Counter(), "changed": [], "acts": [], "done": False, "tokens": Counter()}}
+    assert sv.subagents(path, sv.Repo(tmp_path)) == {
+        "a.meta.json": {
+            "name": "a",
+            "type": "agent",
+            "kinds": Counter(),
+            "changed": [],
+            "acts": [],
+            "done": False,
+            "tokens": Counter(),
+        }
+    }
 
 
 def test_times_are_shown_locally_or_not_at_all():
@@ -220,8 +278,13 @@ def test_build_writes_a_page_per_session_and_main_opens_the_index(tmp_path, monk
     _session(tmp_path, repo)
     monkeypatch.setattr(sv, "ROOT", repo)
     out, opened = tmp_path / "out", []
-    assert sv.main(["--projects", str(tmp_path / "projects"), "--out", str(out), "--open"],
-                   run=lambda cmd, check: opened.append(cmd)) == 0
+    assert (
+        sv.main(
+            ["--projects", str(tmp_path / "projects"), "--out", str(out), "--open"],
+            run=lambda cmd, check: opened.append(cmd),
+        )
+        == 0
+    )
     assert (out / "s1.html").is_file() and opened == [["open", str(out / "index.html")]]
     assert json.loads((out / "summary.json").read_text()) == {"sessions": 1, "tokens": "0"}  # for the dashboard
     assert capsys.readouterr().out.strip() == str(out / "index.html")
@@ -235,6 +298,7 @@ def test_it_runs_as_a_script(monkeypatch):
     import sys
 
     import pytest
+
     monkeypatch.setattr(sys, "argv", ["sessionview.py", "--bogus"])
     with pytest.raises(SystemExit) as stop:
         runpy.run_path(str(LIB / "sessionview.py"), run_name="__main__")
@@ -242,16 +306,37 @@ def test_it_runs_as_a_script(monkeypatch):
 
 
 def _costly(mid, out, ts="2026-10-23T09:00:00Z", *uses):
-    return {"type": "assistant", "timestamp": ts, "message": {"id": mid, "content": list(uses), "usage": {
-        "input_tokens": 1, "output_tokens": out, "cache_read_input_tokens": 100, "cache_creation_input_tokens": 10}}}
+    return {
+        "type": "assistant",
+        "timestamp": ts,
+        "message": {
+            "id": mid,
+            "content": list(uses),
+            "usage": {
+                "input_tokens": 1,
+                "output_tokens": out,
+                "cache_read_input_tokens": 100,
+                "cache_creation_input_tokens": 10,
+            },
+        },
+    }
 
 
 def test_tokens_are_counted_once_per_response_and_per_step(tmp_path):
     repo = _repo(tmp_path)
     path = sv.project_dir(repo, tmp_path / "p") / "s.jsonl"
-    _write(path, [_costly("m0", 5), _user("first"), _costly("m1", 50), _costly("m1", 50),  # one response, two records
-                  _costly("m2", 20, "2026-10-23T09:01:00Z", _use("Agent", {"description": "helper"}, id_="ag")),
-                  _user("second"), {"type": "assistant", "message": {"content": []}}])
+    _write(
+        path,
+        [
+            _costly("m0", 5),
+            _user("first"),
+            _costly("m1", 50),
+            _costly("m1", 50),  # one response, two records
+            _costly("m2", 20, "2026-10-23T09:01:00Z", _use("Agent", {"description": "helper"}, id_="ag")),
+            _user("second"),
+            {"type": "assistant", "message": {"content": []}},
+        ],
+    )
     sub = path.with_suffix("") / "subagents"
     _write(sub / "h.jsonl", [_costly("m2", 20, "x", _use("Agent", {}, id_="ag")), _costly("h1", 7), _costly("h1", 7)])
     (sub / "h.meta.json").write_text(json.dumps({"description": "helper", "toolUseId": "ag", "finished": True}))
@@ -269,7 +354,7 @@ def test_tokens_are_counted_once_per_response_and_per_step(tmp_path):
 
 def test_amounts_read_at_a_glance():
     assert (sv.amount(950), sv.amount(1234), sv.amount(3_400_000)) == ("950", "1.2k", "3.4M")
-    assert 'width:0%' in sv.tank(0, 0) and 'width:2%' in sv.tank(1, 10_000) and 'width:50%' in sv.tank(5, 10)
+    assert "width:0%" in sv.tank(0, 0) and "width:2%" in sv.tank(1, 10_000) and "width:50%" in sv.tank(5, 10)
     assert sv.cost(Counter()) == "" and sv.usage({}) == Counter()
 
 
@@ -307,9 +392,15 @@ def test_the_pages_name_the_product_from_suites_json(monkeypatch, tmp_path):
 
 
 def test_files_that_moved_into_crissp_are_named_by_their_new_place():
-    assert sv.moved("backlog/E1-x.md") == "crissp/backlog/E1-x.md" and sv.moved("ARCHITECTURE.md") == "crissp/ARCHITECTURE.md"
+    assert (
+        sv.moved("backlog/E1-x.md") == "crissp/backlog/E1-x.md"
+        and sv.moved("ARCHITECTURE.md") == "crissp/ARCHITECTURE.md"
+    )
     assert sv.moved("backlogs.md") == "backlogs.md" and sv.moved("app/CRISSP.md") == "app/CRISSP.md"
     assert sv.moved(".crissp/backlog/F.md") == "crissp/backlog/F.md"  # the hidden .crissp/ of earlier today
     assert sv.moved("crissp/CLAUDE.md") == "crissp/CLAUDE.md"
-    assert sv.moved("testsuite/lib/gate.py") == "crissp/testsuite/lib/gate.py" and sv.moved("check.sh") == "crissp/check.sh"
+    assert (
+        sv.moved("testsuite/lib/gate.py") == "crissp/testsuite/lib/gate.py"
+        and sv.moved("check.sh") == "crissp/check.sh"
+    )
     assert sv.moved("app/backend/deploy.sh") == "app/backend/deploy.sh"  # only the root's own scripts moved

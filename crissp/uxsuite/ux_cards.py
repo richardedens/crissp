@@ -34,7 +34,9 @@ PERSONA_FIELDS = {"name", "role", "device", "moderator", "on", "order"}
 RULE_FIELDS = {"title", "severity", "on"}
 JOBS = re.compile(r"^## Jobs\s*$", re.MULTILINE)
 SECTION = re.compile(r"^## (?:(\d+)\.\s*)?(.+?)\s*$", re.MULTILINE)
-MOVED = "The rules themselves are in `rules/`, one file each: the UX suite's Rules tab adds, edits and switches them off.\n"
+MOVED = (
+    "The rules themselves are in `rules/`, one file each: the UX suite's Rules tab adds, edits and switches them off.\n"
+)
 
 
 def _slug(text: str) -> str:
@@ -42,6 +44,7 @@ def _slug(text: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------------------- the files
+
 
 def split(text: str, where: str, fields: set[str], hint: str) -> tuple[dict, str]:
     """The --- block's fields (true and false as booleans) and the text under it."""
@@ -62,7 +65,7 @@ def split(text: str, where: str, fields: set[str], hint: str) -> tuple[dict, str
         if k not in fields:
             raise ConfigError(f"{where}: unknown field {k} (known: {', '.join(sorted(fields))})")
         meta[k] = {"true": True, "false": False}.get(v.lower(), v)
-    return meta, "\n".join(lines[end + 1:]).strip()
+    return meta, "\n".join(lines[end + 1 :]).strip()
 
 
 def join(meta: dict, body: str) -> str:
@@ -88,11 +91,14 @@ def _line(value, where: str, name: str) -> str:
 
 def _key(value: str, where: str, what: str) -> str:
     if not WALK_ID.fullmatch(value):
-        raise ConfigError(f"{where}: key {value!r} must be lower case letters, digits and - (it names the {what}'s file)")
+        raise ConfigError(
+            f"{where}: key {value!r} must be lower case letters, digits and - (it names the {what}'s file)"
+        )
     return value
 
 
 # ------------------------------------------------------------------------------------------------------- personas
+
 
 def persona(key: str, meta: dict, body: str, where: str) -> dict:
     """One persona, checked: its fields, the brief, and its jobs (the `- ` lines under ## Jobs)."""
@@ -100,13 +106,20 @@ def persona(key: str, meta: dict, body: str, where: str) -> dict:
     if device not in DEVICES:
         raise ConfigError(f"{where}: device must be one of {', '.join(DEVICES)}")
     found = JOBS.search(body)
-    brief = (body[:found.start()] if found else body).strip()
-    jobs = [x[1:].strip() for x in body[found.end():].splitlines() if x.strip().startswith("-")] if found else []
+    brief = (body[: found.start()] if found else body).strip()
+    jobs = [x[1:].strip() for x in body[found.end() :].splitlines() if x.strip().startswith("-")] if found else []
     if not brief:
         raise ConfigError(f"{where}: the brief (the text under the --- block) is empty")
-    return {"key": key, "name": _line(meta.get("name"), where, "name"), "role": _line(meta.get("role"), where, "role"),
-            "device": device, "moderator": _flag(meta.get("moderator"), where, "moderator", False),
-            "on": _flag(meta.get("on"), where, "on", True), "brief": brief, "jobs": [j for j in jobs if j]}
+    return {
+        "key": key,
+        "name": _line(meta.get("name"), where, "name"),
+        "role": _line(meta.get("role"), where, "role"),
+        "device": device,
+        "moderator": _flag(meta.get("moderator"), where, "moderator", False),
+        "on": _flag(meta.get("on"), where, "on", True),
+        "brief": brief,
+        "jobs": [j for j in jobs if j],
+    }
 
 
 def read_persona(path: Path) -> dict:
@@ -119,8 +132,14 @@ def read_persona(path: Path) -> dict:
 
 def persona_text(p: dict, order: int) -> str:
     jobs = "\n\n## Jobs\n\n" + "\n".join(f"- {j}" for j in p["jobs"]) if p["jobs"] else ""
-    meta = {"name": p["name"], "role": p["role"], "device": p["device"], "moderator": p["moderator"], "on": p["on"],
-            "order": order}
+    meta = {
+        "name": p["name"],
+        "role": p["role"],
+        "device": p["device"],
+        "moderator": p["moderator"],
+        "on": p["on"],
+        "order": order,
+    }
     return join(meta, p["brief"] + jobs)
 
 
@@ -187,8 +206,18 @@ def save_persona(suite, body: dict) -> dict:
     """Add or change one persona (the page's Team tab); checked whole, with the team it makes, before anything is
     written."""
     where = "the persona"
-    p = persona("", {"name": body.get("name"), "role": body.get("role"), "device": body.get("device") or "desktop",
-                     "moderator": body.get("moderator"), "on": body.get("on")}, str(body.get("brief") or ""), where)
+    p = persona(
+        "",
+        {
+            "name": body.get("name"),
+            "role": body.get("role"),
+            "device": body.get("device") or "desktop",
+            "moderator": body.get("moderator"),
+            "on": body.get("on"),
+        },
+        str(body.get("brief") or ""),
+        where,
+    )
     key = str(body.get("key") or _slug(p["name"]))
     if not key:
         raise ValueError("give the persona a key (or a name to make one from)")
@@ -214,14 +243,20 @@ def remove_persona(suite, key: str) -> dict:
 
 # ------------------------------------------------------------------------------------------------------- rules
 
+
 def rule(rid: str, meta: dict, body: str, where: str) -> dict:
     severity = meta.get("severity", "should")
     if severity not in SEVERITIES:
         raise ConfigError(f"{where}: severity must be one of {', '.join(SEVERITIES)}")
     if not body.strip():
         raise ConfigError(f"{where}: the rule's text (under the --- block) is empty")
-    return {"id": rid, "title": _line(meta.get("title"), where, "title"), "severity": severity,
-            "on": _flag(meta.get("on"), where, "on", True), "text": body.strip()}
+    return {
+        "id": rid,
+        "title": _line(meta.get("title"), where, "title"),
+        "severity": severity,
+        "on": _flag(meta.get("on"), where, "on", True),
+        "text": body.strip(),
+    }
 
 
 def read_rule(path: Path) -> dict:
@@ -237,10 +272,10 @@ def rule_text(r: dict) -> str:
 def _sections(text: str) -> tuple[str, list[dict]]:
     """PRINCIPLES.md: its introduction, and every `## ` section as a rule (`## 3. Title` gets the id 03-title)."""
     found = list(SECTION.finditer(text))
-    intro = text[:found[0].start()] if found else text
+    intro = text[: found[0].start()] if found else text
     out = []
     for i, m in enumerate(found):
-        body = text[m.end():found[i + 1].start() if i + 1 < len(found) else len(text)].strip()
+        body = text[m.end() : found[i + 1].start() if i + 1 < len(found) else len(text)].strip()
         number, title = m.group(1), m.group(2)
         rid = (f"{int(number):02d}-" if number else "") + _slug(title)
         out.append({"id": rid, "title": title, "severity": "should", "on": True, "text": body})
@@ -283,8 +318,12 @@ def save_rule(suite, body: dict) -> dict:
     text = body.get("text")
     if not isinstance(text, str) or not text.strip():
         text = ""
-    r = rule("", {"title": body.get("title"), "severity": body.get("severity") or "should", "on": body.get("on")},
-             text or "-", where)
+    r = rule(
+        "",
+        {"title": body.get("title"), "severity": body.get("severity") or "should", "on": body.get("on")},
+        text or "-",
+        where,
+    )
     if not text:
         raise ValueError(f"{where}: text must be a text")
     rid = str(body.get("id") or _slug(r["title"]))

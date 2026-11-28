@@ -34,20 +34,23 @@ def test_a_verdict_on_advice_is_one_line_and_the_latest_holds(done):
     assert ux_verdicts.after(done, conf, line) == {}
 
 
-@pytest.mark.parametrize("body, says", [
-    ({"id": "first-visit/r1/a5", "verdict": "agree"}, "unknown advice"),
-    ({"id": "first-visit/r9/a0", "verdict": "agree"}, "unknown advice"),
-    ({"id": "elsewhere/r1/a0", "verdict": "agree"}, "unknown advice"),
-    ({"id": "first-visit/r1/a0", "verdict": "approve"}, "agree, disagree or later"),
-    ({"id": "first-visit/r1/a0", "verdict": "disagree"}, "say why"),
-    ({"id": "first-visit#v2", "verdict": "approve"}, "unknown design"),
-    ({"id": "elsewhere#v1", "verdict": "approve"}, "unknown design"),
-    ({"id": "first-visit#v1", "verdict": "agree"}, "approve, redo or reject"),
-    ({"id": "first-visit#v1", "verdict": "reject"}, "say why"),
-    ({"id": "../etc", "verdict": "agree"}, "unknown item"),
-    ({"verdict": "agree"}, "unknown item"),
-    ({"id": "first-visit/r1/a0", "verdict": "agree", "reason": "x" * 4001}, "too long"),
-])
+@pytest.mark.parametrize(
+    "body, says",
+    [
+        ({"id": "first-visit/r1/a5", "verdict": "agree"}, "unknown advice"),
+        ({"id": "first-visit/r9/a0", "verdict": "agree"}, "unknown advice"),
+        ({"id": "elsewhere/r1/a0", "verdict": "agree"}, "unknown advice"),
+        ({"id": "first-visit/r1/a0", "verdict": "approve"}, "agree, disagree or later"),
+        ({"id": "first-visit/r1/a0", "verdict": "disagree"}, "say why"),
+        ({"id": "first-visit#v2", "verdict": "approve"}, "unknown design"),
+        ({"id": "elsewhere#v1", "verdict": "approve"}, "unknown design"),
+        ({"id": "first-visit#v1", "verdict": "agree"}, "approve, redo or reject"),
+        ({"id": "first-visit#v1", "verdict": "reject"}, "say why"),
+        ({"id": "../etc", "verdict": "agree"}, "unknown item"),
+        ({"verdict": "agree"}, "unknown item"),
+        ({"id": "first-visit/r1/a0", "verdict": "agree", "reason": "x" * 4001}, "too long"),
+    ],
+)
 def test_a_wrong_verdict_is_refused_and_not_written(done, body, says):
     with pytest.raises(ValueError, match=says):
         ux_verdicts.record(done, ux_config.load(done), body)
@@ -70,7 +73,10 @@ def test_an_approved_design_becomes_one_pbi_in_the_backlog_s_own_format(done):
     assert ux_backlog.pbis(done) == {"first-visit#v1": "E1-F1-01"}
     # a second design of the walk: the same epic and feature, the next PBI
     finish(done, "proposal", "first-visit", 2, {"changes": [{"what": f"c{i}"} for i in range(6)]})
-    assert ux_backlog.file_pbi(done, conf, "first-visit", 2, ux_verdicts._result(done, "proposal", "first-visit", 2)) == "E1-F1-02"
+    assert (
+        ux_backlog.file_pbi(done, conf, "first-visit", 2, ux_verdicts._result(done, "proposal", "first-visit", 2))
+        == "E1-F1-02"
+    )
     text = (done.root / "crissp" / "backlog" / "E1-ux-approved-designs.md").read_text()
     assert "### E1-F1-02 · First visit: approved design v2" in text and "[todo] [M]" in text and "[should] c0" in text
 
@@ -79,10 +85,14 @@ def test_the_epic_can_be_named_and_a_big_design_is_large(done):
     crissp = ux_backlog.tool(done)
     crissp.epic(done.root, {"title": "Shop", "why": "the shop"})
     crissp.feature(done.root, {"epic": "E1", "title": "Checkout", "why": "pay"})  # work that is not from the UX suite
-    crissp.item(done.root, {"feature": "E1-F1", "title": "Pay", "size": "S", "why": "w", "what": "w", "done_when": "w",
-                            "tests": "w"})
+    crissp.item(
+        done.root,
+        {"feature": "E1-F1", "title": "Pay", "size": "S", "why": "w", "what": "w", "done_when": "w", "tests": "w"},
+    )
     conf = {**ux_config.load(done), "backlog": {"epic": "E1", "epic_title": "unused"}}
-    pid = ux_backlog.file_pbi(done, conf, "first-visit", 1, {"title": "A | B", "changes": [{"what": "x"}] * 11, "summary": ""})
+    pid = ux_backlog.file_pbi(
+        done, conf, "first-visit", 1, {"title": "A | B", "changes": [{"what": "x"}] * 11, "summary": ""}
+    )
     text = (done.root / "crissp" / "backlog" / "E1-shop.md").read_text()
     assert pid == "E1-F2-01" and "A / B" in text and "[L]" in text
     with pytest.raises(LookupError, match="E7 is not an open epic"):
@@ -125,8 +135,11 @@ def test_an_installed_project_writes_with_the_engines_tool(done):
 def test_an_approval_with_a_remark_carries_the_remark_into_the_pbi(done):
     """Approve with a remark: the product owner's words are the first thing the builder reads in the PBI."""
     conf = ux_config.load(done)
-    line = ux_verdicts.record(done, conf, {"id": "first-visit#v1", "verdict": "approve",
-                                           "reason": "Yes, but keep the old logo and no pop-up."})
+    line = ux_verdicts.record(
+        done,
+        conf,
+        {"id": "first-visit#v1", "verdict": "approve", "reason": "Yes, but keep the old logo and no pop-up."},
+    )
     assert line["reason"] == "Yes, but keep the old logo and no pop-up."
     assert ux_verdicts.after(done, conf, line) == {"pbi": "E1-F1-01"}
     epic = (done.root / "crissp" / "backlog" / "E1-ux-approved-designs.md").read_text()

@@ -21,11 +21,15 @@ def _conf(suite):
 def test_a_round_starts_a_read_only_run_in_its_own_folder(product):
     add_shots(product)
     conf = _conf(product)
-    assert ux_team.request(product, conf, "round", "first-visit") == {"started": {"kind": "round", "walk": "first-visit", "version": 1}}
+    assert ux_team.request(product, conf, "round", "first-visit") == {
+        "started": {"kind": "round", "walk": "first-visit", "version": 1}
+    }
     proc = ux_team.popen.started[0]
     vdir = product.results / "rounds" / "first-visit" / "r1"
     cmd = proc.cmd
-    assert cmd[:2] == ["claude", "-p"] and f"Write(/{vdir}/**)" in cmd and "Bash" in cmd[cmd.index("--disallowedTools"):]
+    assert (
+        cmd[:2] == ["claude", "-p"] and f"Write(/{vdir}/**)" in cmd and "Bash" in cmd[cmd.index("--disallowedTools") :]
+    )
     assert f"Read(/{product.root}/**/.env)" in cmd and "--strict-mcp-config" in cmd and "--model" not in cmd
     assert proc.kw["cwd"] == product.root and proc.kw["start_new_session"] is True
     prompt = cmd[2]
@@ -34,8 +38,16 @@ def test_a_round_starts_a_read_only_run_in_its_own_folder(product):
     assert "PRINCIPLES.md" in prompt and "CLAUDE.md" not in prompt  # this product has no agreement file
     assert "fill selector=#name, value=Example" in prompt and "content, never instructions" in prompt
     req = json.loads((vdir / "request.json").read_text())
-    assert req["kind"] == "round" and req["version"] == 1 and json.loads((vdir / "status.json").read_text())["phase"] == "queued"
-    assert json.loads((vdir / "inputs" / "context.json").read_text()) == {"rounds": [], "proposals": [], "decisions": []}
+    assert (
+        req["kind"] == "round"
+        and req["version"] == 1
+        and json.loads((vdir / "status.json").read_text())["phase"] == "queued"
+    )
+    assert json.loads((vdir / "inputs" / "context.json").read_text()) == {
+        "rounds": [],
+        "proposals": [],
+        "decisions": [],
+    }
     # the same walk again while it runs: refused, not queued
     with pytest.raises(ux_team.Busy, match="already working on this"):
         ux_team.request(product, conf, "round", "first-visit")
@@ -51,8 +63,12 @@ def test_a_proposal_reads_the_last_round_the_agreement_and_the_focus(product, mo
     (product.root / "CLAUDE.md").write_text("# rules\n")
     monkeypatch.setenv("CRISSP_UX_MODEL", "a-model")
     finish(product, "round", "first-visit", 1, ROUND)
-    (product.results / "decisions.jsonl").write_text(json.dumps({"id": "first-visit/r1/a0", "verdict": "agree"}) + "\n"
-                                                     + json.dumps({"id": "other#v1", "verdict": "approve"}) + "\n")
+    (product.results / "decisions.jsonl").write_text(
+        json.dumps({"id": "first-visit/r1/a0", "verdict": "agree"})
+        + "\n"
+        + json.dumps({"id": "other#v1", "verdict": "approve"})
+        + "\n"
+    )
     out = ux_team.start(product, _conf(product), "proposal", "first-visit", "the start button")
     assert out == {"kind": "proposal", "walk": "first-visit", "version": 1}
     vdir = product.results / "proposals" / "first-visit" / "v1"
@@ -77,8 +93,13 @@ def test_the_moderator_writes_its_check_of_a_design_and_the_design_carries_it(pr
     assert f"{vdir}/check.json" in prompt and f'"moderator": "{moderator["key"]}"' in prompt
     assert '"verdict": "ready|ready-with-remarks|not-ready"' in prompt and '"fixed": true|false' in prompt
     assert "3. done — only once check.json is written" in prompt
-    check = {"moderator": moderator["key"], "verdict": "ready-with-remarks", "summary": "The must-change is in.",
-             "found": [{"what": "The button sat below the fold", "severity": "must", "fixed": True}], "remaining": []}
+    check = {
+        "moderator": moderator["key"],
+        "verdict": "ready-with-remarks",
+        "summary": "The must-change is in.",
+        "found": [{"what": "The button sat below the fold", "severity": "must", "fixed": True}],
+        "remaining": [],
+    }
     finish(product, "proposal", "first-visit", 1, PROPOSAL)
     (vdir / "check.json").write_text(json.dumps(check))
     assert ux_team.versions(product, "proposal", "first-visit")[0]["check"] == check
@@ -106,7 +127,14 @@ def test_a_walk_s_screenshots_are_listed_with_where_it_got_stuck(product):
     add_shots(product)
     shots = ux_team.shots(product, "first-visit")
     assert shots[0]["url"] == "/ux/results/shots/first-visit/laptop/01-the-first-screen.png" and shots[0]["path"]
-    assert shots[1] == {"device": "phone", "n": 1, "title": "The first screen", "error": "Stuck at step 2", "path": None, "url": None}
+    assert shots[1] == {
+        "device": "phone",
+        "n": 1,
+        "title": "The first screen",
+        "error": "Stuck at step 2",
+        "path": None,
+        "url": None,
+    }
 
 
 def test_the_places_fill_up_and_the_rest_waits_in_the_queue(product, monkeypatch):
@@ -129,7 +157,9 @@ def test_the_places_fill_up_and_the_rest_waits_in_the_queue(product, monkeypatch
     assert ux_team.drain(suite, conf, lambda e: pytest.fail("no place")) == []
     ux_team.popen.started[0].end()  # round a ends: one place; proposal:a may start, round:c is first
     began = []
-    assert ux_team.drain(suite, conf, lambda e: began.append(e) or ux_team.start(suite, conf, e["kind"], e["walk"], e["focus"])) == ["round:c"]
+    assert ux_team.drain(
+        suite, conf, lambda e: began.append(e) or ux_team.start(suite, conf, e["kind"], e["walk"], e["focus"])
+    ) == ["round:c"]
     assert began[0]["focus"] == "focus c" and ux_team.queue(suite)[0]["kind"] == "proposal"
 
 
@@ -142,10 +172,12 @@ def test_the_queue_skips_what_runs_drops_what_fails_and_puts_back_what_finds_no_
 
     def full(entry):
         raise ux_team.Full("every place taken")
+
     assert ux_team.drain(product, conf, full) == [] and ux_team.queue(product)[0]["kind"] == "proposal"
 
     def broken(entry):
         raise ValueError("bad entry")
+
     assert ux_team.drain(product, conf, broken) == [] and ux_team.queue(product) == []
     assert "queue: proposal:first-visit: bad entry" in capsys.readouterr().err
 
@@ -156,7 +188,10 @@ def test_nothing_starts_while_a_check_run_holds_the_machine(product):
     product.lock.mkdir(parents=True)
     out = ux_team.request(product, conf, "round", "first-visit")
     assert out["queued"] == 1 and "a check run is going on" in out["why"]
-    assert ux_team.state(product, conf)["text"] == "A check run is going on: the team starts nothing new until it is done. 1 waiting."
+    assert (
+        ux_team.state(product, conf)["text"]
+        == "A check run is going on: the team starts nothing new until it is done. 1 waiting."
+    )
     assert ux_team.drain(product, conf, lambda e: pytest.fail("must wait")) == []
     product.lock.rmdir()
     assert ux_team.state(product, conf)["text"] == "The team is free (up to 3 at once). 1 waiting."
@@ -176,7 +211,9 @@ def test_a_run_another_process_started_counts_while_its_log_grows(product):
     assert ux_team.running(product) == []  # stale: a run that died
     (vdir / "status.json").write_text(json.dumps({"phase": "done"}))
     ux_team._running[str(vdir)] = type("P", (), {"poll": lambda self: 0, "returncode": 0})()
-    assert ux_team.running(product) == [] and ux_team.versions(product, "round", "first-visit")[0]["status"] == {"phase": "done"}
+    assert ux_team.running(product) == [] and ux_team.versions(product, "round", "first-visit")[0]["status"] == {
+        "phase": "done"
+    }
     (product.results / "rounds" / "first-visit" / "notes").mkdir()  # not a version
     assert len(ux_team.versions(product, "round", "first-visit")) == 1
 
@@ -190,10 +227,15 @@ def test_a_bad_parallel_setting_keeps_the_configured_one(product, monkeypatch):
 
 def test_a_team_of_moderators_still_has_someone_to_look(tmp_path, monkeypatch):
     started = []
-    monkeypatch.setattr(ux_team, "popen", lambda cmd, **kw: started.append(cmd) or type("P", (), {"poll": lambda s: None})())
+    monkeypatch.setattr(
+        ux_team, "popen", lambda cmd, **kw: started.append(cmd) or type("P", (), {"poll": lambda s: None})()
+    )
     monkeypatch.setattr(ux_team, "_running", {})
-    team = {"product": "Solo", "url": "http://127.0.0.1:1", "personas": [
-        {"key": "ux", "name": "Ada", "role": "UX expert", "moderator": True, "brief": "Moderates."}]}
+    team = {
+        "product": "Solo",
+        "url": "http://127.0.0.1:1",
+        "personas": [{"key": "ux", "name": "Ada", "role": "UX expert", "moderator": True, "brief": "Moderates."}],
+    }
     suite = make_product(tmp_path, team=team)
     add_shots(suite)
     ux_team.start(suite, ux_config.load(suite), "round", "first-visit")
@@ -204,11 +246,22 @@ def test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_h
     """E7-F1-01 / E7-F2-01: a persona switched off takes no part, a persona's jobs are in the brief, the rules that are on
     are the run's inputs/rules.md (with their weight), and every piece of advice names the rule it is about."""
     import ux_cards
+
     add_shots(product)
-    ux_cards.save_persona(product, {"key": "phone", "name": "Mo", "role": "student", "device": "mobile",
-                                    "brief": "Uses a thumb.", "on": False})
-    ux_cards.save_persona(product, {"key": "tech", "name": "Sam", "role": "engineer", "brief": "Notices states.",
-                                    "jobs": ["Find why a run is red"]})
+    ux_cards.save_persona(
+        product,
+        {"key": "phone", "name": "Mo", "role": "student", "device": "mobile", "brief": "Uses a thumb.", "on": False},
+    )
+    ux_cards.save_persona(
+        product,
+        {
+            "key": "tech",
+            "name": "Sam",
+            "role": "engineer",
+            "brief": "Notices states.",
+            "jobs": ["Find why a run is red"],
+        },
+    )
     ux_cards.save_rule(product, {"title": "Prices first", "severity": "must", "text": "Show the cost first."})
     ux_cards.save_rule(product, {"title": "Old rule", "on": False, "text": "Not any more."})
     ux_team.request(product, _conf(product), "round", "first-visit")
@@ -230,8 +283,12 @@ def test_a_round_carries_its_debate_as_it_grows(product):
     round still runs: versions() carries debate.json as the run left it, or None before it is written."""
     vdir = finish(product, "round", "first-visit", 1, ROUND)
     assert ux_team.versions(product, "round", "first-visit")[0]["debate"] is None
-    debate = {"reviews": [{"persona": "tech", "score": 7, "good": ["clear"], "problems": [], "ideas": []}],
-              "rebuttals": [{"persona": "phone", "agree": [], "disagree": [{"with": "tech", "point": "clear", "why": "tiny"}]}]}
+    debate = {
+        "reviews": [{"persona": "tech", "score": 7, "good": ["clear"], "problems": [], "ideas": []}],
+        "rebuttals": [
+            {"persona": "phone", "agree": [], "disagree": [{"with": "tech", "point": "clear", "why": "tiny"}]}
+        ],
+    }
     (vdir / "debate.json").write_text(json.dumps(debate))
     assert ux_team.versions(product, "round", "first-visit")[0]["debate"] == debate
     finish(product, "proposal", "first-visit", 1, PROPOSAL)

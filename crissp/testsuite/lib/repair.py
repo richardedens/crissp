@@ -50,7 +50,9 @@ from pathlib import Path
 import hook  # F-50: the lint before every commit, shared with crissp init
 import vibe  # F-26: Vibe's trusted folders, shared with crissp init
 
-ENGINE = Path(__file__).resolve().parents[2]  # the engine: crissp/ in the framework's checkout, crissp/engine/ installed
+ENGINE = (
+    Path(__file__).resolve().parents[2]
+)  # the engine: crissp/ in the framework's checkout, crissp/engine/ installed
 TEMPLATE = ENGINE / "template"
 SUITES = Path("crissp/testsuite/suites.json")
 TEAM = Path("crissp/uxsuite/team.json")
@@ -59,7 +61,18 @@ OLD_URL = "http://127.0.0.1:5173"
 OLD_KEYS = {"unit", "lint"}
 RENAMED = {"unit": "backend", "lint": "backend-lint"}  # a project's own path rule follows its step to the new name
 OLD_PATHS = {"src/", "tests/"}
-UX_CONFIG = {"team.json", "walks", "personas", "rules", "PRINCIPLES.md", "README.md", ".gitignore", "results", ".DS_Store", "__pycache__"}
+UX_CONFIG = {
+    "team.json",
+    "walks",
+    "personas",
+    "rules",
+    "PRINCIPLES.md",
+    "README.md",
+    ".gitignore",
+    "results",
+    ".DS_Store",
+    "__pycache__",
+}
 SKIP = {"__pycache__", ".DS_Store", "results"}
 FIRST_WALK = Path("uxsuite/walks/first-visit.json")
 SESSIONS = "## Sessions that stay small"
@@ -109,8 +122,11 @@ def fix_steps(root: Path) -> Repair | None:
     template = read(TEMPLATE / SUITES)
 
     def do() -> None:
-        own = [{**r, "steps": [RENAMED.get(k, k) for k in r.get("steps", [])]}
-               for r in data.get("paths", []) if r.get("match") not in OLD_PATHS]
+        own = [
+            {**r, "steps": [RENAMED.get(k, k) for k in r.get("steps", [])]}
+            for r in data.get("paths", [])
+            if r.get("match") not in OLD_PATHS
+        ]
         shared = data.get("shared", [])
         data["steps"] = template["steps"]
         data["paths"] = template["paths"] + own
@@ -152,8 +168,12 @@ def fix_ux_extra(root: Path) -> Repair | None:
             shutil.move(str(p), str(root / "docs/ux" / p.name))
 
     said = ", ".join(f"{p.relative_to(root)} → docs/ux/{p.name}" for p in moves)
-    return Repair("ux-extra", f"not the UX suite's configuration: {said} (the product lives in app/; a design is "
-                              "crissp ux --propose)", do, moves)
+    return Repair(
+        "ux-extra",
+        f"not the UX suite's configuration: {said} (the product lives in app/; a design is crissp ux --propose)",
+        do,
+        moves,
+    )
 
 
 def fix_agreement(root: Path) -> Repair | None:
@@ -165,8 +185,11 @@ def fix_agreement(root: Path) -> Repair | None:
     def do() -> None:
         path.write_text(OLD_TOOL.sub(r"the crissp MCP server,\1registered\2in `.mcp.json`", text))
 
-    return Repair("agreement", "crissp/CLAUDE.md: the tools come from `crissp/tool`, which is not here → the crissp MCP "
-                               "server in .mcp.json", do)
+    return Repair(
+        "agreement",
+        "crissp/CLAUDE.md: the tools come from `crissp/tool`, which is not here → the crissp MCP server in .mcp.json",
+        do,
+    )
 
 
 def brought_in(root: Path) -> bool:
@@ -178,12 +201,18 @@ def fix_missing(root: Path) -> Repair | None:
     if not brought_in(root):
         return None
     walks = list((root / "crissp/uxsuite/walks").glob("*.json"))
-    values = {"PRODUCT": (read(root / SUITES) or {}).get("product") or root.name, "OWNER": "the product owner",
-              "DATE": datetime.date.today().isoformat()}
-    missing = [(src, rel) for src in sorted((TEMPLATE / "crissp").rglob("*"))
-               if src.is_file() and not SKIP & set(src.parts)
-               for rel in [src.relative_to(TEMPLATE / "crissp")]
-               if not (root / "crissp" / rel).exists() and not (rel == FIRST_WALK and walks)]
+    values = {
+        "PRODUCT": (read(root / SUITES) or {}).get("product") or root.name,
+        "OWNER": "the product owner",
+        "DATE": datetime.date.today().isoformat(),
+    }
+    missing = [
+        (src, rel)
+        for src in sorted((TEMPLATE / "crissp").rglob("*"))
+        if src.is_file() and not SKIP & set(src.parts)
+        for rel in [src.relative_to(TEMPLATE / "crissp")]
+        if not (root / "crissp" / rel).exists() and not (rel == FIRST_WALK and walks)
+    ]
     if not missing:
         return None
 
@@ -205,8 +234,11 @@ def fix_crissp_md(root: Path) -> Repair | None:
     target, framework = root / "crissp/CRISSP.md", (ENGINE / "CRISSP.md").read_text()
     if target.is_file() and target.read_text() == framework:
         return None
-    return Repair("crissp-md", "crissp/CRISSP.md is not this crissp's framework text → this crissp's",
-                  lambda: target.write_text(framework))
+    return Repair(
+        "crissp-md",
+        "crissp/CRISSP.md is not this crissp's framework text → this crissp's",
+        lambda: target.write_text(framework),
+    )
 
 
 def span(text: str, heading: str) -> tuple[int, int] | None:
@@ -214,14 +246,14 @@ def span(text: str, heading: str) -> tuple[int, int] | None:
     m = re.search(rf"^{re.escape(heading)}$", text, re.MULTILINE)
     if not m:
         return None
-    nxt = re.search(r"^## ", text[m.end():], re.MULTILINE)
+    nxt = re.search(r"^## ", text[m.end() :], re.MULTILINE)
     return m.start(), m.end() + nxt.start() if nxt else len(text)
 
 
 def section(text: str, heading: str) -> str:
     """The section under heading, ending in one blank line; '' when it is not there."""
     where = span(text, heading)
-    return text[where[0]:where[1]].rstrip("\n") + "\n\n" if where else ""
+    return text[where[0] : where[1]].rstrip("\n") + "\n\n" if where else ""
 
 
 def fix_sessions(root: Path) -> Repair | None:
@@ -238,14 +270,15 @@ def fix_sessions(root: Path) -> Repair | None:
         text = path.read_text()  # read again: the agreement repair may have changed it first
         where = span(text, SESSIONS) or span(text, BEFORE)
         if where:
-            end = where[1] if text[where[0]:].startswith(SESSIONS) else where[0]
-            text = text[:where[0]] + ours + text[end:]
+            end = where[1] if text[where[0] :].startswith(SESSIONS) else where[0]
+            text = text[: where[0]] + ours + text[end:]
         else:
             text = text.rstrip("\n") + "\n\n" + ours
         path.write_text(text)
 
-    return Repair("sessions", f'crissp/CLAUDE.md: "{SESSIONS[3:]}" is {"old" if have else "missing"} → this crissp\'s',
-                  do)
+    return Repair(
+        "sessions", f'crissp/CLAUDE.md: "{SESSIONS[3:]}" is {"old" if have else "missing"} → this crissp\'s', do
+    )
 
 
 def fix_gitignore(root: Path) -> Repair | None:
@@ -260,11 +293,20 @@ def fix_gitignore(root: Path) -> Repair | None:
 
     def do() -> None:
         text = path.read_text() if path.is_file() else ""
-        path.write_text(text + ("\n" if text and not text.endswith("\n") else "")
-                        + "# --- C.R.I.S.S.P.: added by crissp repair\n" + "\n".join(missing) + "\n")
+        path.write_text(
+            text
+            + ("\n" if text and not text.endswith("\n") else "")
+            + "# --- C.R.I.S.S.P.: added by crissp repair\n"
+            + "\n".join(missing)
+            + "\n"
+        )
 
-    return Repair("gitignore", f".gitignore lacks {len(missing)} of the framework's rules ({', '.join(missing[:3])}"
-                               f"{' …' if len(missing) > 3 else ''}) → added", do)
+    return Repair(
+        "gitignore",
+        f".gitignore lacks {len(missing)} of the framework's rules ({', '.join(missing[:3])}"
+        f"{' …' if len(missing) > 3 else ''}) → added",
+        do,
+    )
 
 
 def fix_changes(root: Path) -> Repair | None:
@@ -281,10 +323,17 @@ def fix_changes(root: Path) -> Repair | None:
     def do() -> None:
         for c in entries:
             if isinstance(c, dict):
-                c["sources"] = [{"file": src, "symbol": ""} if isinstance(src, str) else src for src in c.get("sources", [])]
+                c["sources"] = [
+                    {"file": src, "symbol": ""} if isinstance(src, str) else src for src in c.get("sources", [])
+                ]
         write(path, data)
-    return Repair("changes", f"{CHANGES}: {plain} sources are plain paths → {{file, symbol}} (the file from the top; "
-                             "name a symbol to show the fix itself)", do)
+
+    return Repair(
+        "changes",
+        f"{CHANGES}: {plain} sources are plain paths → {{file, symbol}} (the file from the top; "
+        "name a symbol to show the fix itself)",
+        do,
+    )
 
 
 def fix_pin(root: Path, version: str | None) -> Repair | None:
@@ -301,6 +350,7 @@ def fix_pin(root: Path, version: str | None) -> Repair | None:
     def do() -> None:
         args[pins[0]] = f"crissp=={version}"
         write(path, data)
+
     return Repair("mcp-pin", f".mcp.json: {old} → crissp=={version}, the crissp that repairs (its MCP tools)", do)
 
 
@@ -314,8 +364,11 @@ def fix_vibe_pin(root: Path, version: str | None) -> Repair | None:
     except tomllib.TOMLDecodeError:
         return None
     servers = data.get("mcp_servers")
-    args = next((s.get("args") for s in servers if isinstance(s, dict) and s.get("name") == "crissp"),
-                None) if isinstance(servers, list) else None
+    args = (
+        next((s.get("args") for s in servers if isinstance(s, dict) and s.get("name") == "crissp"), None)
+        if isinstance(servers, list)
+        else None
+    )
     pins = [a for a in args if isinstance(a, str) and a.startswith("crissp==")] if isinstance(args, list) else []
     if not version or not pins or pins[0] == f"crissp=={version}" or text.count(json.dumps(pins[0])) != 1:
         return None
@@ -323,6 +376,7 @@ def fix_vibe_pin(root: Path, version: str | None) -> Repair | None:
 
     def do() -> None:
         path.write_text(text.replace(json.dumps(old), json.dumps(new)))
+
     return Repair("vibe-pin", f".vibe/config.toml: {old} → {new}, the same pin as .mcp.json (Vibe's MCP tools)", do)
 
 
@@ -338,8 +392,10 @@ def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | Non
         return None
     parts = []
     if not config.is_file():
-        parts.append(".vibe/config.toml is not there → from the template, uvx "
-                     f"crissp=={version} mcp (the server .mcp.json registers for Claude Code)")
+        parts.append(
+            ".vibe/config.toml is not there → from the template, uvx "
+            f"crissp=={version} mcp (the server .mcp.json registers for Claude Code)"
+        )
     if not trusted:
         parts.append(f"not trusted in {db} → added (never removed)")
 
@@ -379,23 +435,46 @@ def fix_hook(root: Path) -> Repair | None:
 
 def find(root: Path, version: str | None = None, home: Path | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
-    return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
-                        fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
-                        fix_vibe_pin(root, version), fix_vibe(root, version, home), fix_hook(root)) if r]
+    return [
+        r
+        for r in (
+            fix_steps(root),
+            fix_ux_url(root),
+            fix_ux_extra(root),
+            fix_agreement(root),
+            fix_sessions(root),
+            fix_missing(root),
+            fix_crissp_md(root),
+            fix_gitignore(root),
+            fix_changes(root),
+            fix_pin(root, version),
+            fix_vibe_pin(root, version),
+            fix_vibe(root, version, home),
+            fix_hook(root),
+        )
+        if r
+    ]
 
 
 def committed(root: Path) -> bool:
     try:
-        return subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", "HEAD"],
-                              capture_output=True, check=False).returncode == 0
+        return (
+            subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "--verify", "-q", "HEAD"], capture_output=True, check=False
+            ).returncode
+            == 0
+        )
     except OSError:  # no git at all
         return False
 
 
 def needs(root: Path) -> list[str]:
     """What a person has to do: said, never done."""
-    out = [f"docs/ux/{p.name} is already there: {p.relative_to(root)} stays; move it by hand"
-           for p in extras(root) if (root / "docs/ux" / p.name).exists()]
+    out = [
+        f"docs/ux/{p.name} is already there: {p.relative_to(root)} stays; move it by hand"
+        for p in extras(root)
+        if (root / "docs/ux" / p.name).exists()
+    ]
     if not (root / "crissp").is_dir():
         out.append("not brought in: no crissp/ here; crissp init brings it in")
     if hook.needs(root):
@@ -403,8 +482,10 @@ def needs(root: Path) -> list[str]:
     if not committed(root):
         out.append("no commit yet: the checks test what is committed; review the diff and commit")
     if not is_engine(root) and not (root / "docker-compose.yml").exists():
-        out.append("no docker-compose.yml: nothing runs for the UX suite to walk; build app/backend, app/frontend and "
-                   "the stack first (not a prototype in crissp/uxsuite/)")
+        out.append(
+            "no docker-compose.yml: nothing runs for the UX suite to walk; build app/backend, app/frontend and "
+            "the stack first (not a prototype in crissp/uxsuite/)"
+        )
     return out
 
 

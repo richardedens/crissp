@@ -36,8 +36,14 @@ import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
 
 WEB = HERE / "web"
-TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-         ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp"}
+TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".webp": "image/webp",
+}
 SANDBOX = "sandbox allow-scripts; default-src 'self' 'unsafe-inline' data:"
 MAX_BODY = 20000
 
@@ -55,15 +61,34 @@ def state(suite: ux_config.Suite) -> dict:
         pbis = {}
     walks = []
     for w in conf["walks"].values():
-        designs = [{**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"])}
-                   for v in ux_team.versions(suite, "proposal", w["id"])]
-        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "shots": ux_team.shots(suite, w["id"]),
-                      "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
-    return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
-            "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
-            "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "verdicts": verdicts, "queue": ux_team.queue(suite),
-            "team": ux_team.state(suite, conf)}
+        designs = [
+            {**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"])}
+            for v in ux_team.versions(suite, "proposal", w["id"])
+        ]
+        walks.append(
+            {
+                "id": w["id"],
+                "title": w["title"],
+                "steps": len(w["steps"]),
+                "shots": ux_team.shots(suite, w["id"]),
+                "rounds": ux_team.versions(suite, "round", w["id"]),
+                "proposals": designs,
+            }
+        )
+    return {
+        "product": conf["product"],
+        "monogram": conf["monogram"],
+        "about": conf["about"],
+        "url": conf["url"],
+        "personas": conf["personas"],
+        "personas_from": conf["personas_from"],
+        "rules": ux_cards.rules(suite),
+        "rules_from": ux_cards.rules_from(suite),
+        "walks": walks,
+        "verdicts": verdicts,
+        "queue": ux_team.queue(suite),
+        "team": ux_team.state(suite, conf),
+    }
 
 
 def _send(handler, code: int, body: bytes, ctype: str = "application/json", extra: dict | None = None) -> None:
@@ -101,9 +126,9 @@ def handle(handler, method: str, suite: ux_config.Suite | None = None) -> None:
     if path == "/ux/api/state":
         return _json(handler, 200, state(suite))
     if path.startswith("/ux/results/"):
-        rest = path[len("/ux/results/"):]
+        rest = path[len("/ux/results/") :]
         return _file(handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals"))
-    return _file(handler, WEB / path[len("/ux/"):], (WEB,))
+    return _file(handler, WEB / path[len("/ux/") :], (WEB,))
 
 
 def _post(handler, path: str, suite: ux_config.Suite) -> None:

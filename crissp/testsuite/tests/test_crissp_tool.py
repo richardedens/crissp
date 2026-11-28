@@ -61,31 +61,63 @@ def test_the_brief_says_where_the_work_stands(tmp_path):
         "Next (first todo): E1-03 Security suite",
         "Open decisions: D-04 Admin kubeconfigs for scans?",
         "Open findings: 2 (the backlog tool with open=findings lists them)",
-        "Ask the backlog tool for any F-/D-/E- id instead of reading the backlog files."]
-    assert "certificate: green full run on abcdef12" in srv.brief(_repo(tmp_path / "c", cert='{"commit": "abcdef123456"}'))
+        "Ask the backlog tool for any F-/D-/E- id instead of reading the backlog files.",
+    ]
+    assert "certificate: green full run on abcdef12" in srv.brief(
+        _repo(tmp_path / "c", cert='{"commit": "abcdef123456"}')
+    )
     assert "certificate: none" in srv.brief(_repo(tmp_path / "d", cert="not json"))
     empty = tmp_path / "e"
     empty.mkdir()
-    assert srv.brief(empty).splitlines()[:2] == ["e no VERSION · commit no commits yet · release certificate: none", "Doing: none"]
+    assert srv.brief(empty).splitlines()[:2] == [
+        "e no VERSION · commit no commits yet · release certificate: none",
+        "Doing: none",
+    ]
 
 
 def test_the_commit_is_named_once_there_is_one(tmp_path):
     root = _repo(tmp_path)
     subprocess.run(["git", "init", "-q", str(root)], check=True)
-    subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty",
-                    "-m", "x"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "x",
+        ],
+        check=True,
+    )
     assert "commit no commits yet" not in srv.brief(root)
 
 
 def test_the_backlog_answers_exactly_what_is_asked(tmp_path):
     root = _repo(tmp_path)
-    assert srv.backlog(root, {"id": "e1-01"}) == "crissp/backlog/E1-quality.md\n### E1-01 · The gate                                   [doing] [M]\nWhy        a reason"
+    assert (
+        srv.backlog(root, {"id": "e1-01"})
+        == "crissp/backlog/E1-quality.md\n### E1-01 · The gate                                   [doing] [M]\nWhy        a reason"
+    )
     assert srv.backlog(root, {"id": "E0-01"}).startswith("crissp/backlog/done/E0-baseline.md\n### E0-01")
-    assert srv.backlog(root, {"id": "F-02"}) == "crissp/backlog/FINDINGS.md\nF-02 | the frontend | only a smoke suite | otherproject"
-    assert srv.backlog(root, {"id": "D-01"}).startswith("crissp/backlog/DECISIONS.md (taken)\nD-01 | A private repository.")
+    assert (
+        srv.backlog(root, {"id": "F-02"})
+        == "crissp/backlog/FINDINGS.md\nF-02 | the frontend | only a smoke suite | otherproject"
+    )
+    assert srv.backlog(root, {"id": "D-01"}).startswith(
+        "crissp/backlog/DECISIONS.md (taken)\nD-01 | A private repository."
+    )
     assert srv.backlog(root, {"status": "todo"}) == "E1-03 · Security suite [todo] []"
     assert srv.backlog(root, {"status": "parked"}) == "no items parked"
-    assert srv.backlog(root, {"open": "findings"}) == "F-01 → E5-01 · dumps in an image\nF-02 → otherproject · only a smoke suite"
+    assert (
+        srv.backlog(root, {"open": "findings"})
+        == "F-01 → E5-01 · dumps in an image\nF-02 → otherproject · only a smoke suite"
+    )
     assert srv.backlog(root, {"open": "decisions"}) == "D-04 Admin kubeconfigs for scans? · recommendation: **b**"
     with pytest.raises(LookupError):
         srv.backlog(root, {"id": "F-99"})
@@ -99,15 +131,34 @@ def test_the_backlog_answers_exactly_what_is_asked(tmp_path):
 
 def test_it_speaks_mcp(tmp_path):
     root = _repo(tmp_path)
-    init = srv.handle(root, {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}})
+    init = srv.handle(
+        root, {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}}
+    )
     assert init["result"]["protocolVersion"] == "2025-03-26" and init["result"]["serverInfo"]["name"] == "crissp"
     assert srv.handle(root, {"id": 2, "method": "initialize"})["result"]["protocolVersion"] == srv.PROTOCOL
     assert srv.handle(root, {"method": "notifications/initialized"}) is None
-    assert [t["name"] for t in srv.handle(root, {"id": 3, "method": "tools/list"})["result"]["tools"]] == ["brief", "backlog", "finding", "decision", "epic", "feature", "item", "run", "status", "dashboard"]
-    call = srv.handle(root, {"id": 4, "method": "tools/call", "params": {"name": "backlog", "arguments": {"id": "D-04"}}})
+    assert [t["name"] for t in srv.handle(root, {"id": 3, "method": "tools/list"})["result"]["tools"]] == [
+        "brief",
+        "backlog",
+        "finding",
+        "decision",
+        "epic",
+        "feature",
+        "item",
+        "run",
+        "status",
+        "dashboard",
+    ]
+    call = srv.handle(
+        root, {"id": 4, "method": "tools/call", "params": {"name": "backlog", "arguments": {"id": "D-04"}}}
+    )
     assert "Admin kubeconfigs" in call["result"]["content"][0]["text"] and "isError" not in call["result"]
-    assert srv.handle(root, {"id": 5, "method": "tools/call", "params": {"name": "brief"}})["result"]["content"][0]["text"]
-    wrong = srv.handle(root, {"id": 6, "method": "tools/call", "params": {"name": "backlog", "arguments": {"id": "F-99"}}})
+    assert srv.handle(root, {"id": 5, "method": "tools/call", "params": {"name": "brief"}})["result"]["content"][0][
+        "text"
+    ]
+    wrong = srv.handle(
+        root, {"id": 6, "method": "tools/call", "params": {"name": "backlog", "arguments": {"id": "F-99"}}}
+    )
     assert wrong["result"] == {"content": [{"type": "text", "text": "F-99 is not in the backlog"}], "isError": True}
     assert srv.handle(root, {"id": 7, "method": "tools/call"})["result"]["isError"]  # no tool named: unknown tool
     assert srv.handle(root, {"id": 8, "method": "ping"})["result"] == {}
@@ -116,11 +167,16 @@ def test_it_speaks_mcp(tmp_path):
 
 def test_a_finding_is_written_under_the_next_number(tmp_path):
     root = _repo(tmp_path)
-    answer = srv.finding(root, {"seen": "deploy.sh (2026-10-23)", "observation": "no\n  lock   file", "goes_to": "E1-01"})
+    answer = srv.finding(
+        root, {"seen": "deploy.sh (2026-10-23)", "observation": "no\n  lock   file", "goes_to": "E1-01"}
+    )
     assert answer == "F-03 written to crissp/backlog/FINDINGS.md"
     lines = (root / "crissp/backlog/FINDINGS.md").read_text().splitlines()
     assert lines[-1] == "| F-03 | deploy.sh (2026-10-23) | no lock file | E1-01 |" and lines[-2].startswith("| F-02 ")
-    assert srv.backlog(root, {"id": "F-03"}) == "crissp/backlog/FINDINGS.md\nF-03 | deploy.sh (2026-10-23) | no lock file | E1-01"
+    assert (
+        srv.backlog(root, {"id": "F-03"})
+        == "crissp/backlog/FINDINGS.md\nF-03 | deploy.sh (2026-10-23) | no lock file | E1-01"
+    )
     assert srv.finding(root, {"seen": "a", "observation": "b", "goes_to": "c"}).startswith("F-04 ")
     with pytest.raises(ValueError, match="observation is missing"):
         srv.finding(root, {"seen": "a", "observation": "  ", "goes_to": "c"})
@@ -128,9 +184,18 @@ def test_a_finding_is_written_under_the_next_number(tmp_path):
         srv.finding(root, {"seen": "a", "observation": "x | y", "goes_to": "c"})
     first = tmp_path / "first"
     (first / "crissp/backlog").mkdir(parents=True)
-    (first / "crissp/backlog/FINDINGS.md").write_text("# Findings\n\n| # | Seen | Observation | Goes to |\n|---|---|---|---|\n<!-- note -->\n")
-    assert srv.finding(first, {"seen": "a", "observation": "b", "goes_to": "c"}) == "F-01 written to crissp/backlog/FINDINGS.md"
-    assert (first / "crissp/backlog/FINDINGS.md").read_text().endswith("|---|---|---|---|\n| F-01 | a | b | c |\n<!-- note -->\n")
+    (first / "crissp/backlog/FINDINGS.md").write_text(
+        "# Findings\n\n| # | Seen | Observation | Goes to |\n|---|---|---|---|\n<!-- note -->\n"
+    )
+    assert (
+        srv.finding(first, {"seen": "a", "observation": "b", "goes_to": "c"})
+        == "F-01 written to crissp/backlog/FINDINGS.md"
+    )
+    assert (
+        (first / "crissp/backlog/FINDINGS.md")
+        .read_text()
+        .endswith("|---|---|---|---|\n| F-01 | a | b | c |\n<!-- note -->\n")
+    )
     with pytest.raises(LookupError, match=re.escape("FINDINGS.md is missing")):
         srv.finding(tmp_path / "nowhere", {"seen": "a", "observation": "b", "goes_to": "c"})
     (first / "crissp/backlog/FINDINGS.md").write_text("# Findings, no table yet\n")
@@ -160,13 +225,18 @@ def test_a_decision_is_asked_and_then_taken(tmp_path):
     path.write_text(DECISIONS_BOTH)
     ask = {"question": "Version scheme?", "options": "a) semver · b) dates", "recommendation": "**a**"}
     assert srv.decision(root, ask) == "D-05 written to crissp/backlog/DECISIONS.md"
-    assert "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n| D-05 | Version scheme? | a) semver · b) dates | **a** |\n\n## Taken" \
+    assert (
+        "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n| D-05 | Version scheme? | a) semver · b) dates | **a** |\n\n## Taken"
         in path.read_text()
-    assert srv.decision(root, {"id": "d-04", "decision": "A read-only ServiceAccount.", "date": "2026-10-24"}) \
+    )
+    assert (
+        srv.decision(root, {"id": "d-04", "decision": "A read-only ServiceAccount.", "date": "2026-10-24"})
         == "D-04 taken, in crissp/backlog/DECISIONS.md"
+    )
     text = path.read_text()
-    assert "| D-04 |" not in text and text.endswith("| ~~D-01~~ | A private repository. | 2026-10-23 |\n"
-                                                    "| ~~D-04~~ | A read-only ServiceAccount. | 2026-10-24 |\n")
+    assert "| D-04 |" not in text and text.endswith(
+        "| ~~D-01~~ | A private repository. | 2026-10-23 |\n| ~~D-04~~ | A read-only ServiceAccount. | 2026-10-24 |\n"
+    )
     assert srv.backlog(root, {"open": "decisions"}).startswith("D-05 Version scheme?")
     assert srv.decision(root, {"id": "D-05", "decision": "Semver."}).startswith("D-05 taken")
     assert f"| ~~D-05~~ | Semver. | {srv.datetime.date.today().isoformat()} |" in path.read_text()
@@ -189,8 +259,9 @@ def test_a_decision_in_a_file_without_sections_still_lands_in_the_right_table(tm
     assert srv.decision(root, {"question": "Q?", "options": "a · b", "recommendation": "a"}).startswith("D-05 ")
     assert srv.decision(root, {"id": "D-04", "decision": "b", "date": "2026-10-24"}).startswith("D-04 taken")
     text = (root / "crissp/backlog/DECISIONS.md").read_text()
-    assert "| D-05 | Q? | a · b | a |" in text and text.endswith("## Taken\n\n| # | Decision | Date |\n|---|---|---|\n"
-                                                                    "| ~~D-04~~ | b | 2026-10-24 |\n")
+    assert "| D-05 | Q? | a · b | a |" in text and text.endswith(
+        "## Taken\n\n| # | Decision | Date |\n|---|---|---|\n| ~~D-04~~ | b | 2026-10-24 |\n"
+    )
     with pytest.raises(LookupError, match="no section"):
         srv.add_row("no heading here\n", "| x |", "## Taken")
 
@@ -198,18 +269,28 @@ def test_a_decision_in_a_file_without_sections_still_lands_in_the_right_table(tm
 def test_an_epic_gets_its_own_file_under_the_next_number(tmp_path):
     root = _repo(tmp_path)
     b = root / "crissp/backlog"
-    (b / "README.md").write_text("| File | What |\n|---|---|\n| [E1-quality.md](E1-quality.md) | Quality |\n\n## How an item looks\n")
+    (b / "README.md").write_text(
+        "| File | What |\n|---|---|\n| [E1-quality.md](E1-quality.md) | Quality |\n\n## How an item looks\n"
+    )
     answer = srv.epic(root, {"title": "Repair: older C.R.I.S.S.P. projects!", "why": "The layout moved " * 10})
     assert answer == "E2 written to crissp/backlog/E2-repair-older-c-r-i-s-s-p-projects.md, listed in the README"
     text = (b / "E2-repair-older-c-r-i-s-s-p-projects.md").read_text()
-    assert text.startswith("# E2 · Repair: older C.R.I.S.S.P. projects!\n\nWhy: The layout moved") and max(map(len, text.splitlines())) <= 120
-    assert "| [E1-quality.md](E1-quality.md) | Quality |\n| [E2-repair-older-c-r-i-s-s-p-projects.md](E2-repair-older-c-r-i-s-s-p-projects.md)" \
+    assert (
+        text.startswith("# E2 · Repair: older C.R.I.S.S.P. projects!\n\nWhy: The layout moved")
+        and max(map(len, text.splitlines())) <= 120
+    )
+    assert (
+        "| [E1-quality.md](E1-quality.md) | Quality |\n| [E2-repair-older-c-r-i-s-s-p-projects.md](E2-repair-older-c-r-i-s-s-p-projects.md)"
         " | Repair: older C.R.I.S.S.P. projects! |\n\n## How" in (b / "README.md").read_text()
+    )
     assert srv.backlog(root, {"id": "e2"}).splitlines()[-2:] == ["Features:", "none yet"]
     (b / "README.md").write_text("no epics listed\n")
-    assert srv.epic(root, {"title": "x" * 50, "why": "w"}) == "E3 written to crissp/backlog/E3-epic.md"  # numbers count done/ too
+    assert (
+        srv.epic(root, {"title": "x" * 50, "why": "w"}) == "E3 written to crissp/backlog/E3-epic.md"
+    )  # numbers count done/ too
     assert srv.epic(root, {"title": "One two three four five six seven eight nine", "why": "w"}).endswith(
-        "E4-one-two-three-four-five-six-seven-eight.md")
+        "E4-one-two-three-four-five-six-seven-eight.md"
+    )
     with pytest.raises(ValueError, match="why is missing"):
         srv.epic(root, {"title": "t"})
     with pytest.raises(LookupError, match="backlog is missing"):
@@ -220,38 +301,79 @@ def test_features_and_their_pbis_are_three_levels(tmp_path):
     root = _repo(tmp_path)
     srv.epic(root, {"title": "Repair", "why": "the layout moved"})
     path = root / "crissp/backlog/E2-repair.md"
-    assert srv.feature(root, {"epic": "e2", "title": "Detect and plan", "why": "see what would move"}) \
+    assert (
+        srv.feature(root, {"epic": "e2", "title": "Detect and plan", "why": "see what would move"})
         == "E2-F1 written to crissp/backlog/E2-repair.md"
+    )
     assert srv.feature(root, {"epic": "E2", "title": "Move", "why": "the move itself"}).startswith("E2-F2 ")
-    pbi = {"feature": "e2-f1", "title": "Which layout a project has", "size": "s", "why": "Nobody sees it " * 12,
-           "what": "a check", "done_when": "it says old", "tests": "backend: fixtures"}
+    pbi = {
+        "feature": "e2-f1",
+        "title": "Which layout a project has",
+        "size": "s",
+        "why": "Nobody sees it " * 12,
+        "what": "a check",
+        "done_when": "it says old",
+        "tests": "backend: fixtures",
+    }
     assert srv.item(root, pbi) == "E2-F1-01 written to crissp/backlog/E2-repair.md"
     assert srv.item(root, {**pbi, "title": "The plan", "depends": "E2-F1-01"}).startswith("E2-F1-02 ")
     assert srv.item(root, {**pbi, "feature": "E2-F2", "title": "The move"}).startswith("E2-F2-01 ")
     text = path.read_text()
     order = [m.group(0).split(" · ")[0] for m in re.finditer(r"^#{1,3} E[\w-]+ · ", text, re.MULTILINE)]
-    assert order == ["# E2", "## E2-F1", "### E2-F1-01", "### E2-F1-02", "## E2-F2", "### E2-F2-01"]  # each PBI under its feature
+    assert order == [
+        "# E2",
+        "## E2-F1",
+        "### E2-F1-01",
+        "### E2-F1-02",
+        "## E2-F2",
+        "### E2-F2-01",
+    ]  # each PBI under its feature
     assert f"{'## E2-F1 · Detect and plan':<88} [todo]\nWhy        see what would move\n\n### E2-F1-01" in text
     block = srv.backlog(root, {"id": "E2-F1-01"}).splitlines()
     assert block[1] == f"{'### E2-F1-01 · Which layout a project has':<88} [todo] [S]" and block[1].index("[") == 89
     assert block[2].startswith("Why        Nobody sees it") and len(block[2]) <= 120 and block[3].startswith(" " * 11)
-    assert block[-4:] == ["What       a check", "Done when  it says old", "Tests      backend: fixtures", "Depends    —"]
-    assert srv.backlog(root, {"id": "E2-F1-02"}).endswith("Depends    E2-F1-01")  # a PBI ends where the next feature starts
+    assert block[-4:] == [
+        "What       a check",
+        "Done when  it says old",
+        "Tests      backend: fixtures",
+        "Depends    —",
+    ]
+    assert srv.backlog(root, {"id": "E2-F1-02"}).endswith(
+        "Depends    E2-F1-01"
+    )  # a PBI ends where the next feature starts
     assert srv.backlog(root, {"id": "E2-F1"}).splitlines() == [
-        "crissp/backlog/E2-repair.md", f"{'## E2-F1 · Detect and plan':<88} [todo]", "Why        see what would move", "PBIs:",
-        "E2-F1-01 · Which layout a project has [todo] [S]", "E2-F1-02 · The plan [todo] [S]"]
+        "crissp/backlog/E2-repair.md",
+        f"{'## E2-F1 · Detect and plan':<88} [todo]",
+        "Why        see what would move",
+        "PBIs:",
+        "E2-F1-01 · Which layout a project has [todo] [S]",
+        "E2-F1-02 · The plan [todo] [S]",
+    ]
     assert srv.backlog(root, {"id": "E2"}).splitlines() == [
-        "crissp/backlog/E2-repair.md", ["# E2 · Repair", "", "Why: the layout moved"][0], "", "Why: the layout moved",
-        "Features:", "E2-F1 · Detect and plan [todo]", "E2-F2 · Move [todo]"]
+        "crissp/backlog/E2-repair.md",
+        ["# E2 · Repair", "", "Why: the layout moved"][0],
+        "",
+        "Why: the layout moved",
+        "Features:",
+        "E2-F1 · Detect and plan [todo]",
+        "E2-F2 · Move [todo]",
+    ]
     srv.feature(root, {"epic": "E2", "title": "Later", "why": "w"})
     assert srv.backlog(root, {"id": "E2-F3"}).endswith("PBIs:\nnone yet")
     assert srv.backlog(root, {"id": "E1"}).endswith("Features:\nnone yet")  # an epic from before features
 
-    assert srv.item(root, {"id": "e2-f1", "status": "doing"}) == "E2-F1 [todo] → [doing], in crissp/backlog/E2-repair.md"
+    assert (
+        srv.item(root, {"id": "e2-f1", "status": "doing"}) == "E2-F1 [todo] → [doing], in crissp/backlog/E2-repair.md"
+    )
     assert srv.item(root, {"id": "E2-F1-01", "status": "review"}).startswith("E2-F1-01 [todo] → [review]")
-    assert srv.backlog(root, {"status": "doing"}) == "E2-F1 · Detect and plan [doing] (feature)\nE1-01 · The gate [doing] [M]"
+    assert (
+        srv.backlog(root, {"status": "doing"})
+        == "E2-F1 · Detect and plan [doing] (feature)\nE1-01 · The gate [doing] [M]"
+    )
     assert "E2-F1-01 Which layout a project has" in srv.brief(root)  # in review, in the brief
-    assert srv.item(root, {"id": "E1-03", "status": "parked"}).startswith("E1-03 [todo] → [parked]")  # items from before features
+    assert srv.item(root, {"id": "E1-03", "status": "parked"}).startswith(
+        "E1-03 [todo] → [parked]"
+    )  # items from before features
     with pytest.raises(ValueError, match="a PBI belongs to a feature"):
         srv.item(root, {"epic": "E2", "title": "no feature"})
     with pytest.raises(LookupError, match="E2-F9 is not a feature"):
@@ -279,12 +401,23 @@ def test_features_and_their_pbis_are_three_levels(tmp_path):
 
 def test_the_writers_answer_over_mcp(tmp_path):
     root = _repo(tmp_path)
-    def call(name, args):
-        return srv.handle(root, {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}})["result"]
 
-    assert call("finding", {"seen": "a", "observation": "b", "goes_to": "c"})["content"][0]["text"] == "F-03 written to crissp/backlog/FINDINGS.md"
-    assert call("decision", {"question": "q", "options": "o", "recommendation": "r"})["content"][0]["text"].startswith("D-05 ")
-    assert call("epic", {"title": "Repair", "why": "w"})["content"][0]["text"] == "E2 written to crissp/backlog/E2-repair.md"
+    def call(name, args):
+        return srv.handle(root, {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}})[
+            "result"
+        ]
+
+    assert (
+        call("finding", {"seen": "a", "observation": "b", "goes_to": "c"})["content"][0]["text"]
+        == "F-03 written to crissp/backlog/FINDINGS.md"
+    )
+    assert call("decision", {"question": "q", "options": "o", "recommendation": "r"})["content"][0]["text"].startswith(
+        "D-05 "
+    )
+    assert (
+        call("epic", {"title": "Repair", "why": "w"})["content"][0]["text"]
+        == "E2 written to crissp/backlog/E2-repair.md"
+    )
     assert call("feature", {"epic": "E2", "title": "Plan", "why": "w"})["content"][0]["text"].startswith("E2-F1 ")
     assert call("item", {"id": "E1-03", "status": "parked"})["content"][0]["text"].startswith("E1-03 [todo] → [parked]")
     assert call("item", {"id": "E1-03", "status": "done"})["isError"]
@@ -297,12 +430,18 @@ def test_the_writers_answer_over_mcp(tmp_path):
 def test_it_serves_line_by_line_over_stdio(tmp_path):
     root = _repo(tmp_path)
     out = io.StringIO()
-    lines = [json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}), "", "not json",
-             json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})]
+    lines = [
+        json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}),
+        "",
+        "not json",
+        json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+    ]
     assert srv.serve(root, io.StringIO("\n".join(lines) + "\n"), out) == 0
     answers = [json.loads(line) for line in out.getvalue().splitlines()]
-    assert answers == [{"jsonrpc": "2.0", "id": 1, "result": {}},
-                       {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "not JSON"}}]
+    assert answers == [
+        {"jsonrpc": "2.0", "id": 1, "result": {}},
+        {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "not JSON"}},
+    ]
 
 
 def test_it_runs_as_a_script(monkeypatch):
@@ -315,8 +454,13 @@ def test_it_runs_as_a_script(monkeypatch):
 def test_claude_code_starts_it_from_the_repository_root():
     root = SERVER.parents[2]
     config = json.loads((root / ".mcp.json").read_text())["mcpServers"]["crissp"]
-    assert config == {"command": "python3", "args": ["-I", "crissp/tool/server.py"]} and (root / config["args"][1]).is_file()
-    assert "@crissp/CLAUDE.md" in (root / "CLAUDE.md").read_text()  # the agreement is always loaded, not only on request
+    assert (
+        config == {"command": "python3", "args": ["-I", "crissp/tool/server.py"]}
+        and (root / config["args"][1]).is_file()
+    )
+    assert (
+        "@crissp/CLAUDE.md" in (root / "CLAUDE.md").read_text()
+    )  # the agreement is always loaded, not only on request
 
 
 def _scripts(root: Path, **bodies: str) -> None:
@@ -331,7 +475,7 @@ def _scripts(root: Path, **bodies: str) -> None:
 def _until(predicate, seconds: float = 10.0):
     end = srv.time.monotonic() + seconds
     while srv.time.monotonic() < end:
-        if (got := predicate()):
+        if got := predicate():
             return got
         srv.time.sleep(0.05)
     raise AssertionError("waited in vain")
@@ -340,7 +484,10 @@ def _until(predicate, seconds: float = 10.0):
 def test_plans_answer_at_once_and_a_deploy_is_never_run(tmp_path, monkeypatch):
     _scripts(tmp_path, check='echo "would run: tools ($1)"', deploy='echo "would rebuild: backend ($1)"; exit 3')
     assert srv.run(tmp_path, {"what": "check-plan"}) == "crissp/check.sh --plan (exit 0)\nwould run: tools (--plan)"
-    assert srv.run(tmp_path, {"what": "deploy-plan"}) == "crissp/deploy.sh --plan (exit 3)\nwould rebuild: backend (--plan)"
+    assert (
+        srv.run(tmp_path, {"what": "deploy-plan"})
+        == "crissp/deploy.sh --plan (exit 3)\nwould rebuild: backend (--plan)"
+    )
     with pytest.raises(ValueError, match="a deploy stays in the product owner's terminal"):
         srv.run(tmp_path, {"what": "deploy"})
     assert "deploy" not in srv.RUNS and all(not a or a in (["--plan"], ["--status"]) for _, a, _ in srv.RUNS.values())
@@ -355,18 +502,32 @@ def test_plans_answer_at_once_and_a_deploy_is_never_run(tmp_path, monkeypatch):
 
 
 def test_a_check_runs_in_the_background_and_status_follows_it(tmp_path):
-    _scripts(tmp_path, check='echo "Backend … passed"; echo "Green: crissp/deploy.sh may go."',
-             **{"check-all": 'echo "Coverage gate: RED"; exit 1'})
+    _scripts(
+        tmp_path,
+        check='echo "Backend … passed"; echo "Green: crissp/deploy.sh may go."',
+        **{"check-all": 'echo "Coverage gate: RED"; exit 1'},
+    )
     assert srv.status(tmp_path) == "Lock: free\nNothing started with run yet."
     started = srv.run(tmp_path, {"what": "check"})
-    assert started.startswith("check started: crissp/check.sh (pid ") and "log: crissp/testsuite/results/mcp/check.log" in started
+    assert (
+        started.startswith("check started: crissp/check.sh (pid ")
+        and "log: crissp/testsuite/results/mcp/check.log" in started
+    )
     assert "Wait for its result with status (wait: true), not on the pid" in started  # F-31: the pid is no way to wait
     text = _until(lambda: t if "finished" in (t := srv.status(tmp_path)) else None)
-    assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
+    assert (
+        "check · started " in text
+        and "finished, exit 0 (green)" in text
+        and "  Green: crissp/deploy.sh may go." in text
+    )
     assert "[crissp] exit" not in text  # the exit marker is read, not shown
     srv.run(tmp_path, {"what": "check-all"})
     text = _until(lambda: t if "check-all · " in (t := srv.status(tmp_path)) and "exit 1" in t else None)
-    assert "finished, exit 1 · " in text and "(green)" not in text.split("check-all · ")[1] and "  Coverage gate: RED" in text
+    assert (
+        "finished, exit 1 · " in text
+        and "(green)" not in text.split("check-all · ")[1]
+        and "  Coverage gate: RED" in text
+    )
 
 
 def test_one_run_at_a_time_and_a_run_that_died_is_said(tmp_path):
@@ -388,12 +549,17 @@ def test_one_run_at_a_time_and_a_run_that_died_is_said(tmp_path):
     (lock / "pid").unlink()
     mcp = tmp_path / "crissp/testsuite/results/mcp"
     mcp.mkdir(parents=True)
-    (mcp / "runs.json").write_text(json.dumps({"check": {"pid": 999999999, "started": "13:00", "log": "crissp/testsuite/results/mcp/check.log"}}))
+    (mcp / "runs.json").write_text(
+        json.dumps({"check": {"pid": 999999999, "started": "13:00", "log": "crissp/testsuite/results/mcp/check.log"}})
+    )
     (mcp / "check.log").write_text("Backend …\n")
     assert "check · started 13:00 · stopped without an exit code" in srv.status(tmp_path)
-    (mcp / "runs.json").write_text(json.dumps({"check": {"pid": srv.os.getpid(), "started": "13:00", "log": "crissp/testsuite/results/mcp/check.log"}}))
+    (mcp / "runs.json").write_text(
+        json.dumps(
+            {"check": {"pid": srv.os.getpid(), "started": "13:00", "log": "crissp/testsuite/results/mcp/check.log"}}
+        )
+    )
     assert "check · started 13:00 · running" in srv.status(tmp_path)
-
 
 
 def _pid(root: Path, key: str) -> int:
@@ -416,17 +582,36 @@ def test_status_waits_until_the_run_has_ended(tmp_path, monkeypatch):
     _scripts(tmp_path, check='sleep 0.4; echo "Green: crissp/deploy.sh may go."')
     srv.run(tmp_path, {"what": "check"})
     text = srv.status(tmp_path, {"wait": True, "timeout": 10})
-    assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
+    assert (
+        "check · started " in text
+        and "finished, exit 0 (green)" in text
+        and "  Green: crissp/deploy.sh may go." in text
+    )
     _scripts(tmp_path, check="sleep 5")
     srv.run(tmp_path, {"what": "check"})
     text = srv.status(tmp_path, {"wait": True, "timeout": 0.2})
-    assert text.startswith("Still running after 0.2s; ask status (wait: true) again.\nLock: free") and "· running ·" in text
+    assert (
+        text.startswith("Still running after 0.2s; ask status (wait: true) again.\nLock: free")
+        and "· running ·" in text
+    )
     srv.os.kill(_pid(tmp_path, "check"), 15)
     # the dashboard is served until it is stopped: no run to wait for
     mcp = tmp_path / "crissp/testsuite/results/mcp"
-    (mcp / "runs.json").write_text(json.dumps({"dashboard": {"pid": srv.os.getpid(), "started": "13:00", "log": "crissp/testsuite/results/mcp/dashboard.log"}}))
+    (mcp / "runs.json").write_text(
+        json.dumps(
+            {
+                "dashboard": {
+                    "pid": srv.os.getpid(),
+                    "started": "13:00",
+                    "log": "crissp/testsuite/results/mcp/dashboard.log",
+                }
+            }
+        )
+    )
     (mcp / "dashboard.log").write_text("Dashboard: http://127.0.0.1:8766/dashboard/\n")
-    assert srv.running(tmp_path) is False and "dashboard · started 13:00 · running" in srv.status(tmp_path, {"wait": True, "timeout": 5})
+    assert srv.running(tmp_path) is False and "dashboard · started 13:00 · running" in srv.status(
+        tmp_path, {"wait": True, "timeout": 5}
+    )
     # a run from the terminal holds the lock: waited for until it lets go
     lock = tmp_path / "crissp/testsuite/results/.run.lock"
     lock.mkdir()
@@ -438,7 +623,12 @@ def test_status_waits_until_the_run_has_ended(tmp_path, monkeypatch):
     (lock / "pid").write_text(str(srv.os.getpid()))
     assert srv.status(tmp_path, {"wait": True, "timeout": 99}).startswith("Still running after 0.1s")
     assert srv.status(tmp_path, {"wait": False, "timeout": 99}).startswith("Lock: ")  # without wait: at once
-    for wrong in ({"wait": "yes"}, {"wait": True, "timeout": -1}, {"wait": True, "timeout": "5"}, {"wait": True, "timeout": True}):
+    for wrong in (
+        {"wait": "yes"},
+        {"wait": True, "timeout": -1},
+        {"wait": True, "timeout": "5"},
+        {"wait": True, "timeout": True},
+    ):
         with pytest.raises(ValueError):
             srv.status(tmp_path, wrong)
     answer = srv.call(tmp_path, "status", {"wait": "yes"})
@@ -448,11 +638,13 @@ def test_status_waits_until_the_run_has_ended(tmp_path, monkeypatch):
     assert "not its pid" in next(t for t in srv.TOOLS if t["name"] == "status")["description"]
     assert "never wait on the pid" in next(t for t in srv.TOOLS if t["name"] == "run")["description"]
 
+
 def _serve(directory: Path):
     """A real local web server on a free port, serving directory (the dashboard's own folder in the real thing)."""
     import functools
     import http.server
     import threading
+
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(directory))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     handler.log_message = lambda *a: None
@@ -462,6 +654,7 @@ def _serve(directory: Path):
 
 def _free_port() -> int:
     import socket
+
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
@@ -495,12 +688,17 @@ def test_served_opens_only_this_machines_address(tmp_path):
 def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
-    (tmp_path / "web" / "dashboard" / "stamp").write_text(json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())}))  # ours
+    (tmp_path / "web" / "dashboard" / "stamp").write_text(
+        json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())})
+    )  # ours
     httpd = _serve(tmp_path / "web")
     url = f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
     try:
         _scripts(tmp_path, test=f'echo "dashboard data: 3 tests"; echo "Dashboard: {url}   (Ctrl-C to stop)"; sleep 30')
-        assert srv.dashboard(tmp_path) == f"Dashboard: {url} (data rebuilt from the last runs; the open page keeps itself current)"
+        assert (
+            srv.dashboard(tmp_path)
+            == f"Dashboard: {url} (data rebuilt from the last runs; the open page keeps itself current)"
+        )
         pid = json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"]
         assert srv.alive(pid)  # it keeps serving after the answer
         srv.os.killpg(pid, 15)
@@ -511,13 +709,20 @@ def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch)
 def test_the_ux_view_is_the_same_server_opened_on_the_ux_suite(tmp_path):
     (tmp_path / "web" / "dashboard").mkdir(parents=True)
     (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
-    (tmp_path / "web" / "dashboard" / "stamp").write_text(json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())}))  # ours
+    (tmp_path / "web" / "dashboard" / "stamp").write_text(
+        json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())})
+    )  # ours
     httpd = _serve(tmp_path / "web")
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
         _scripts(tmp_path, test=f'[ "$1" = --ux ] || exit 9; echo "Dashboard: {base}/ux/"; sleep 30')
-        assert srv.dashboard(tmp_path, {"view": "ux"}) == f"Dashboard: {base}/ux/ (data rebuilt from the last runs; the open page keeps itself current)"
-        srv.os.killpg(json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"], 15)
+        assert (
+            srv.dashboard(tmp_path, {"view": "ux"})
+            == f"Dashboard: {base}/ux/ (data rebuilt from the last runs; the open page keeps itself current)"
+        )
+        srv.os.killpg(
+            json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"], 15
+        )
     finally:
         httpd.shutdown()
     with pytest.raises(ValueError, match="view must be one of tests, ux"):
@@ -526,8 +731,10 @@ def test_the_ux_view_is_the_same_server_opened_on_the_ux_suite(tmp_path):
 
 def test_ux_status_answers_at_once_what_the_ux_team_does(tmp_path):
     _scripts(tmp_path, ux='[ "$1" = --status ] && echo "The team is free (up to 3 at once). 0 round(s), 0 design(s)."')
-    assert srv.run(tmp_path, {"what": "ux-status"}) == \
-        "crissp/ux.sh --status (exit 0)\nThe team is free (up to 3 at once). 0 round(s), 0 design(s)."
+    assert (
+        srv.run(tmp_path, {"what": "ux-status"})
+        == "crissp/ux.sh --status (exit 0)\nThe team is free (up to 3 at once). 0 round(s), 0 design(s)."
+    )
 
 
 def test_it_works_for_the_project_it_is_started_in():
@@ -539,8 +746,12 @@ def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_pa
     # what happened on 2026-10-23: test.sh says "Dashboard: …" before it starts the server, the port was held by an old
     # server from a moved folder (404s), the new server failed: the tool must not answer the address as if it worked
     url = f"http://127.0.0.1:{_free_port()}/dashboard/"
-    _scripts(tmp_path, test=f'echo "Dashboard: {url}   (Ctrl-C to stop)"; echo "OSError: Address already in use" >&2; exit 1')
-    with pytest.raises(ValueError, match=r"the dashboard did not start:\nDashboard: .*\nOSError: Address already in use"):
+    _scripts(
+        tmp_path, test=f'echo "Dashboard: {url}   (Ctrl-C to stop)"; echo "OSError: Address already in use" >&2; exit 1'
+    )
+    with pytest.raises(
+        ValueError, match=r"the dashboard did not start:\nDashboard: .*\nOSError: Address already in use"
+    ):
         srv.dashboard(tmp_path)
     _scripts(tmp_path, test='echo "usage: crissp/test.sh --dashboard" >&2; exit 2')
     with pytest.raises(ValueError, match=re.escape("the dashboard did not start:\nusage: crissp/test.sh --dashboard")):
@@ -562,14 +773,18 @@ def test_served_is_only_this_projects_dashboard(tmp_path):
     def stamp(root):
         class H(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
-                body = (b'<a id="sessions"></a>' if not self.path.endswith("stamp")
-                        else json.dumps({"stamp": 1.0, "root": root}).encode())
+                body = (
+                    b'<a id="sessions"></a>'
+                    if not self.path.endswith("stamp")
+                    else json.dumps({"stamp": 1.0, "root": root}).encode()
+                )
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(body)
 
             def log_message(self, *a):
                 pass
+
         httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         return httpd, f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
@@ -590,6 +805,7 @@ def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tm
     import shutil
     import subprocess
     import threading
+
     root = tmp_path / "repo"
     (root / "crissp/testsuite/lib").mkdir(parents=True)
     shutil.copy(SERVER.parents[1] / "test.sh", root / "crissp" / "test.sh")
@@ -597,7 +813,9 @@ def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tm
         shutil.copy(SERVER.parents[1] / "testsuite" / "lib" / name, root / "crissp/testsuite/lib" / name)
     for name in ("measure.py", "collect.py"):  # stand-ins: no sessions, no results to read
         (root / "crissp/testsuite/lib" / name).write_text("")
-    (root / "crissp/testsuite/lib/serve.py").write_text("import sys\nprint('serve', *sys.argv[1:])\n")  # never a real server
+    (root / "crissp/testsuite/lib/serve.py").write_text(
+        "import sys\nprint('serve', *sys.argv[1:])\n"
+    )  # never a real server
 
     class Other(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
@@ -607,13 +825,23 @@ def test_test_sh_takes_the_next_port_when_another_projects_dashboard_holds_it(tm
 
         def log_message(self, *a):
             pass
+
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Other)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     port = httpd.server_address[1]
     try:
-        done = subprocess.run([str(root / "crissp" / "test.sh"), "--dashboard"], capture_output=True, text=True, timeout=30,
-                              check=False, env={**{k: v for k, v in srv.os.environ.items() if k != "CRISSP_ROOT"},
-                                   "CRISSP_DASHBOARD_PORT": str(port), "CRISSP_NO_BROWSER": "1"})
+        done = subprocess.run(
+            [str(root / "crissp" / "test.sh"), "--dashboard"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+            env={
+                **{k: v for k, v in srv.os.environ.items() if k != "CRISSP_ROOT"},
+                "CRISSP_DASHBOARD_PORT": str(port),
+                "CRISSP_NO_BROWSER": "1",
+            },
+        )
     finally:
         httpd.shutdown()
     assert done.returncode == 0, done.stdout + done.stderr
@@ -626,6 +854,7 @@ def test_test_sh_names_a_port_held_by_something_else(tmp_path):
     import shutil
     import socket
     import subprocess
+
     root = tmp_path / "repo"
     (root / "crissp/testsuite/lib").mkdir(parents=True)
     shutil.copy(SERVER.parents[1] / "test.sh", root / "crissp" / "test.sh")
@@ -637,15 +866,26 @@ def test_test_sh_names_a_port_held_by_something_else(tmp_path):
         held.bind(("127.0.0.1", 0))
         held.listen()
         port = held.getsockname()[1]
-        done = subprocess.run([str(root / "crissp" / "test.sh"), "--dashboard"], capture_output=True, text=True, timeout=30,
-                              check=False, env={**srv.os.environ, "CRISSP_DASHBOARD_PORT": str(port)})
-    assert done.returncode == 1 and f"Port {port} is in use" in done.stderr and "does not serve this dashboard" in done.stderr
+        done = subprocess.run(
+            [str(root / "crissp" / "test.sh"), "--dashboard"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+            env={**srv.os.environ, "CRISSP_DASHBOARD_PORT": str(port)},
+        )
+    assert (
+        done.returncode == 1
+        and f"Port {port} is in use" in done.stderr
+        and "does not serve this dashboard" in done.stderr
+    )
     assert "Dashboard:" not in done.stdout  # it no longer claims an address it cannot serve
 
 
 def test_run_status_and_dashboard_answer_over_mcp(tmp_path, monkeypatch):
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")  # never the real dashboard from a test
     _scripts(tmp_path, check='echo "plan"')
+
     def call(name, args=None):
         request = {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}
         return srv.handle(tmp_path, request)["result"]

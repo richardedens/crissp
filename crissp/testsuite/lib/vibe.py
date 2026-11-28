@@ -33,7 +33,8 @@ def _lists(db: Path) -> tuple[list[str], list[str]] | None:
         return None
     lists = data.get("trusted", []), data.get("untrusted", [])
     if set(data) - {"trusted", "untrusted"} or not all(
-            isinstance(x, list) and all(isinstance(s, str) for s in x) for x in lists):
+        isinstance(x, list) and all(isinstance(s, str) for s in x) for x in lists
+    ):
         return None
     return lists
 

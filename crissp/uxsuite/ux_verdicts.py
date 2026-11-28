@@ -40,7 +40,7 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
     reason = str(body.get("reason") or "").strip()
     if len(reason) > 4000:
         raise ValueError("the reason is too long (at most 4000 characters)")
-    if (m := ADVICE_ID.fullmatch(item)):
+    if m := ADVICE_ID.fullmatch(item):
         found = _result(suite, "round", m.group(1), int(m.group(2))) if m.group(1) in conf["walks"] else None
         advice = (found or {}).get("advice", [])
         if int(m.group(3)) >= len(advice):
@@ -48,7 +48,7 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         if verdict not in ADVICE:
             raise ValueError("a verdict on advice is agree, disagree or later")
         level, title = "advice", advice[int(m.group(3))].get("title", "")
-    elif (m := DESIGN_ID.fullmatch(item)):
+    elif m := DESIGN_ID.fullmatch(item):
         found = _result(suite, "proposal", m.group(1), int(m.group(2))) if m.group(1) in conf["walks"] else None
         if not found:
             raise ValueError("unknown design")
@@ -59,7 +59,14 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         raise ValueError("unknown item")
     if verdict in NEEDS_A_REASON and not reason:
         raise ValueError("say why (for a redo: what the team should do differently)")
-    line = {"id": item, "level": level, "verdict": verdict, "reason": reason, "title": str(title)[:300], "at": ux_team.now()}
+    line = {
+        "id": item,
+        "level": level,
+        "verdict": verdict,
+        "reason": reason,
+        "title": str(title)[:300],
+        "at": ux_team.now(),
+    }
     suite.results.mkdir(parents=True, exist_ok=True)
     with (suite.results / "decisions.jsonl").open("a") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")
@@ -72,7 +79,11 @@ def after(suite: Suite, conf: dict, line: dict) -> dict:
         return {}
     walk, _, n = line["id"].partition("#v")
     if line["verdict"] == "approve":
-        return {"pbi": ux_backlog.file_pbi(suite, conf, walk, int(n), _result(suite, "proposal", walk, int(n)), remark=line["reason"])}
+        return {
+            "pbi": ux_backlog.file_pbi(
+                suite, conf, walk, int(n), _result(suite, "proposal", walk, int(n)), remark=line["reason"]
+            )
+        }
     try:
         return ux_team.request(suite, conf, "proposal", walk, line["reason"])
     except ValueError as why:  # the team works on it already, or the walk lost its screenshots: the verdict stands

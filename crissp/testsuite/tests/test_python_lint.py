@@ -43,9 +43,17 @@ def test_the_lint_step_runs_the_pinned_ruff_over_src_crissp_and_site():
 
 def test_every_change_to_linted_python_brings_the_lint_step():
     conf = _conf()
-    for path in ("src/crissp/cli.py", "crissp/testsuite/lib/collect.py", "crissp/testsuite/tests/test_gate.py",
-                 "crissp/testsuite/package_tests/test_cli.py", "crissp/uxsuite/api.py", "crissp/tool/server.py",
-                 "crissp/deploy/tests/test_chart.py", "site/build.sh", "pyproject.toml"):
+    for path in (
+        "src/crissp/cli.py",
+        "crissp/testsuite/lib/collect.py",
+        "crissp/testsuite/tests/test_gate.py",
+        "crissp/testsuite/package_tests/test_cli.py",
+        "crissp/uxsuite/api.py",
+        "crissp/tool/server.py",
+        "crissp/deploy/tests/test_chart.py",
+        "site/build.sh",
+        "pyproject.toml",
+    ):
         kind, steps = impact.classify(path, conf)
         assert kind == "suites" and "python-lint" in steps, path
     assert impact.classify("crissp/backlog/FINDINGS.md", conf) == ("nothing", "")  # notes still need nothing
@@ -88,16 +96,19 @@ def _engine(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 def test_an_import_outside_the_standard_library_is_a_finding_by_file_and_line(tmp_path):
-    root = _engine(tmp_path, {
-        "src/crissp/cli.py": "import json\nimport crissp.x\nimport requests\n",
-        "crissp/testsuite/lib/collect.py": "import measure\nfrom . import serve\nfrom yaml import safe_load\n",
-        "crissp/testsuite/lib/measure.py": "def f():\n    import numpy.linalg\n",  # one inside a function counts too
-        "crissp/testsuite/lib/tests/test_x.py": "import pytest\n",  # tests run with the pinned tools
-        "crissp/testsuite/lib/pytest_plugin/p.py": "import pytest\n",
-        "crissp/tool/server.py": "import urllib.request\n",
-        "crissp/uxsuite/ux_shoot.py": "def run():\n    from playwright.sync_api import sync_playwright\n",
-        "crissp/uxsuite/api.py": "import ux_shoot\nimport playwright\n",  # playwright: ux_shoot.py alone
-    })
+    root = _engine(
+        tmp_path,
+        {
+            "src/crissp/cli.py": "import json\nimport crissp.x\nimport requests\n",
+            "crissp/testsuite/lib/collect.py": "import measure\nfrom . import serve\nfrom yaml import safe_load\n",
+            "crissp/testsuite/lib/measure.py": "def f():\n    import numpy.linalg\n",  # one inside a function counts too
+            "crissp/testsuite/lib/tests/test_x.py": "import pytest\n",  # tests run with the pinned tools
+            "crissp/testsuite/lib/pytest_plugin/p.py": "import pytest\n",
+            "crissp/tool/server.py": "import urllib.request\n",
+            "crissp/uxsuite/ux_shoot.py": "def run():\n    from playwright.sync_api import sync_playwright\n",
+            "crissp/uxsuite/api.py": "import ux_shoot\nimport playwright\n",  # playwright: ux_shoot.py alone
+        },
+    )
     assert pl.foreign_imports(root) == [
         "crissp/testsuite/lib/collect.py:3: imports yaml, not the standard library",
         "crissp/testsuite/lib/measure.py:2: imports numpy, not the standard library",
@@ -116,8 +127,18 @@ def _git(root: Path, *files: str) -> None:
 
 
 def test_pylint_compares_the_tracked_python_ruff_reads_and_skips_the_unsafe_rule_tests(tmp_path):
-    root = _engine(tmp_path, {"src/a.py": "", "crissp/b.py": "", "site/c.py": "", "other/d.py": "", "crissp/e.txt": "",
-                              "crissp/testsuite/sast/tests/bad.py": "", "crissp/untracked.py": ""})
+    root = _engine(
+        tmp_path,
+        {
+            "src/a.py": "",
+            "crissp/b.py": "",
+            "site/c.py": "",
+            "other/d.py": "",
+            "crissp/e.txt": "",
+            "crissp/testsuite/sast/tests/bad.py": "",
+            "crissp/untracked.py": "",
+        },
+    )
     _git(root, "src", "crissp/b.py", "site", "other", "crissp/e.txt", "crissp/testsuite")
     assert sorted(pl.python_files(root)) == ["crissp/b.py", "site/c.py", "src/a.py"]
 
@@ -157,7 +178,8 @@ def test_duplicate_code_runs_the_pinned_pylint_with_pyprojects_settings(tmp_path
 def test_without_uv_the_duplicate_check_is_a_finding_never_a_silent_pass(tmp_path, monkeypatch):
     monkeypatch.setattr(pl.shutil, "which", lambda name: None)
     assert pl.duplicates(tmp_path) == [
-        "pylint: uv is not installed: the duplicate-code check cannot run (https://docs.astral.sh/uv/)"]
+        "pylint: uv is not installed: the duplicate-code check cannot run (https://docs.astral.sh/uv/)"
+    ]
 
 
 def test_a_tool_that_fails_without_saying_why_still_fails(tmp_path, monkeypatch):

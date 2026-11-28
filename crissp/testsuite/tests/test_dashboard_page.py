@@ -30,26 +30,85 @@ def step(key, label, status, log=""):
 
 
 def run_data(**more):
-    data = {"generatedAt": "2026-11-28 08:00:00", "root": "/p/shop", "product": "Shop", "monogram": "S",
-            "steps": [step("backend", "CRISSP: the backend's tests (pytest under coverage)", "passed"),
-                      step("backend-lint", "CRISSP: the backend's lint (ruff)", "failed"),
-                      step("secrets", "CRISSP: secrets in the git history (gitleaks)", "failed")],
-            "suites": {"backend": {"label": "CRISSP: the backend's tests (pytest under coverage)", "tests": 2, "passed": 1,
-                                   "failed": 1, "skipped": 0, "time": 0.2},
-                       "deploy": {"label": "Deploy template", "tests": 0, "passed": 0, "failed": 0, "skipped": 0, "time": 0}},
-            "unitSuites": ["backend", "deploy"], "coverageKeys": [], "coverage": {}, "changes": [], "gaps": [], "gate": None,
-            "threats": {"boundaries": []}, "capabilities": [], "journeys": [], "screenshots": [], "backlog": None,
-            "lint": [{"key": "backend-lint", "label": "CRISSP: the backend's lint (ruff)", "status": "failed", "problems": 3,
-                      "seconds": 0}],
-            "security": [{"key": "audit", "label": "CRISSP: CVEs (trivy)", "status": "passed", "blocking": 0, "seconds": 1},
-                         {"key": "secrets", "label": "CRISSP: secrets in the git history (gitleaks)", "status": "failed",
-                          "blocking": 1, "seconds": 1}],
-            "tests": [{"id": "test_a::test_fine", "name": "test_fine", "module": "test_a", "suite": "backend",
-                       "status": "passed", "doc": "fine", "file": "tests/test_a.py", "abs": "/p/tests/test_a.py", "line": 1,
-                       "time": 0.1},
-                      {"id": "test_a::test_broken", "name": "test_broken", "module": "test_a", "suite": "backend",
-                       "status": "failed", "doc": "broken", "detail": "AssertionError: " + "x" * 400,
-                       "file": "tests/test_a.py", "abs": "/p/tests/test_a.py", "line": 9, "time": 0.1}]}
+    data = {
+        "generatedAt": "2026-11-28 08:00:00",
+        "root": "/p/shop",
+        "product": "Shop",
+        "monogram": "S",
+        "steps": [
+            step("backend", "CRISSP: the backend's tests (pytest under coverage)", "passed"),
+            step("backend-lint", "CRISSP: the backend's lint (ruff)", "failed"),
+            step("secrets", "CRISSP: secrets in the git history (gitleaks)", "failed"),
+        ],
+        "suites": {
+            "backend": {
+                "label": "CRISSP: the backend's tests (pytest under coverage)",
+                "tests": 2,
+                "passed": 1,
+                "failed": 1,
+                "skipped": 0,
+                "time": 0.2,
+            },
+            "deploy": {"label": "Deploy template", "tests": 0, "passed": 0, "failed": 0, "skipped": 0, "time": 0},
+        },
+        "unitSuites": ["backend", "deploy"],
+        "coverageKeys": [],
+        "coverage": {},
+        "changes": [],
+        "gaps": [],
+        "gate": None,
+        "threats": {"boundaries": []},
+        "capabilities": [],
+        "journeys": [],
+        "screenshots": [],
+        "backlog": None,
+        "lint": [
+            {
+                "key": "backend-lint",
+                "label": "CRISSP: the backend's lint (ruff)",
+                "status": "failed",
+                "problems": 3,
+                "seconds": 0,
+            }
+        ],
+        "security": [
+            {"key": "audit", "label": "CRISSP: CVEs (trivy)", "status": "passed", "blocking": 0, "seconds": 1},
+            {
+                "key": "secrets",
+                "label": "CRISSP: secrets in the git history (gitleaks)",
+                "status": "failed",
+                "blocking": 1,
+                "seconds": 1,
+            },
+        ],
+        "tests": [
+            {
+                "id": "test_a::test_fine",
+                "name": "test_fine",
+                "module": "test_a",
+                "suite": "backend",
+                "status": "passed",
+                "doc": "fine",
+                "file": "tests/test_a.py",
+                "abs": "/p/tests/test_a.py",
+                "line": 1,
+                "time": 0.1,
+            },
+            {
+                "id": "test_a::test_broken",
+                "name": "test_broken",
+                "module": "test_a",
+                "suite": "backend",
+                "status": "failed",
+                "doc": "broken",
+                "detail": "AssertionError: " + "x" * 400,
+                "file": "tests/test_a.py",
+                "abs": "/p/tests/test_a.py",
+                "line": 9,
+                "time": 0.1,
+            },
+        ],
+    }
     data.update(more)
     return data
 
@@ -57,8 +116,13 @@ def run_data(**more):
 def render(data: dict, hash_: str = "") -> dict:
     if not shutil.which("node"):
         pytest.skip("no node on this machine")
-    done = subprocess.run(["node", "-e", STAND_IN % (json.dumps(data), json.dumps(hash_), json.dumps(str(APP)))],
-                          capture_output=True, text=True, timeout=30, check=False)
+    done = subprocess.run(
+        ["node", "-e", STAND_IN % (json.dumps(data), json.dumps(hash_), json.dumps(str(APP)))],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout)
 
@@ -95,9 +159,19 @@ def test_failing_tests_come_first_and_a_long_failure_wraps():
 
 
 def test_the_changes_without_a_passing_test_can_be_listed_on_their_own():
-    change = {"title": "T", "problem": "p", "fix": "f", "sources": [], "proof": [], "screenshots": [], "area": "a",
-              "version": "1"}
-    data = run_data(changes=[{**change, "id": "ok", "verdict": "passed"}, {**change, "id": "open", "verdict": "missing"}])
+    change = {
+        "title": "T",
+        "problem": "p",
+        "fix": "f",
+        "sources": [],
+        "proof": [],
+        "screenshots": [],
+        "area": "a",
+        "version": "1",
+    }
+    data = run_data(
+        changes=[{**change, "id": "ok", "verdict": "passed"}, {**change, "id": "open", "verdict": "missing"}]
+    )
     view = render(data)["#view"]
     assert "1 change without a passing test" in view and "Changes by area" not in view  # one area: the tile says it all
     listed = render(data, "#changes?open=1")["#view"]

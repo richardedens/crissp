@@ -53,6 +53,7 @@ def test_shoot_says_what_the_browser_did(product, capsys):
     def browser(cmd, **kw):
         (Path(cmd[-1]).parent / "shots.json").write_text("[]")
         return subprocess.CompletedProcess(cmd, 0, "", "")
+
     assert cli.main(["shoot", "first-visit"], product, run=browser) == 0
     assert "first-visit: 0 screenshot(s)" in capsys.readouterr().out
 
@@ -70,16 +71,29 @@ def _copy_suite(tmp_path) -> Path:
     root = tmp_path / "copy"
     (root / "crissp").mkdir(parents=True)
     shutil.copy(REPO / "crissp" / "ux.sh", root / "crissp" / "ux.sh")
-    shutil.copytree(REPO / "crissp" / "uxsuite", root / "crissp" / "uxsuite",
-                    ignore=shutil.ignore_patterns("results", "tests", "__pycache__"))
-    shutil.copytree(REPO / "crissp" / "testsuite" / "lib", root / "crissp" / "testsuite" / "lib",  # the engine's shared module
-                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(
+        REPO / "crissp" / "uxsuite",
+        root / "crissp" / "uxsuite",
+        ignore=shutil.ignore_patterns("results", "tests", "__pycache__"),
+    )
+    shutil.copytree(
+        REPO / "crissp" / "testsuite" / "lib",
+        root / "crissp" / "testsuite" / "lib",  # the engine's shared module
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     return root
 
 
 def sh(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([str(root / "crissp" / "ux.sh"), *args], cwd=root, capture_output=True, text=True, timeout=60,
-                          check=False, env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""})  # the copy, never the project a run came from
+    return subprocess.run(
+        [str(root / "crissp" / "ux.sh"), *args],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={**{k: v for k, v in os.environ.items() if k != "CRISSP_ROOT"}, "UXSUITE_PARALLEL": ""},
+    )  # the copy, never the project a run came from
 
 
 def test_ux_sh_lists_reports_and_refuses_what_it_does_not_know(tmp_path):
@@ -104,7 +118,10 @@ def test_ux_sh_without_an_argument_opens_the_suite_in_the_dashboard(tmp_path):
 
 def test_list_marks_a_persona_that_is_off(product, capsys):
     import ux_cards
-    ux_cards.save_persona(product, {"key": "phone", "name": "Mo", "role": "student", "device": "mobile",
-                                    "brief": "Uses a thumb.", "on": False})
+
+    ux_cards.save_persona(
+        product,
+        {"key": "phone", "name": "Mo", "role": "student", "device": "mobile", "brief": "Uses a thumb.", "on": False},
+    )
     assert cli.main(["list"], product) == 0
     assert "phone      Mo, student (mobile) — off" in capsys.readouterr().out

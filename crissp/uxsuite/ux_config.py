@@ -36,7 +36,14 @@ sys.path.insert(0, str(HERE.parent / "testsuite" / "lib"))  # the guards' shared
 from project import Speaking, speak  # noqa: E402,F401 — F-04: `crissp ux --shoot` when run as the crissp command
 
 DEVICES = ("desktop", "mobile", "both")
-NEEDS = {"goto": ("path",), "click": (), "fill": ("selector", "value"), "press": ("key",), "wait": ("ms",), "shot": ("title",)}
+NEEDS = {
+    "goto": ("path",),
+    "click": (),
+    "fill": ("selector", "value"),
+    "press": ("key",),
+    "wait": ("ms",),
+    "shot": ("title",),
+}
 WALK_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,47}")
 
 
@@ -108,10 +115,18 @@ def personas(data: dict) -> list[dict]:
         device = p.get("device", "desktop")
         if device not in DEVICES:
             raise ConfigError(f"{where}: device must be one of {', '.join(DEVICES)}")
-        out.append({"key": key, "name": _text(p, "name", where), "role": _text(p, "role", where), "device": device,
-                    "moderator": p.get("moderator") is True, "brief": _text(p, "brief", where)})
+        out.append(
+            {
+                "key": key,
+                "name": _text(p, "name", where),
+                "role": _text(p, "role", where),
+                "device": device,
+                "moderator": p.get("moderator") is True,
+                "brief": _text(p, "brief", where),
+            }
+        )
     if not any(p["moderator"] for p in out):
-        raise ConfigError("team.json: one persona must be the moderator (\"moderator\": true)")
+        raise ConfigError('team.json: one persona must be the moderator ("moderator": true)')
     return out
 
 
@@ -150,12 +165,23 @@ def load(suite: Suite) -> dict:
         raise ConfigError('team.json: backlog must be {"epic": "E<n>"} or {"epic_title": "..."}')
     walks = [walk(p) for p in sorted((suite.here / "walks").glob("*.json"))]
     import ux_cards  # the persona files (ux_cards reads team.json's personas with personas() below when there are none)
+
     team, source = ux_cards.team(suite.here, data)
-    return {"product": product, "monogram": _text(data, "monogram", "team.json", product[:1].upper()),
-            "about": str(data.get("about", "")).strip(), "audience": str(data.get("audience", "")).strip(),
-            "ui_language": _text(data, "ui_language", "team.json", "English"),
-            "report_language": _text(data, "report_language", "team.json", "English"), "url": url.rstrip("/"),
-            "rounds": _whole(data, "rounds", "team.json", 2, 1, 5),
-            "parallel": _whole(data, "parallel", "team.json", 3, 1, 12),
-            "backlog": {"epic": backlog.get("epic"), "epic_title": str(backlog.get("epic_title") or "UX: approved designs")},
-            "personas": team, "personas_from": source, "walks": {w["id"]: w for w in walks}}
+    return {
+        "product": product,
+        "monogram": _text(data, "monogram", "team.json", product[:1].upper()),
+        "about": str(data.get("about", "")).strip(),
+        "audience": str(data.get("audience", "")).strip(),
+        "ui_language": _text(data, "ui_language", "team.json", "English"),
+        "report_language": _text(data, "report_language", "team.json", "English"),
+        "url": url.rstrip("/"),
+        "rounds": _whole(data, "rounds", "team.json", 2, 1, 5),
+        "parallel": _whole(data, "parallel", "team.json", 3, 1, 12),
+        "backlog": {
+            "epic": backlog.get("epic"),
+            "epic_title": str(backlog.get("epic_title") or "UX: approved designs"),
+        },
+        "personas": team,
+        "personas_from": source,
+        "walks": {w["id"]: w for w in walks},
+    }

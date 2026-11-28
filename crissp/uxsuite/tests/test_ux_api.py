@@ -32,6 +32,7 @@ def site(product, monkeypatch):
 
         def log_message(self, *a):
             pass
+
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -55,8 +56,12 @@ def get(url):
 
 def post(base, path, body, origin=None, raw=None):
     data = raw if raw is not None else json.dumps(body).encode()
-    req = urllib.request.Request(base + path, data=data, method="POST",
-                                 headers={"Origin": base if origin is None else origin, "Content-Type": "application/json"})
+    req = urllib.request.Request(
+        base + path,
+        data=data,
+        method="POST",
+        headers={"Origin": base if origin is None else origin, "Content-Type": "application/json"},
+    )
     try:
         with urllib.request.urlopen(req) as r:
             return r.status, json.loads(r.read())
@@ -71,7 +76,7 @@ def test_the_page_is_served_in_the_shared_look(site):
     code, headers, body = get(base + "/ux/")
     page = body.decode()
     assert code == 200 and headers["Content-Type"].startswith("text/html") and "Content-Security-Policy" not in headers
-    assert '../../look/look.css' in page and '../../look/look.js' in page and '../../look/water.js' in page
+    assert "../../look/look.css" in page and "../../look/look.js" in page and "../../look/water.js" in page
     assert 'data-current="ux"></nav>' in page and 'id="theme"' in page and "http" not in page.replace("http-equiv", "")
     for name, kind in (("ux.js", "text/javascript"), ("ux.css", "text/css")):
         code, headers, body = get(base + "/ux/" + name)
@@ -114,8 +119,12 @@ def test_the_team_s_files_are_served_and_a_design_only_in_a_sandbox(site):
     assert code == 200 and headers["Content-Security-Policy"].startswith("sandbox allow-scripts") and b"after" in body
     code, headers, body = get(base + "/ux/results/shots/first-visit/laptop/01-the-first-screen.png")
     assert code == 200 and headers["Content-Type"] == "image/png"
-    for path in ("/ux/results/decisions.jsonl", "/ux/results/proposals/first-visit/v1/proposal.json",
-                 "/ux/results/../team.json", "/ux/results/queue.jsonl"):
+    for path in (
+        "/ux/results/decisions.jsonl",
+        "/ux/results/proposals/first-visit/v1/proposal.json",
+        "/ux/results/../team.json",
+        "/ux/results/queue.jsonl",
+    ):
         assert get(base + path)[0] == 404, path
 
 
@@ -129,20 +138,28 @@ def test_a_write_only_from_the_suite_s_own_page(site):
     assert code == 200 and out["started"]["version"] == 1 and len(ux_team.popen.started) == 1
 
 
-@pytest.mark.parametrize("path, body, raw, says", [
-    ("/ux/api/request", {"kind": "round", "walk": "nowhere"}, None, "unknown walk"),
-    ("/ux/api/request", {"kind": "round", "walk": "first-visit", "focus": "x" * 1501}, None, "focus is too long"),
-    ("/ux/api/request", None, b"[1]", "send one JSON object"),
-    ("/ux/api/request", None, b"{", "Expecting"),
-    ("/ux/api/request", None, b"x" * 20001, "too large"),
-    ("/ux/api/verdict", {"id": "first-visit#v9", "verdict": "approve"}, None, "unknown design"),
-    ("/ux/api/persona", {"persona": {"name": "Bo", "role": "x", "brief": "y", "device": "watch"}}, None, "device must be one of"),
-    ("/ux/api/persona", {"remove": "nobody"}, None, "no persona 'nobody'"),
-    ("/ux/api/persona", {"persona": "Bo"}, None, "send {persona: {…}} or {remove: <key>}"),
-    ("/ux/api/rule", {"rule": {"title": "A", "text": ""}}, None, "text must be a text"),
-    ("/ux/api/rule", {"remove": "nothing"}, None, "no rule 'nothing'"),
-    ("/ux/api/rule", {}, None, "send {rule: {…}} or {remove: <id>}"),
-])
+@pytest.mark.parametrize(
+    "path, body, raw, says",
+    [
+        ("/ux/api/request", {"kind": "round", "walk": "nowhere"}, None, "unknown walk"),
+        ("/ux/api/request", {"kind": "round", "walk": "first-visit", "focus": "x" * 1501}, None, "focus is too long"),
+        ("/ux/api/request", None, b"[1]", "send one JSON object"),
+        ("/ux/api/request", None, b"{", "Expecting"),
+        ("/ux/api/request", None, b"x" * 20001, "too large"),
+        ("/ux/api/verdict", {"id": "first-visit#v9", "verdict": "approve"}, None, "unknown design"),
+        (
+            "/ux/api/persona",
+            {"persona": {"name": "Bo", "role": "x", "brief": "y", "device": "watch"}},
+            None,
+            "device must be one of",
+        ),
+        ("/ux/api/persona", {"remove": "nobody"}, None, "no persona 'nobody'"),
+        ("/ux/api/persona", {"persona": "Bo"}, None, "send {persona: {…}} or {remove: <key>}"),
+        ("/ux/api/rule", {"rule": {"title": "A", "text": ""}}, None, "text must be a text"),
+        ("/ux/api/rule", {"remove": "nothing"}, None, "no rule 'nothing'"),
+        ("/ux/api/rule", {}, None, "send {rule: {…}} or {remove: <id>}"),
+    ],
+)
 def test_a_wrong_write_is_a_clear_400(site, path, body, raw, says):
     _, base = site
     code, out = post(base, path, body, raw=raw)
@@ -178,6 +195,7 @@ def test_by_default_it_is_the_suite_of_the_project_it_works_for(monkeypatch, tmp
 def test_loaded_by_its_path_it_finds_its_own_modules(monkeypatch):
     """serve.py loads api.py by its path, and ux.sh runs cli.py isolated (python3 -I): neither has the suite on the path."""
     import importlib.util
+
     here = Path(api.__file__).resolve().parent
     for name in ("api", "cli"):
         monkeypatch.setattr(sys, "path", [p for p in sys.path if Path(p).resolve() != here])
@@ -189,6 +207,7 @@ def test_loaded_by_its_path_it_finds_its_own_modules(monkeypatch):
 def test_the_state_still_answers_when_no_crissp_tool_can_be_found(product, monkeypatch):
     """No tool in the project and none in the engine: the page still shows everything, only without board links."""
     import ux_backlog
+
     (product.root / "crissp" / "tool" / "server.py").unlink()
     monkeypatch.setattr(ux_backlog, "ENGINE_TOOL", product.root / "no-engine" / "server.py")
     finish(product, "proposal", "first-visit", 1, PROPOSAL)
@@ -201,12 +220,17 @@ def test_the_page_edits_the_team_and_the_rules(site):
     _, base = site
     s = json.loads(get(base + "/ux/api/state")[2])
     assert s["personas_from"] == "team.json" and s["rules"] == [] and s["rules_from"] == "none"  # no PRINCIPLES.md
-    code, out = post(base, "/ux/api/persona", {"persona": {"name": "Gerda", "role": "retired", "brief": "Careful.",
-                                                           "jobs": "See the cost"}})
+    code, out = post(
+        base,
+        "/ux/api/persona",
+        {"persona": {"name": "Gerda", "role": "retired", "brief": "Careful.", "jobs": "See the cost"}},
+    )
     assert code == 200 and "gerda" in [p["key"] for p in out["personas"]]
     code, out = post(base, "/ux/api/persona", {"remove": "gerda"})
     assert code == 200 and "gerda" not in [p["key"] for p in out["personas"]]
-    code, out = post(base, "/ux/api/rule", {"rule": {"title": "Prices first", "severity": "must", "text": "Cost first."}})
+    code, out = post(
+        base, "/ux/api/rule", {"rule": {"title": "Prices first", "severity": "must", "text": "Cost first."}}
+    )
     assert code == 200 and out["rules"][0]["id"] == "prices-first"
     s = json.loads(get(base + "/ux/api/state")[2])
     assert s["personas_from"] == "files" and s["rules"][0]["severity"] == "must" and s["rules_from"] == "files"

@@ -24,10 +24,17 @@ PERSONAS = [
     {"key": "phone", "name": "Mo", "role": "student on a phone", "device": "mobile", "brief": "Uses a thumb."},
     {"key": "ux", "name": "Ada", "role": "UX expert", "device": "both", "moderator": True, "brief": "Moderates."},
 ]
-WALK = {"title": "First visit", "steps": [{"do": "goto", "path": "/"}, {"do": "click", "text": "Start"},
-                                          {"do": "fill", "selector": "#name", "value": "Example"},
-                                          {"do": "press", "key": "Enter"}, {"do": "wait", "ms": 10},
-                                          {"do": "shot", "title": "The first screen"}]}
+WALK = {
+    "title": "First visit",
+    "steps": [
+        {"do": "goto", "path": "/"},
+        {"do": "click", "text": "Start"},
+        {"do": "fill", "selector": "#name", "value": "Example"},
+        {"do": "press", "key": "Enter"},
+        {"do": "wait", "ms": 10},
+        {"do": "shot", "title": "The first screen"},
+    ],
+}
 
 
 class FakeProc:
@@ -62,10 +69,20 @@ def add_shots(suite: ux_config.Suite, walk: str = "first-visit") -> None:
     d = suite.results / "shots" / walk
     (d / "laptop").mkdir(parents=True)
     (d / "laptop" / "01-the-first-screen.png").write_bytes(b"\x89PNG stand-in")
-    (d / "shots.json").write_text(json.dumps([{"device": "laptop", "n": 1, "title": "The first screen",
-                                               "file": "laptop/01-the-first-screen.png"},
-                                              {"device": "phone", "n": 1, "title": "The first screen",
-                                               "file": "phone/01-the-first-screen.png", "error": "Stuck at step 2"}]))
+    (d / "shots.json").write_text(
+        json.dumps(
+            [
+                {"device": "laptop", "n": 1, "title": "The first screen", "file": "laptop/01-the-first-screen.png"},
+                {
+                    "device": "phone",
+                    "n": 1,
+                    "title": "The first screen",
+                    "file": "phone/01-the-first-screen.png",
+                    "error": "Stuck at step 2",
+                },
+            ]
+        )
+    )
 
 
 def finish(suite: ux_config.Suite, kind: str, walk: str, n: int, result: dict, mockup: bool = True) -> Path:
@@ -79,12 +96,20 @@ def finish(suite: ux_config.Suite, kind: str, walk: str, n: int, result: dict, m
     return vdir
 
 
-ROUND = {"summary": "Clear enough.", "scores": {"tech": 7, "phone": 5, "ux": 6}, "consensus": ["The start is clear."],
-         "disputes": [{"topic": "Colour", "positions": [{"persona": "tech", "position": "fine"}]}],
-         "advice": [{"title": "Bigger buttons", "detail": "Thumb reach.", "priority": "must", "effort": "S",
-                     "personas": ["phone"]}]}
-PROPOSAL = {"title": "Calmer start", "summary": "One action first.", "changes": [
-    {"what": "One primary button", "why": "focus", "priority": "must", "who_asked": ["phone"]}]}
+ROUND = {
+    "summary": "Clear enough.",
+    "scores": {"tech": 7, "phone": 5, "ux": 6},
+    "consensus": ["The start is clear."],
+    "disputes": [{"topic": "Colour", "positions": [{"persona": "tech", "position": "fine"}]}],
+    "advice": [
+        {"title": "Bigger buttons", "detail": "Thumb reach.", "priority": "must", "effort": "S", "personas": ["phone"]}
+    ],
+}
+PROPOSAL = {
+    "title": "Calmer start",
+    "summary": "One action first.",
+    "changes": [{"what": "One primary button", "why": "focus", "priority": "must", "who_asked": ["phone"]}],
+}
 
 
 @pytest.fixture
@@ -96,6 +121,7 @@ def product(tmp_path, monkeypatch):
         p = FakeProc(cmd, **kw)
         started.append(p)
         return p
+
     popen.started = started
     monkeypatch.setattr(ux_team, "popen", popen)
     monkeypatch.setattr(ux_team, "_running", {})

@@ -17,16 +17,33 @@ spec = importlib.util.spec_from_file_location("impact_under_test", LIB / "impact
 impact = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(impact)
 
-SHOP = {"product": "Shop", "steps": [
-    {"key": "backend", "label": "Backend", "dir": "app/backend", "run": "covered", "seconds": 40, "gate": True,
-     "sources": ["app/backend/shop"]},
-    {"key": "ruff", "label": "Ruff", "dir": "app/backend", "run": "ruff check .", "seconds": 2},
-    {"key": "web", "label": "Frontend", "dir": "app/frontend", "run": "npm test", "seconds": 15},
-    {"key": "chart", "label": "Chart", "run": "helm lint chart", "seconds": 3, "when": "chart/Chart.yaml"}],
-    "paths": [{"match": "app/backend/", "steps": ["backend", "ruff"]}, {"match": "app/frontend/src/", "steps": ["web"]},
-              {"match": "chart/", "steps": ["chart"]}],
-    "shared": [{"match": "*/Dockerfile", "why": "what goes into an image"}, {"match": "*/package-lock.json", "why": "the locked dependencies"}],
-    "notes": ["design/", "*/screens.html"]}
+SHOP = {
+    "product": "Shop",
+    "steps": [
+        {
+            "key": "backend",
+            "label": "Backend",
+            "dir": "app/backend",
+            "run": "covered",
+            "seconds": 40,
+            "gate": True,
+            "sources": ["app/backend/shop"],
+        },
+        {"key": "ruff", "label": "Ruff", "dir": "app/backend", "run": "ruff check .", "seconds": 2},
+        {"key": "web", "label": "Frontend", "dir": "app/frontend", "run": "npm test", "seconds": 15},
+        {"key": "chart", "label": "Chart", "run": "helm lint chart", "seconds": 3, "when": "chart/Chart.yaml"},
+    ],
+    "paths": [
+        {"match": "app/backend/", "steps": ["backend", "ruff"]},
+        {"match": "app/frontend/src/", "steps": ["web"]},
+        {"match": "chart/", "steps": ["chart"]},
+    ],
+    "shared": [
+        {"match": "*/Dockerfile", "why": "what goes into an image"},
+        {"match": "*/package-lock.json", "why": "the locked dependencies"},
+    ],
+    "notes": ["design/", "*/screens.html"],
+}
 
 
 @pytest.fixture
@@ -41,9 +58,21 @@ def plan(shop: Path, files: list[str]) -> dict:
     return impact.plan(files, impact.project.load(shop), shop)
 
 
-@pytest.mark.parametrize("path", ["crissp/backlog/E1-quality.md", "crissp/backlog/FINDINGS.md", "docs/stories/01/STORY.md",
-                                  "README.md", "CLAUDE.md", "crissp/CRISSP.md", "app/backend/README.md",
-                                  "crissp/testsuite/coverage-baseline.json", "design/home.html", "app/screens.html"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "crissp/backlog/E1-quality.md",
+        "crissp/backlog/FINDINGS.md",
+        "docs/stories/01/STORY.md",
+        "README.md",
+        "CLAUDE.md",
+        "crissp/CRISSP.md",
+        "app/backend/README.md",
+        "crissp/testsuite/coverage-baseline.json",
+        "design/home.html",
+        "app/screens.html",
+    ],
+)
 def test_notes_and_the_generated_baseline_need_nothing(shop, path):
     p = plan(shop, [path])
     assert p["nothing"] == [path] and p["minutes"] == 0 and not p["full"] and not p["suites"] and not p["light"]
@@ -58,12 +87,16 @@ def test_a_part_runs_the_steps_its_rule_names_and_a_gated_part_brings_the_gate(s
     assert plan(shop, ["app/backend/shop/prices.py"])["suites"] == ["backend", "gate", "ruff"]
     assert plan(shop, ["app/frontend/src/App.tsx"])["suites"] == ["web"]
     p = plan(shop, ["app/frontend/src/App.tsx", "app/backend/tests/test_x.py", "app/backend/shop/a.py"])
-    assert p["suites"] == ["backend", "gate", "ruff", "web"] and p["minutes"] == 1  # 59 seconds, in run order, once each
+    assert (
+        p["suites"] == ["backend", "gate", "ruff", "web"] and p["minutes"] == 1
+    )  # 59 seconds, in run order, once each
 
 
 def test_a_step_that_is_not_there_now_cannot_vouch(shop):
     """The chart step exists while chart/Chart.yaml does: without it, a change there needs the full run."""
-    assert plan(shop, ["chart/values.yaml"])["full"] == ["step chart: named in suites.json but not there now (its `when` is missing)"]
+    assert plan(shop, ["chart/values.yaml"])["full"] == [
+        "step chart: named in suites.json but not there now (its `when` is missing)"
+    ]
     (shop / "chart").mkdir()
     (shop / "chart/Chart.yaml").write_text("name: shop\n")
     assert plan(shop, ["chart/values.yaml"])["suites"] == ["chart"]
@@ -81,53 +114,93 @@ def test_a_part_whose_tests_take_long_is_advised_to_split(shop):
     assert p["split"] == [{"key": "backend", "label": "Backend", "minutes": 4, "measured": False}]
     results = shop / "crissp/testsuite/results"
     results.mkdir(parents=True)
-    rows = [{"key": "backend", "seconds": 30}, {"key": "web", "seconds": impact.SPLIT_SECONDS + 1}, {"key": "gate", "seconds": 999}]
+    rows = [
+        {"key": "backend", "seconds": 30},
+        {"key": "web", "seconds": impact.SPLIT_SECONDS + 1},
+        {"key": "gate", "seconds": 999},
+    ]
     (results / "steps.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows) + "not json\n")
     p = plan(shop, ["app/backend/shop/prices.py", "app/frontend/src/App.tsx"])
-    assert p["split"] == [{"key": "web", "label": "Frontend", "minutes": 4, "measured": True}]  # measured wins, both ways
+    assert p["split"] == [
+        {"key": "web", "label": "Frontend", "minutes": 4, "measured": True}
+    ]  # measured wins, both ways
     assert plan(shop, ["README.md"])["split"] == []
 
 
-@pytest.mark.parametrize("path", [
-    ".gitignore", "crissp/testsuite/suites.json", "crissp/testsuite/requirements.txt", "crissp/check.sh",
-    "crissp/check-all.sh", "crissp/test.sh", "crissp/testsuite/run.sh", "crissp/testsuite/setup.sh",
-    "crissp/testsuite/lib/run.py", "crissp/testsuite/lib/steps.sh", "crissp/testsuite/lib/project.py",
-    "crissp/testsuite/lib/check.py", "crissp/testsuite/lib/impact.py", "crissp/testsuite/lib/release.py",
-    "crissp/testsuite/lib/gate.py", "app/backend/Dockerfile", "app/frontend/package-lock.json"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".gitignore",
+        "crissp/testsuite/suites.json",
+        "crissp/testsuite/requirements.txt",
+        "crissp/check.sh",
+        "crissp/check-all.sh",
+        "crissp/test.sh",
+        "crissp/testsuite/run.sh",
+        "crissp/testsuite/setup.sh",
+        "crissp/testsuite/lib/run.py",
+        "crissp/testsuite/lib/steps.sh",
+        "crissp/testsuite/lib/project.py",
+        "crissp/testsuite/lib/check.py",
+        "crissp/testsuite/lib/impact.py",
+        "crissp/testsuite/lib/release.py",
+        "crissp/testsuite/lib/gate.py",
+        "app/backend/Dockerfile",
+        "app/frontend/package-lock.json",
+    ],
+)
 def test_shared_ground_asks_for_the_full_run_and_says_why(shop, path):
     """The framework's own guards everywhere, and what the product calls shared: it wins over its folder's rule."""
     kind, why = impact.classify(path, impact.project.load(shop))
     assert kind == "full" and why.startswith(f"{path}: ") and plan(shop, [path])["full"] == [why]
 
 
-@pytest.mark.parametrize("path", ["app/frontend/index.html", "app/worker/main.py", "Makefile", "crissp/testsuite/other.txt"])
+@pytest.mark.parametrize(
+    "path", ["app/frontend/index.html", "app/worker/main.py", "Makefile", "crissp/testsuite/other.txt"]
+)
 def test_anything_unmapped_is_shared_ground(shop, path):
     """A part the map does not name: the full run, never a guess."""
-    assert impact.classify(path, impact.project.load(shop)) == \
-        ("full", f"{path}: not mapped to a part of Shop (crissp/testsuite/suites.json, paths)")
+    assert impact.classify(path, impact.project.load(shop)) == (
+        "full",
+        f"{path}: not mapped to a part of Shop (crissp/testsuite/suites.json, paths)",
+    )
 
 
 def test_a_file_name_rule_matches_the_exact_name_anywhere(shop):
     conf = impact.project.load(shop)
-    assert impact.classify("Dockerfile", conf)[0] == "full" and impact.classify("app/frontend/src/Dockerfile.ts", conf)[0] == "suites"
+    assert (
+        impact.classify("Dockerfile", conf)[0] == "full"
+        and impact.classify("app/frontend/src/Dockerfile.ts", conf)[0] == "suites"
+    )
     assert impact.classify("app/frontend/src/NOTES.md", conf) == ("nothing", "")
 
 
 TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python lives there: its lint comes along
 
 
-@pytest.mark.parametrize("path, steps", [
-    ("crissp/testsuite/lib/collect.py", LINTED), ("crissp/testsuite/tests/test_gate.py", LINTED),
-    ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]), ("crissp/testsuite/changes.json", LINTED),
-    ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
-    ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", LINTED),
-    ("crissp/look/look.css", ["tools", "gate", "lint"]),
-    ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
-    ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "lint"]),
-    ("crissp/deploy.sh", ["deploy", "lint"]), ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
-    ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
-    (".githooks/pre-commit", ["tools", "gate", "lint"]), ("crissp/template/githooks/pre-commit", ["tools", "gate", "lint"]),
-])
+@pytest.mark.parametrize(
+    "path, steps",
+    [
+        ("crissp/testsuite/lib/collect.py", LINTED),
+        ("crissp/testsuite/tests/test_gate.py", LINTED),
+        ("crissp/testsuite/dashboard/app.js", ["tools", "gate", "lint"]),
+        ("crissp/testsuite/changes.json", LINTED),
+        ("crissp/uxsuite/ux_team.py", LINTED),
+        ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
+        ("crissp/ux.sh", ["tools", "gate", "lint"]),
+        ("crissp/tool/server.py", LINTED),
+        ("crissp/look/look.css", ["tools", "gate", "lint"]),
+        ("crissp/template/crissp/uxsuite/team.json", TOOLS),
+        ("crissp/testsuite/accepted-risks.json", ["audit"]),
+        ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]),
+        ("crissp/deploy/check.sh", ["deploy", "lint"]),
+        ("crissp/deploy.sh", ["deploy", "lint"]),
+        ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
+        ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
+        (".githooks/pre-commit", ["tools", "gate", "lint"]),
+        ("crissp/template/githooks/pre-commit", ["tools", "gate", "lint"]),
+    ],
+)
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its
     bash and JavaScript (F-38), the audit of its pinned tools. Every part's change is also scanned for secrets (F-43),
@@ -144,6 +217,7 @@ def test_this_repository_s_mcp_registration_is_shared_ground():
 
 # ------------------------------------------------------------------------------------------------ the release notes
 
+
 def _notes(tmp_path, version: str | None, changelog: str | None) -> list[str]:
     if version is not None:
         (tmp_path / "VERSION").write_text(version)
@@ -153,18 +227,30 @@ def _notes(tmp_path, version: str | None, changelog: str | None) -> list[str]:
 
 
 def test_release_notes_that_name_the_version_and_say_what_changed_pass(tmp_path):
-    assert _notes(tmp_path, "0.1.0\n", "# Changelog\n\n## 0.1.0 — unreleased\n\n- The test guards.\n\n## 0.0.9 — 2026-10-01\n- x\n") == []
+    assert (
+        _notes(
+            tmp_path,
+            "0.1.0\n",
+            "# Changelog\n\n## 0.1.0 — unreleased\n\n- The test guards.\n\n## 0.0.9 — 2026-10-01\n- x\n",
+        )
+        == []
+    )
 
 
 def test_release_notes_problems_are_named(tmp_path):
     assert _notes(tmp_path, None, None) == ["VERSION is missing (it holds the current version, e.g. 0.1.0)"]
-    assert _notes(tmp_path, "one", None) == ["VERSION: 'one' is not a version like 0.1.0",
-                                            "CHANGELOG.md is missing (its top section is the release notes of VERSION)"]
+    assert _notes(tmp_path, "one", None) == [
+        "VERSION: 'one' is not a version like 0.1.0",
+        "CHANGELOG.md is missing (its top section is the release notes of VERSION)",
+    ]
     assert _notes(tmp_path, "0.2.0", "# Changelog\nnothing yet\n") == [
-        "CHANGELOG.md has no section (## <version> — <date or unreleased>)"]
+        "CHANGELOG.md has no section (## <version> — <date or unreleased>)"
+    ]
     why = _notes(tmp_path, "0.2.0", "## 0.1.0 — 2026-10-23\n\nwords, no bullet\n")
-    assert why == ["CHANGELOG.md: the top section is '0.1.0 — 2026-10-23', it should name the version in VERSION (0.2.0)",
-                   "CHANGELOG.md: the top section (0.1.0 — 2026-10-23) has no bullet: say what changed"]
+    assert why == [
+        "CHANGELOG.md: the top section is '0.1.0 — 2026-10-23', it should name the version in VERSION (0.2.0)",
+        "CHANGELOG.md: the top section (0.1.0 — 2026-10-23) has no bullet: say what changed",
+    ]
     assert len(_notes(tmp_path, "0.2.0", "## unreleased\n* one\n")) == 1  # a title without a version
 
 

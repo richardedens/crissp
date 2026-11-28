@@ -11,18 +11,46 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 WORDS = {
-    "a7e88c6179b8acc23fa52642b9d88e1c605b4c4edd580a496e8945b3b1117e15", "6a34ca257c90f92a08cc7c64ffe0dce14454f8382843761a9c574b3a9a00cb81",
-    "9b9a7d0d8156089b79f3cdd32bd46e449e8cd2a5e78c1dbdf866991dbc09a230", "9cc57c91e044a25c6ec91d81909c53781c9e144da095310b67a0ce7897f9f669",
-    "0cbb043abe19b54d875da33d48de6c158a2d5c6cec48f6461e06322eff56455c", "bcc017d98327ac5346afd954b28504e4ebc0f7d807415f2b9b190e59a1603273",
-    "ef24d5e64656cc41052c333013cbb262994d6ff7187364bd05dbf6cfc0472c62", "61bffea9215f65164ad18b45aff1436c0c165d0d5dd2087ef61b4232ba6d2c1a",
-    "da0daaba4b156961c049ab4b85b6d0bcba2872200b7dedb4aa77f9208c601444", "ed078c3b90083544d15d50dc70d2bd70465ce5fa96b81fea2e163dc40e39af22",
+    "a7e88c6179b8acc23fa52642b9d88e1c605b4c4edd580a496e8945b3b1117e15",
+    "6a34ca257c90f92a08cc7c64ffe0dce14454f8382843761a9c574b3a9a00cb81",
+    "9b9a7d0d8156089b79f3cdd32bd46e449e8cd2a5e78c1dbdf866991dbc09a230",
+    "9cc57c91e044a25c6ec91d81909c53781c9e144da095310b67a0ce7897f9f669",
+    "0cbb043abe19b54d875da33d48de6c158a2d5c6cec48f6461e06322eff56455c",
+    "bcc017d98327ac5346afd954b28504e4ebc0f7d807415f2b9b190e59a1603273",
+    "ef24d5e64656cc41052c333013cbb262994d6ff7187364bd05dbf6cfc0472c62",
+    "61bffea9215f65164ad18b45aff1436c0c165d0d5dd2087ef61b4232ba6d2c1a",
+    "da0daaba4b156961c049ab4b85b6d0bcba2872200b7dedb4aa77f9208c601444",
+    "ed078c3b90083544d15d50dc70d2bd70465ce5fa96b81fea2e163dc40e39af22",
     "964ca863a05cf6824621ce8948c156f2699020dbed94cddccf079d0254b7ad89",
 }
 # a product's name as a proper noun, its packages and paths, another backlog's ids, the old place of the UX suite
-PATTERNS = re.compile("|".join([r"\bF" + r"low\b", "liquid" + "-nitro", "@f" + "low/", "apps/f" + "low", r"\bE3[02]-", r"\bT-5\d\b",
-                                r"\bK-2" + r"1\b", "design/" + "uxsuite", "low-code " + "platform"]))
-OWNED = ["crissp/testsuite", "crissp/uxsuite", "crissp/look", "crissp/tool", "crissp/check.sh", "crissp/check-all.sh",
-         "crissp/test.sh", "crissp/ux.sh", "crissp/template/crissp/uxsuite", "crissp/template/crissp/testsuite"]
+PATTERNS = re.compile(
+    "|".join(
+        [
+            r"\bF" + r"low\b",
+            "liquid" + "-nitro",
+            "@f" + "low/",
+            "apps/f" + "low",
+            r"\bE3[02]-",
+            r"\bT-5\d\b",
+            r"\bK-2" + r"1\b",
+            "design/" + "uxsuite",
+            "low-code " + "platform",
+        ]
+    )
+)
+OWNED = [
+    "crissp/testsuite",
+    "crissp/uxsuite",
+    "crissp/look",
+    "crissp/tool",
+    "crissp/check.sh",
+    "crissp/check-all.sh",
+    "crissp/test.sh",
+    "crissp/ux.sh",
+    "crissp/template/crissp/uxsuite",
+    "crissp/template/crissp/testsuite",
+]
 LOCAL = {"results", "__pycache__", ".venv", "node_modules"}
 
 
@@ -55,6 +83,9 @@ def test_every_part_of_the_framework_is_there(name):
 
 
 def test_the_framework_s_own_files_name_no_private_product_or_person():
-    hits = [f"{p.relative_to(REPO)}: {', '.join(found)}" for p in owned()
-            if (found := private(p.read_text(errors="replace")) + private(str(p.relative_to(REPO))))]
+    hits = [
+        f"{p.relative_to(REPO)}: {', '.join(found)}"
+        for p in owned()
+        if (found := private(p.read_text(errors="replace")) + private(str(p.relative_to(REPO))))
+    ]
     assert hits == []

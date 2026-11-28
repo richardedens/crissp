@@ -60,8 +60,9 @@ def foreign_imports(root: Path) -> list[str]:
 
 def python_files(root: Path) -> list[str]:
     """Every tracked Python file ruff reads, so pylint compares the same code."""
-    done = subprocess.run(["git", "ls-files", "--", *(f"{d}/*.py" for d in LINTED)], cwd=root,
-                          capture_output=True, text=True, check=True)
+    done = subprocess.run(
+        ["git", "ls-files", "--", *(f"{d}/*.py" for d in LINTED)], cwd=root, capture_output=True, text=True, check=True
+    )
     return [f for f in done.stdout.split() if not f.startswith(EXCLUDED)]
 
 

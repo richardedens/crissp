@@ -23,8 +23,13 @@ PRIVATE = {
     "92fd26efa9d69872a0bf414ecbfffd063ce6f6ca1947829b0e2cc7189dd0d805",
 }
 OWNED = [p for p in DEPLOY.rglob("*") if p.is_file() and "__pycache__" not in p.parts and ".terraform" not in p.parts]
-OWNED += [CRISSP / "deploy.sh", CRISSP / "testsuite/lib/cluster_plan.py", CRISSP / "testsuite/lib/deploy_plan.py",
-          CRISSP / "testsuite/tests/test_cluster_plan.py", CRISSP / "testsuite/tests/test_deploy_plan.py"]
+OWNED += [
+    CRISSP / "deploy.sh",
+    CRISSP / "testsuite/lib/cluster_plan.py",
+    CRISSP / "testsuite/lib/deploy_plan.py",
+    CRISSP / "testsuite/tests/test_cluster_plan.py",
+    CRISSP / "testsuite/tests/test_deploy_plan.py",
+]
 ALLOWED_ADDRESSES = {"0.0.0.0", "127.0.0.1"}
 
 
@@ -57,12 +62,16 @@ def test_no_public_address_of_a_real_machine(path):
 SECRETISH = re.compile(r"(password|secret|token|api_?key)[\"']?\s*[:=]\s*[\"']?([^\s\"',}]{6,})", re.IGNORECASE)
 
 
-@pytest.mark.parametrize("path", [p for p in OWNED if p.suffix in (".yaml", ".json", ".tf", ".example", ".md")
-                                  or p.name.startswith(".env")], ids=lambda p: str(p.relative_to(CRISSP)))
+@pytest.mark.parametrize(
+    "path",
+    [p for p in OWNED if p.suffix in (".yaml", ".json", ".tf", ".example", ".md") or p.name.startswith(".env")],
+    ids=lambda p: str(p.relative_to(CRISSP)),
+)
 def test_no_secret_value_in_a_template_or_setting(path):
     for key, value in SECRETISH.findall(path.read_text()):
-        assert value.startswith(("var.", "$", "{{", "<", "true", "false", "sensitive")) or value.isupper(), \
+        assert value.startswith(("var.", "$", "{{", "<", "true", "false", "sensitive")) or value.isupper(), (
             f"{path.name}: {key} has a value"
+        )
 
 
 def test_the_example_env_has_no_value():
@@ -77,8 +86,12 @@ def test_deploy_json_is_neutral_and_complete():
     c = settings["cluster"]
     for key in ("chart", "release", "namespace", "kubeContext", "domains", "image", "health", "pullSecret", "env"):
         assert key in c, key
-    hosts = [c["domains"]["primary"], *c["domains"]["redirects"], c["image"]["repository"].split("/")[0],
-             re.sub(r"^https://", "", c["health"]).split("/")[0]]
+    hosts = [
+        c["domains"]["primary"],
+        *c["domains"]["redirects"],
+        c["image"]["repository"].split("/")[0],
+        re.sub(r"^https://", "", c["health"]).split("/")[0],
+    ]
     assert all(h.endswith("example.org") for h in hosts), hosts
     assert (CRISSP.parent / c["chart"]).is_dir() and (CRISSP.parent / c["terraform"]).is_dir()
     assert (CRISSP.parent / c["env"]["example"]).is_file()
@@ -87,8 +100,17 @@ def test_deploy_json_is_neutral_and_complete():
 
 def test_the_readme_says_how_to_adopt_it():
     readme = (DEPLOY / "README.md").read_text()
-    for needed in ("deploy.json", ".env.production", "--cluster-plan", "--cluster", "release gate", "terraform",
-                   "check.sh", "helm/app", "NetworkPolic"):
+    for needed in (
+        "deploy.json",
+        ".env.production",
+        "--cluster-plan",
+        "--cluster",
+        "release gate",
+        "terraform",
+        "check.sh",
+        "helm/app",
+        "NetworkPolic",
+    ):
         assert needed in readme, needed
 
 
@@ -99,8 +121,14 @@ def test_no_file_here_is_a_real_tfvars_state_or_env():
 
 def test_check_sh_runs_every_guard_and_skips_terraform_visibly():
     text = (DEPLOY / "check.sh").read_text()
-    for step in ("helm lint", "helm template", "terraform fmt -check", "validate", "pytest",
-                 "skipped: terraform not installed"):
+    for step in (
+        "helm lint",
+        "helm template",
+        "terraform fmt -check",
+        "validate",
+        "pytest",
+        "skipped: terraform not installed",
+    ):
         assert step in text, step
     assert "set -x" not in text and "brew install" not in text and "apt-get" not in text
 

@@ -110,7 +110,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         for prefix, base in (("/dashboard/", self.pages), ("/results/", project.results(self.live.root))):
             if path.startswith(prefix):
                 self.directory = str(base)
-                return super().translate_path("/" + path[len(prefix):])
+                return super().translate_path("/" + path[len(prefix) :])
         return str(self.pages / ".nothing-here")
 
     def _json(self, code: int, data: dict) -> None:
@@ -138,7 +138,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             stamp = self.live.stamp()  # whose (F-09), and why it is not current when it is not (F-32)
             return self._json(200, {"stamp": stamp, "root": str(self.live.root.resolve()), "error": self.live.error})
         if path.startswith("/look/"):
-            return self._look(path[len("/look/"):])
+            return self._look(path[len("/look/") :])
         if path == "/ux" or path.startswith("/ux/"):
             return self._ux("GET")
         if path == "/results/data.js":
@@ -176,14 +176,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def server(port: int, root: Path | None = None, suite: Path = SUITE, rebuild=None, ux=None,
-           look: Path = LOOK) -> http.server.ThreadingHTTPServer:
+def server(
+    port: int, root: Path | None = None, suite: Path = SUITE, rebuild=None, ux=None, look: Path = LOOK
+) -> http.server.ThreadingHTTPServer:
     """The server, not started yet, for the project at root (default: CRISSP_ROOT or the current directory). suite: where
     the dashboard page is (the engine's); ux: the UX suite's handler (by default the project's own, when it has one)."""
     root = root or project.root()
     live = Live(root, rebuild or collect)
-    handler = type("LiveHandler", (Handler,), {"live": live, "look": look, "pages": suite / "dashboard",
-                                               "ux": load_ux() if ux is None else ux})
+    handler = type(
+        "LiveHandler",
+        (Handler,),
+        {"live": live, "look": look, "pages": suite / "dashboard", "ux": load_ux() if ux is None else ux},
+    )
     return http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(handler, directory=str(suite)))
 
 
