@@ -3,6 +3,7 @@ so a mistake in it is caught with a message that says where, never a confusing r
 
 import importlib.util
 import json
+import re
 import runpy
 import sys
 from pathlib import Path
@@ -107,7 +108,7 @@ def test_a_mistake_says_where_and_what(conf, message):
 
 
 def test_a_missing_or_broken_file_says_how_to_start(tmp_path):
-    with pytest.raises(project.ConfigError, match="suites.json is missing: describe the product's parts there"):
+    with pytest.raises(project.ConfigError, match=re.escape("suites.json is missing: describe the product's parts there")):
         project.load(tmp_path)
     (tmp_path / "crissp" / "testsuite").mkdir(parents=True)
     (tmp_path / "crissp" / "testsuite" / "suites.json").write_text("{")

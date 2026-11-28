@@ -4,6 +4,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **A test that could not fail now can (F-90).** A `pytest.raises(match="cannot hold a |")` matched every message,
+  since `match=` is a regular expression. ruff's RUF043 is now part of crissp's own lint, and 19 patterns are escaped
+  or made raw.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

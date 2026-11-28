@@ -1,6 +1,7 @@
 """The UX suite's configuration (ux_config): defaults filled in, and every mistake named with where it is."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -56,7 +57,7 @@ def test_a_broken_team_file_is_named(tmp_path, text, says):
     with pytest.raises(ux_config.ConfigError, match=says):
         ux_config.load(suite)
     (suite.here / "team.json").unlink()
-    with pytest.raises(ux_config.ConfigError, match="team.json is missing"):
+    with pytest.raises(ux_config.ConfigError, match=re.escape("team.json is missing")):
         ux_config.load(suite)
 
 

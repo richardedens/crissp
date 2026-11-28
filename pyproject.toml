@@ -95,7 +95,7 @@ line-length = 120
 extend-exclude = ["crissp/testsuite/sast/tests"]
 
 [tool.ruff.lint]
-extend-select = ["E402", "E731", "N802"]
+extend-select = ["E402", "E731", "N802", "RUF043"]
 
 [tool.ruff.lint.per-file-ignores]
 # The uxsuite's tests import the `product` fixture from ux_kit and ask for it by name: pytest's way, not a redefinition.

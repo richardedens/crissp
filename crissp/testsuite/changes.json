@@ -1289,6 +1289,25 @@
     "test_collect::test_a_failed_scan_that_lists_nothing_has_no_count",
     "test_dashboard_page::test_security_has_its_own_tile_and_no_suite_of_zero_tests_is_listed"
    ]
+  },
+  {
+   "id": "pytest-raises-ambiguous-pattern",
+   "title": "A test's match= matched every message (F-90)",
+   "problem": "pytest.raises(match=...) reads a regular expression. match=\"cannot hold a |\" ends in an empty alternative and matches any message, so the finding() test passed whatever error was raised; 18 more patterns held a regex sign (a dot, a bar) by accident.",
+   "fix": "pyproject.toml selects ruff's RUF043 (pytest-raises-ambiguous-pattern): the python-lint step refuses such a pattern. Plain texts go through re.escape, the patterns that mean a regex are raw strings.",
+   "sources": [
+    {
+     "file": "pyproject.toml",
+     "symbol": "RUF043"
+    },
+    {
+     "file": "crissp/testsuite/tests/test_crissp_tool.py",
+     "symbol": "re.escape(\"cannot hold a |\")"
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_a_pytest_raises_match_with_regex_signs_is_escaped_or_raw"
+   ]
   }
  ],
  "gaps": [

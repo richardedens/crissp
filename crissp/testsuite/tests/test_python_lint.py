@@ -50,3 +50,10 @@ def test_ci_runs_the_lint_step():
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     run = next(line for line in workflow.splitlines() if "crissp/testsuite/run.sh" in line)
     assert "python-lint" in run.split("run.sh", 1)[1].split()
+
+
+def test_a_pytest_raises_match_with_regex_signs_is_escaped_or_raw():
+    """F-90: `match=` is a regular expression. `match="cannot hold a |"` matched every message (an empty alternative),
+    so the test it was in could not fail. ruff's RUF043 refuses such a pattern unless it is escaped or raw."""
+    lint = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
+    assert "RUF043" in lint.get("extend-select", []) + lint.get("select", [])
