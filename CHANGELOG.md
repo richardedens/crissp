@@ -233,6 +233,7 @@ with Mistral Vibe as well as Claude Code, and has a UX suite that discovers what
 - **`.vibe/config.toml` is committed, like `.mcp.json` (F-29).** It holds the same pin and nothing tied to one
   machine, so a teammate's Vibe gets the crissp tools from the clone, without `crissp repair`. The `.gitignore`
   rules are `.vibe/*` and `!.vibe/config.toml`: whatever else Vibe keeps in `.vibe/` stays local.
+- **The README says it at the top: crissp works with Claude Code and Mistral Vibe**, with a badge for each.
 - **New pictures** in the README and on the website, from a fresh 0.1.10 demo project (a small sample shop): the
   Stages page, the UX page's Map, Jobs and Review tabs, and the Tests dashboard's Security and Lint tiles, green and
   red; the other pictures show the new top bar.
