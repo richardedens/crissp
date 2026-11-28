@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **A check started with `run` no longer stays a zombie, and `status` can wait (F-30).** The crissp MCP server now
+  reaps every check it starts the moment it ends; before, a finished check stayed a zombie that `kill -0 <pid>` still
+  found alive, so an agent waiting on the pid hung until its own timeout. `status` takes `wait: true` (and `timeout`,
+  default 300 s, at most 3600 s) and answers as soon as the run has ended, with its exit code and the end of its log.
+  `run` now says to wait with `status`, not on the pid.
 - **`crissp init` onboards Mistral Vibe as well as Claude Code (F-24).** A new project also gets `.vibe/config.toml` —
   the same crissp MCP server, pinned `uvx crissp==<version> mcp` like `.mcp.json`.
   When Vibe is installed (`VIBE_HOME`, else `~/.vibe`), init also adds the project folder to `trusted_folders.toml`,

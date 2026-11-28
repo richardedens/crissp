@@ -726,6 +726,31 @@
     "test_cli.py::test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored",
     "test_package.py::test_init_makes_a_crissp_project_that_is_green"
    ]
+  },
+  {
+   "id": "mcp-reaps-and-waits",
+   "title": "A check started with run stayed a zombie, and status could not wait (F-30)",
+   "problem": "The crissp MCP server started check.sh and check-all.sh but never waited for them: a finished check stayed a zombie, which `kill -0 <pid>` still finds alive, so an agent that waited on the pid run returned hung until its own timeout. status only gave a snapshot, so waiting meant polling.",
+   "fix": "Every child the server starts is reaped by a thread the moment it ends. status takes wait (and timeout, default 300 s, at most 3600 s): it answers once the lock is free and no check started with run still runs; the dashboard is no run. run's answer and the tool descriptions say to wait with status, not on the pid.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def background("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def running("
+    },
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def status("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_a_finished_check_is_reaped_at_once",
+    "test_crissp_tool::test_status_waits_until_the_run_has_ended",
+    "test_crissp_tool::test_a_check_runs_in_the_background_and_status_follows_it"
+   ]
   }
  ],
  "gaps": [
