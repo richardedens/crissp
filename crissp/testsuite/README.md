@@ -24,7 +24,11 @@ A step's command gets `CRISSP_ROOT`, `RESULTS`, `STEP`, `JUNIT`, `COVERAGE_JSON`
 helper `covered <pytest arguments>` (`lib/steps.sh`): pytest under coverage, lines and branches, of the step's
 `sources`, with the JUnit XML and the coverage JSON where the dashboard and the gate read them. `PY=.venv/bin/python
 covered …` runs it in a part's own venv; without `PY` it runs with the pinned tools ([requirements.txt](requirements.txt))
-through `uv`. A product with a frontend writes its own commands (`npm run --silent lint`, …).
+through `uv`. The helper `frontend_lint` (`lib/frontend_lint.py`) lints the step's folder with crissp's own tools:
+[frontend-lint/](frontend-lint/) pins ESLint 9 and stylelint with their plugins at exact versions, with the lockfile and
+the configs. They are installed once per toolkit with `npm ci` into crissp's cache (`CRISSP_CACHE`, else
+`$XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`), never into the project, and both always run (no warning allowed).
+A product's other frontend commands are its own (`npm test`, …).
 
 **A parallel step** (`"parallel": true`) gets `WORKERS` and `WORKERS_WHY` from `lib/workers.py`: the tightest of the
 CPUs less one, three quarters of the available memory per `memory_mb` (default 256), and the step's test files; at

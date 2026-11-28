@@ -742,6 +742,43 @@
     "test_template.py::test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_once_its_part_does",
     "test_repair.py::test_old_steps_stay_while_src_is_really_there_and_an_empty_list_gets_the_default"
    ]
+  },
+  {
+   "id": "frontend-lint-own-tools",
+   "title": "The frontend is linted with crissp's own pinned tools (F-31)",
+   "problem": "The template's frontend-lint step ran the frontend's own lint script (npm run --silent lint), but crissp offered no tools or configs for it: a project's frontend lint was missing or assembled by hand, at versions that drift between projects.",
+   "fix": "crissp/testsuite/frontend-lint/ pins ESLint 9.39.5, @eslint/js, typescript-eslint 8.72.2 with TypeScript 6.0.3, eslint-plugin-react-hooks 7.1.1, eslint-plugin-jsx-a11y 6.10.2, eslint-plugin-react 7.37.5 (only react/no-danger), globals, stylelint 17.16.0 and stylelint-config-standard 40.0.0, with the lockfile and the two configs. lib/frontend_lint.py installs them once per toolkit with npm ci into crissp's cache and runs both on the step's folder with crissp's configs; the project's package.json and files are never touched. The template step runs it (steps.sh's frontend_lint), and the wheel carries the toolkit.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/package.json",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/eslint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/stylelint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "frontend_lint"
+    },
+    {
+     "file": "crissp/template/crissp/testsuite/suites.json",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_frontend_lint.py",
+    "test_template.py::test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_once_its_part_does",
+    "test_package.py::test_the_wheel_carries_the_licences_and_the_engine_but_no_project_data"
+   ]
   }
  ],
  "gaps": [
