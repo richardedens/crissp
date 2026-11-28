@@ -23,6 +23,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **The Activity page warns about the context budget (F-104).** Besides the 300k-token history, a session's card
   now says when its main thread holds 10 or more images (screenshots belong in a subagent that reports text) or read
   a file of more than 800 lines whole (read the part needed). For Claude Code and Mistral Vibe sessions alike.
+- **The UX team walks on Mistral Vibe too (F-103).** Rounds and designs run on an agent CLI that is installed:
+  Claude Code, or Mistral Vibe when Claude Code is not there; `CRISSP_UX_CLI=vibe` (or `claude`) picks one. On Vibe a
+  run stays as safe as on Claude Code: it works in its own results folder and Vibe refuses a write anywhere else, it has
+  no shell, no web and no MCP servers, it reads only the UX suite and the agreement and never a `.env` file. It plays
+  the personas itself, one after the other, since Vibe gives a headless run no agents.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

@@ -1411,6 +1411,30 @@
     "test_vibesessions::test_a_vibe_sessions_images_and_whole_big_reads_are_counted",
     "test_activity_page::test_the_context_budget_warnings_show"
    ]
+  },
+  {
+   "id": "ux-team-on-any-cli",
+   "title": "The UX team ran only on Claude Code (F-103)",
+   "problem": "ux_team._launch always started `claude -p`: a team with only Mistral Vibe installed could not walk, and CRISSP.md said the personas are Claude Code.",
+   "fix": "ux_team.runner() picks the agent CLI: CRISSP_UX_CLI (claude or vibe), else Claude Code when it is installed, else Vibe; an unknown name is said before anything is made. The Vibe run is headless in the run's own folder (its working directory, VIBE_OUTSIDE_WORKDIR=deny refuses writes elsewhere), with only read_file, write_file and edit, MCP off (VIBE_ENABLE_MCP=false), reads allowed only in the UX suite and the agreement and never a .env, and is told to play the personas itself (Vibe has no agents there). _launch keeps its arguments.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def runner("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _vibe("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _launch("
+    }
+   ],
+   "tests": [
+    "test_ux_team::test_a_round_runs_on_mistral_vibe_read_only_without_mcp",
+    "test_ux_team::test_the_runner_is_the_one_asked_for_else_the_one_installed"
+   ]
   }
  ],
  "gaps": [

@@ -285,9 +285,10 @@ them.
   the backlog by itself.
 - **One place to look**: the UX suite runs on the same local server as the Tests dashboard (`crissp dashboard`), in the
   same look, with links both ways.
-- **Safe by default**: the personas are Claude Code run read-only (only reading the screenshots, no shell, no edits, no
-  MCP servers, outside the repository so its agreement does not steer them), on the login of whoever runs it — no key
-  in the repository. What the interface shows is data, never instructions. A scripted panel answers in the tests.
+- **Safe by default**: the personas run on an agent CLI that is installed, Claude Code or Mistral Vibe
+  (`CRISSP_UX_CLI` picks one), read-only (only reading the screenshots, no shell, no edits, no MCP servers, outside the
+  repository so its agreement does not steer them), on the login of whoever runs it — no key in the repository. What
+  the interface shows is data, never instructions. A scripted panel answers in the tests.
 - **When**: after a change people will see, before the product owner accepts it; and before a release with new
   screens. It is advice, never a gate: the product owner decides.
 
