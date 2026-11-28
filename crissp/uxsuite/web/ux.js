@@ -70,19 +70,18 @@
       <div class="toolbar"><span class="seg" role="group" aria-label="Show">${seg.map(([k, l]) => `<button class="ghost small" data-goto="map?show=${k}" aria-pressed="${k === show}">${l}</button>`).join("")}</span>
         <span class="small muted">Map again: <code>crissp ux --map</code></span></div>
       ${(m.skipped || []).length ? `<details class="card"><summary>${m.skipped.length} test screenshot(s) skipped</summary><ul class="small">${m.skipped.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
-      ${areas.map(a => `<section class="area"><h3>${esc(a)} <span class="small muted">${list.filter(s => s.area === a).length} screen(s)</span></h3>
-        <div class="screens">${list.filter(s => s.area === a).map(s => {
+      <div class="screens">${areas.flatMap(a => list.filter(s => s.area === a)).map(s => {
           const first = s.shots.find(x => x.device === "laptop") || s.shots[0];
           return `<article class="card screen ${unreached(s) ? "gap" : ""}">
             ${first ? `<button class="shot thumb" data-view="map" data-key="${esc(s.key)}" data-i="${s.shots.indexOf(first)}" title="Enlarge"><img src="${esc(first.url)}" alt="${esc(s.title)}" loading="lazy"></button>` : '<div class="thumb none small muted">no picture</div>'}
-            <div class="row"><b>${esc(s.title)}</b></div><code class="small muted">${esc(s.key)}</code>
+            <div class="row"><b>${esc(s.title)}</b>${badge("area", s.area)}</div><code class="small muted">${esc(s.key)}</code>
             <div class="row">${s.found_by.map(f => badge("ver", f === "test" ? "E2E test" : f)).join("")}${s.gaps.map(g => badge(REACH.some(r => g.startsWith(r)) ? "failed" : "missing", g)).join("")}</div>
             ${s.linked_from.length ? `<p class="small muted">Linked from ${s.linked_from.map(esc).join(", ")}</p>` : ""}
             ${s.walks.length ? `<p class="small">Walks: ${s.walks.map(w => `<a href="#rounds?walk=${encodeURIComponent(w)}">${esc(w)}</a>`).join(", ")}</p>` : ""}
             ${s.tests.length ? `<p class="small muted">Tests: ${s.tests.map(esc).join(", ")}</p>` : ""}
             ${s.shots.length > 1 ? `<div class="row">${s.shots.map((x, i) => `<button class="link small" data-view="map" data-key="${esc(s.key)}" data-i="${i}">${esc(x.device)} · ${esc(x.source === "test" ? "E2E test" : x.source)} ⤢</button>`).join("")}</div>` : ""}
           </article>`;
-        }).join("")}</div></section>`).join("") || '<div class="card">Nothing to show here.</div>'}`;
+        }).join("") || '<div class="card">Nothing to show here.</div>'}</div>`;
   }
 
   /* Discovery (E7-F3-02): every persona tries their jobs on the mapped screens: done, hard or impossible, and where they
@@ -115,8 +114,8 @@
             ${walk ? `<p class="small"><a href="#proposals?walk=${encodeURIComponent(walk.id)}">Its designs ${walk.proposals.length ? `(${walk.proposals.length})` : "(starting)"} →</a></p>` : ""}
             ${verdictButtons(id, [["approve", "Approve: ask for a design"], ["reject", "Reject"]])}</div>`;
         }).join("") || '<p class="small muted">Nothing is missing: every job can be done.</p>'}`;
-      return i === 0 ? `<article class="card walk"><header><h3>Discovery ${d.version}</h3>${phase(d.status)}<span class="small muted">${esc(d.request?.at || "")}</span></header>${body}</article>`
-        : `<details class="card walk"><summary>Discovery ${d.version} · ${esc(d.request?.at || "")}</summary>${body}</details>`;
+      return i === 0 ? `<article class="card walk"><header><h3>Discovery ${d.version}</h3>${phase(d.status)}<span class="small muted">${esc((d.request?.at || "").replace("T", " ").slice(0, 16))}</span></header>${body}</article>`
+        : `<details class="card walk"><summary>Discovery ${d.version} · ${esc((d.request?.at || "").replace("T", " ").slice(0, 16))}</summary>${body}</details>`;
     }).join("") || '<div class="card">No discovery round yet.</div>');
   }
 
