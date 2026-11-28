@@ -128,6 +128,12 @@ def test_the_real_sources_answer_on_this_machine():
     assert workers._command(["a-command-that-does-not-exist-anywhere"]) is None
 
 
+def test_a_command_answers_its_output_or_none_when_it_fails():
+    """Portable (F-31): the output of a command that succeeds, None for one that fails; on every platform."""
+    assert workers._command([sys.executable, "-c", "print('ok')"]) == "ok\n"
+    assert workers._command([sys.executable, "-c", "raise SystemExit(3)"]) is None
+
+
 # E1-F1-04: the /workers page's data, from what crissp_timing wrote (results/timing), with stand-in processes and clock
 
 import json  # noqa: E402
