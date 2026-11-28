@@ -1,4 +1,4 @@
-"""crissp/testsuite/lib/upgrade.py (F-153): the steps a newer crissp brings, said and added, nothing else."""
+"""crissp/testsuite/lib/upgrade.py (F-145): the steps a newer crissp brings, said and added, nothing else."""
 
 import sys
 from pathlib import Path

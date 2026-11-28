@@ -304,7 +304,7 @@ SECURITY = (
     "licenses",
 )  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations,
 # secrets, unsafe code, the running app, licences)
-QUALITY = "quality"  # F-150: lib/quality.py, complexity and duplication, on a tile of its own
+QUALITY = "quality"  # F-142: lib/quality.py, complexity and duplication, on a tile of its own
 BLOCKING_LINE = re.compile(r"^BLOCKING\b", re.MULTILINE)
 
 

@@ -672,7 +672,7 @@ def test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought
 
 
 def older_suites(root: Path, **own) -> None:
-    """suites.json as crissp init wrote it before the quality, licenses and dast steps (F-153), with the project's own."""
+    """suites.json as crissp init wrote it before the quality, licenses and dast steps (F-145), with the project's own."""
     data = json.loads((repair.TEMPLATE / repair.SUITES).read_text().replace("{{PRODUCT}}", "x"))
     data["steps"] = [s for s in data["steps"] if s["key"] not in {"quality", "licenses", "dast"}]
     data["steps"].append({"key": "e2e", "label": "E2E", "run": "npm run e2e", "dir": "app/frontend"})
@@ -685,7 +685,7 @@ def older_suites(root: Path, **own) -> None:
 
 
 def test_a_project_brought_in_earlier_gets_the_new_steps_and_keeps_its_own(tmp_path, capsys):
-    """F-153: quality, licenses and dast (and their audit settings) are added; the project's own steps, rules and
+    """F-145: quality, licenses and dast (and their audit settings) are added; the project's own steps, rules and
     settings stay as they are."""
     root = tmp_path / "earlier"
     bring_in(root)

@@ -1,4 +1,4 @@
-"""The steps a newer crissp brings, added to a project brought in earlier (F-153): shared by crissp init and repair.
+"""The steps a newer crissp brings, added to a project brought in earlier (F-145): shared by crissp init and repair.
 
 A project's suites.json is its own once crissp init wrote it, so a step the template gained later (quality, licenses,
 dast) never reached it: `crissp check` said nothing of DAST. This adds what is missing and nothing else: the template's

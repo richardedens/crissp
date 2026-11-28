@@ -9,7 +9,7 @@
                               F-28). Writes
                               .githooks/pre-commit and sets core.hooksPath, unless the repository has hooks of its
                               own (F-50). A suites.json it keeps gets the steps a newer crissp brings (quality,
-                              licenses, dast; F-153)
+                              licenses, dast; F-145)
     crissp check [--plan]     test what changed since the last green state (crissp/check.sh)
     crissp check-all          the full run (crissp/check-all.sh)
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
@@ -56,7 +56,7 @@ def engine_module(name: str):
 
 vibe = engine_module("vibe")
 hook = engine_module("hook")  # F-50: the lint before every commit, also used by repair
-upgrade = engine_module("upgrade")  # F-153: the steps a newer crissp brings, also used by repair
+upgrade = engine_module("upgrade")  # F-145: the steps a newer crissp brings, also used by repair
 
 
 def find_root(start: Path, env: dict) -> Path:
@@ -205,9 +205,7 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         made.append(str(rel))
     if merge_ignore(root / ".gitignore", (TEMPLATE / "gitignore.crissp").read_text()):
         made.append(".gitignore (rules added)")
-    added = add_new_steps(root)
-    if added:
-        made.append(f"crissp/testsuite/suites.json (steps added: {', '.join(added)})")
+    made += add_new_steps(root)
     confirm = (lambda q: True) if args.yes else (lambda q: ask(q).strip().lower() in ("", "y", "yes"))
     print(hook_note(root), file=out)
     print(vibe_note(root, env, confirm), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
@@ -237,7 +235,7 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
 
 
 def add_new_steps(root: Path) -> list[str]:
-    """F-153: a suites.json init kept (the project's own) gets the steps a newer crissp brings; the names added."""
+    """F-145: a suites.json init kept (the project's own) gets the steps a newer crissp brings; what it says it made."""
     suites = root / "crissp" / "testsuite" / "suites.json"
     try:
         data = json.loads(suites.read_text())
@@ -248,7 +246,7 @@ def add_new_steps(root: Path) -> list[str]:
     gap = upgrade.add(data, json.loads((TEMPLATE / "crissp" / "testsuite" / "suites.json").read_text()))
     if gap["steps"] or gap["audit"] or gap["rules"]:
         suites.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
-    return gap["steps"]
+    return [f"crissp/testsuite/suites.json (steps added: {', '.join(gap['steps'])})"] if gap["steps"] else []
 
 
 def engine_env(root: Path, env: dict) -> dict:

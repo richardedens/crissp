@@ -85,7 +85,7 @@
       <ul class="parts">${parts.map(x => `<li title="${esc(x.label)}">${stepLink(x.key, `<span>${esc(short(x.label))}</span><b style="color:${tint(x.status)}">${what(x)}</b>`)}</li>`).join("")}</ul></div></div>`;
   }
 
-  // F-150: complexity and duplication, held by a ratchet like coverage (lib/quality.py, results/quality.json)
+  // F-142: complexity and duplication, held by a ratchet like coverage (lib/quality.py, results/quality.json)
   function qualityCard(q) {
     if (!q) return "";
     const d = q.duplication || {}, bad = (q.regressions || []).length + (q.problems || []).length;

@@ -204,7 +204,7 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its
     bash and JavaScript (F-38), the audit of its pinned tools. Every part's change is also scanned for secrets (F-43),
-    and a change to its code for unsafe code (F-44) and its quality (F-150)."""
+    and a change to its code for unsafe code (F-44) and its quality (F-142)."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
     code = ["sast", "quality"] if "tools" in steps else []

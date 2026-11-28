@@ -150,7 +150,7 @@ def test_security_has_its_own_tile_and_no_suite_of_zero_tests_is_listed():
 
 
 def test_code_quality_has_a_tile_that_says_whether_the_ratchet_holds():
-    """F-150: complexity and duplication on the overview, beside the coverage gate; a regression says how many."""
+    """F-142: complexity and duplication on the overview, beside the coverage gate; a regression says how many."""
     held = {
         "ok": True,
         "functions_over": 3,

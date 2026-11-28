@@ -100,7 +100,7 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
 
 
 def test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences(tmp_path):
-    """F-150 to F-152: complexity and duplication in every check that touches a part (held by a ratchet), and in the
+    """F-142 to F-144: complexity and duplication in every check that touches a part (held by a ratchet), and in the
     full run the passive ZAP baseline once the app runs together and every dependency's licence with an SBOM."""
     conf, root = configured(tmp_path, "app/backend", "docker-compose.yml")
     steps = {s["key"]: s for s in conf["steps"]}

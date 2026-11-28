@@ -2075,7 +2075,7 @@
   },
   {
    "id": "quality-ratchet",
-   "title": "Complexity and duplication were measured nowhere (F-150, E6-F4-01)",
+   "title": "Complexity and duplication were measured nowhere (F-142, E6-F4-01)",
    "problem": "A function with forty branches or a block copied into three files went through every step, in crissp and in every project: nothing measured either, and nothing kept them from growing.",
    "fix": "lib/quality.py measures the cyclomatic complexity of every function with the pinned lizard (through uv, many languages) and counts copied blocks itself (ten counted lines or more, whatever their indent, blank lines, comments and brackets left out). crissp/testsuite/quality-baseline.json holds the complex functions and the duplicated lines: a new complex function, a more complex one or more copies fail; a green run lowers it; --accept takes the numbers with why. A quality step in crissp and in the template (every change under app/), results/quality.json, and a Code quality tile on the dashboard.",
    "sources": [
@@ -2120,7 +2120,7 @@
   },
   {
    "id": "dast-zap-baseline",
-   "title": "Nothing scanned the running app (F-151, E6-F5-01)",
+   "title": "Nothing scanned the running app (F-143, E6-F5-01)",
    "problem": "The scans read code and dependencies only: a missing Content-Security-Policy, a cookie without HttpOnly or Secure, or an error page that leaks a stack trace was only seen in production.",
    "fix": "audit dast runs zap-baseline.py (passive, it never attacks) in the ZAP image pinned by digest against audit.dast.targets; when the app does not answer it starts it with the compose file named (docker compose up --wait) and stops only what it started. A HIGH risk blocks and so does every rule the project's rules file (zap-baseline -c) makes FAIL; the rest is listed; accepted-risks.json counts. An app that does not answer, or a ZAP without a report, is a problem. A full-run step in the template once docker-compose.yml exists.",
    "sources": [
@@ -2151,7 +2151,7 @@
   },
   {
    "id": "licences-and-sbom",
-   "title": "No licence check and no SBOM (F-152, E6-F6-01)",
+   "title": "No licence check and no SBOM (F-144, E6-F6-01)",
    "problem": "A GPL or AGPL package could reach a product's dependencies, and ship, without any step noticing; and there was no list of what a release contains.",
    "fix": "audit licenses reads every package of the audit's npm lock files and pip requirements (resolved with every transitive package by uv pip compile), its licence from the lock file or from PyPI (SPDX expression, licence field, classifiers; cached), and classifies it: forbidden and copyleft block, weak copyleft and unknown are listed, a dev-only package only listed; audit.licenses.allow and block are the project's policy. It writes results/licenses.json and a CycloneDX 1.6 SBOM, results/sbom.cdx.json. A full-run step in crissp (its pinned tools) and in the template.",
    "sources": [
@@ -2186,7 +2186,7 @@
   },
   {
    "id": "new-steps-for-earlier-projects",
-   "title": "A project brought in earlier never got the new steps (F-153)",
+   "title": "A project brought in earlier never got the new steps (F-145)",
    "problem": "suites.json is the project's own once crissp init wrote it, so the quality, licenses and dast steps the template gained never reached a project brought in before: crissp said nothing of DAST there.",
    "fix": "lib/upgrade.py adds what is missing and nothing else: the template's step, its audit settings, and quality on a path rule that runs sast. crissp repair says and adds it (new-steps, and with the old-steps repair too); crissp init adds it to a suites.json it keeps. The project's own steps, rules and settings stay.",
    "sources": [

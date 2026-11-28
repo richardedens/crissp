@@ -301,7 +301,7 @@ def test_init_gives_an_agent_its_first_moves_and_the_crissp_skill(tmp_path, monk
 
 
 def test_init_over_a_project_brought_in_earlier_adds_the_new_steps(tmp_path, monkeypatch, capsys):
-    """F-153: init keeps suites.json, and adds the steps (quality, licenses, dast) a newer crissp brings."""
+    """F-145: init keeps suites.json, and adds the steps (quality, licenses, dast) a newer crissp brings."""
     project = tmp_path / "proj"
     suites = project / "crissp" / "testsuite" / "suites.json"
     suites.parent.mkdir(parents=True)
