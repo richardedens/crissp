@@ -71,7 +71,7 @@ What `crissp/check.sh` runs per change:
 - `CHANGELOG.md`/`VERSION` → a file check;
 - every part below → also secrets, and its code (everything that runs tools or package) → sast;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
-  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `ux.sh`,
+  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `uxsuite/measure.js`, `ux.sh`,
   `site/`, `testsuite/frontend-lint/`) → lint instead of python-lint;
 - `crissp/testsuite/lint/` → lint;
 - `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`; `deploy.sh` and `deploy/check.sh` → lint instead);

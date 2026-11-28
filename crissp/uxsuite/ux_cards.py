@@ -31,7 +31,9 @@ from ux_config import personas as team_json_personas
 
 SEVERITIES = ("must", "should", "could")
 PERSONA_FIELDS = {"name", "role", "device", "moderator", "on", "order"}
-RULE_FIELDS = {"title", "severity", "on"}
+RULE_FIELDS = {"title", "severity", "on", "measure"}
+MEASURES = ("overflow", "tap-targets", "below-fold", "dialog-opaque", "focus-visible")  # what measure.js checks
+MEASURED = re.compile(r"^Measured by the browser:\s*(.+?)\.?\s*$", re.MULTILINE)
 JOBS = re.compile(r"^## Jobs\s*$", re.MULTILINE)
 SECTION = re.compile(r"^## (?:(\d+)\.\s*)?(.+?)\s*$", re.MULTILINE)
 MOVED = "The rules themselves are in `rules/`, one file each: the UX suite's Rules tab adds, edits and switches them off.\n"
@@ -220,18 +222,35 @@ def rule(rid: str, meta: dict, body: str, where: str) -> dict:
         raise ConfigError(f"{where}: severity must be one of {', '.join(SEVERITIES)}")
     if not body.strip():
         raise ConfigError(f"{where}: the rule's text (under the --- block) is empty")
-    return {"id": rid, "title": _line(meta.get("title"), where, "title"), "severity": severity,
-            "on": _flag(meta.get("on"), where, "on", True), "text": body.strip()}
+    out = {"id": rid, "title": _line(meta.get("title"), where, "title"), "severity": severity,
+           "on": _flag(meta.get("on"), where, "on", True)}
+    measure = _measure(meta.get("measure"), where)
+    return {**out, **({"measure": measure} if measure else {}), "text": body.strip()}
+
+
+def _measure(value, where: str) -> list[str]:
+    """What the browser checks for a rule at every shoot (E7-F2-02): a list, or "a, b" in a rule's file."""
+    if value is None or value == "":
+        return []
+    if isinstance(value, str):
+        value = [x.strip() for x in value.split(",") if x.strip()]
+    if not isinstance(value, list) or not all(isinstance(x, str) for x in value):
+        raise ConfigError(f"{where}: measure must be a list of checks ({', '.join(MEASURES)})")
+    for x in value:
+        if x not in MEASURES:
+            raise ConfigError(f"{where}: measure: {x} is not a check the browser runs ({', '.join(MEASURES)})")
+    return list(dict.fromkeys(value))
 
 
 def read_rule(path: Path) -> dict:
     where = f"rules/{path.name}"
-    meta, body = split(path.read_text(), where, RULE_FIELDS, "title, severity, on")
+    meta, body = split(path.read_text(), where, RULE_FIELDS, "title, severity, on, measure")
     return rule(_key(path.stem, where, "rule"), meta, body, where)
 
 
 def rule_text(r: dict) -> str:
-    return join({"title": r["title"], "severity": r["severity"], "on": r["on"]}, r["text"])
+    measure = {"measure": ", ".join(r["measure"])} if r.get("measure") else {}
+    return join({"title": r["title"], "severity": r["severity"], "on": r["on"], **measure}, r["text"])
 
 
 def _sections(text: str) -> tuple[str, list[dict]]:
@@ -243,7 +262,10 @@ def _sections(text: str) -> tuple[str, list[dict]]:
         body = text[m.end():found[i + 1].start() if i + 1 < len(found) else len(text)].strip()
         number, title = m.group(1), m.group(2)
         rid = (f"{int(number):02d}-" if number else "") + _slug(title)
-        out.append({"id": rid, "title": title, "severity": "should", "on": True, "text": body})
+        said = MEASURED.search(body)
+        meta = {"title": title, "measure": said.group(1) if said else None}
+        said_text = MEASURED.sub("", body).strip()
+        out.append({**rule(rid, meta, said_text or "-", f"PRINCIPLES.md, section {title}"), "text": said_text})
     return intro, out
 
 
@@ -283,8 +305,10 @@ def save_rule(suite, body: dict) -> dict:
     text = body.get("text")
     if not isinstance(text, str) or not text.strip():
         text = ""
-    r = rule("", {"title": body.get("title"), "severity": body.get("severity") or "should", "on": body.get("on")},
-             text or "-", where)
+    if isinstance(body.get("measure"), str):
+        raise ValueError(f"{where}: measure must be a list of checks ({', '.join(MEASURES)})")
+    r = rule("", {"title": body.get("title"), "severity": body.get("severity") or "should", "on": body.get("on"),
+                  "measure": body.get("measure")}, text or "-", where)
     if not text:
         raise ValueError(f"{where}: text must be a text")
     rid = str(body.get("id") or _slug(r["title"]))
@@ -309,4 +333,6 @@ def rules_for_a_run(found: list[dict]) -> str:
     held = [r for r in found if r["on"]]
     if not held:
         return "(no rules yet: judge by the principles alone)\n"
-    return "".join(f"## {r['id']} · {r['title']} ({r['severity']})\n\n{r['text']}\n\n" for r in held)
+    def head(r):
+        return f"{r['severity']}, measured by the browser: {', '.join(r['measure'])}" if r.get("measure") else r["severity"]
+    return "".join(f"## {r['id']} · {r['title']} ({head(r)})\n\n{r['text']}\n\n" for r in held)

@@ -17,6 +17,7 @@ from ux_kit import PROPOSAL, REPO, ROUND, add_shots, finish, product, ux_config,
 
 # isort: split
 import api  # ux_kit put the uxsuite on sys.path
+import ux_map
 
 
 @pytest.fixture
@@ -98,6 +99,34 @@ def test_the_state_holds_every_walk_with_its_rounds_designs_verdicts_and_pbi(sit
     assert p["pbi"] == "E1-F1-01" and p["verdict"]["verdict"] == "approve"
 
 
+def test_the_state_holds_the_map_once_the_product_was_mapped(site):
+    suite, base = site
+    assert json.loads(get(base + "/ux/api/state")[2])["map"] is None
+    ux_map.build(suite, ux_config.load(suite))
+    assert [s["key"] for s in json.loads(get(base + "/ux/api/state")[2])["map"]["screens"]] == ["/"]
+
+
+def test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs(site):
+    suite, base = site
+    assert json.loads(get(base + "/ux/api/state")[2])["discovery"] == []
+    finish(suite, "discovery", "product", 1, {"summary": "s", "jobs": [], "needs": [{"title": "Pay", "detail": "d"}]})
+    assert post(base, "/ux/api/verdict", {"id": "product/d1/n0", "verdict": "reject", "reason": "no"})[0] == 200
+    d = json.loads(get(base + "/ux/api/state")[2])["discovery"][0]
+    assert d["key"] == "product#d1" and d["result"]["needs"][0]["title"] == "Pay"
+    assert d["needs"] == [{"id": "product/d1/n0", "verdict": {"id": "product/d1/n0", "level": "need", "verdict": "reject",
+                                                               "reason": "no", "title": "Pay", "at": d["needs"][0]["verdict"]["at"]}}]
+
+
+def test_the_state_says_when_a_walk_was_shot_and_what_was_built(site):
+    suite, base = site
+    w = json.loads(get(base + "/ux/api/state")[2])["walks"][0]
+    assert w["shot_at"] is None and w["need"] is None
+    add_shots(suite)
+    finish(suite, "proposal", "first-visit", 1, PROPOSAL)
+    w = json.loads(get(base + "/ux/api/state")[2])["walks"][0]
+    assert w["shot_at"] == ux_team.shot_at(suite, "first-visit") and w["proposals"][0]["built"] is None
+
+
 def test_a_broken_configuration_or_a_missing_tool_is_told_not_crashed(site):
     suite, base = site
     (suite.root / "crissp" / "tool" / "server.py").unlink()
@@ -114,6 +143,10 @@ def test_the_team_s_files_are_served_and_a_design_only_in_a_sandbox(site):
     assert code == 200 and headers["Content-Security-Policy"].startswith("sandbox allow-scripts") and b"after" in body
     code, headers, body = get(base + "/ux/results/shots/first-visit/laptop/01-the-first-screen.png")
     assert code == 200 and headers["Content-Type"] == "image/png"
+    crawl = suite.results / "map" / "crawl" / "laptop"
+    crawl.mkdir(parents=True)
+    (crawl / "01.png").write_bytes(b"\x89PNG stand-in")
+    assert get(base + "/ux/results/map/crawl/laptop/01.png")[0] == 200
     for path in ("/ux/results/decisions.jsonl", "/ux/results/proposals/first-visit/v1/proposal.json",
                  "/ux/results/../team.json", "/ux/results/queue.jsonl"):
         assert get(base + path)[0] == 404, path
