@@ -46,7 +46,7 @@ Done when  ruff format --check and E501 clean; git blame skips the layout commit
 Tests      test_python_lint: the step runs ruff format --check, E501 selected, the commit in .git-blame-ignore-revs
 Depends    the open pull requests merged (it touches every Python file)
 
-### E8-F1-06 · crissp's own CSS linted                                                   [todo] [S]
+### E8-F1-06 · crissp's own CSS linted                                                   [review] [S]
 Why        lint.sh runs ESLint on crissp's JavaScript but nothing reads its CSS (look.css, the dashboard's, the
            uxsuite's, the site's)
 What       stylelint (pinned in crissp/testsuite/lint/) over every tracked CSS file, with the findings fixed
