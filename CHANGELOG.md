@@ -4,6 +4,18 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
+  and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
+  yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share
+  one tile; steps and test suites sit side by side. On Runs & logs a failed step's log is open and a passed one folded.
+- **A Security tile (F-73).** The CVE audit, the secrets scan and the unsafe-code scan get a tile with what each found
+  ("nothing found", or how many findings block the release), next to the Lint tile. Scans and suites without tests no
+  longer appear in the suites table as "0 tests".
+- **The Tests tab shows failures first and stays in the page (F-71).** One long failing assertion no longer makes the
+  table thousands of pixels wide.
+- **Easier on a phone, and readable buttons (F-72).** The top bar no longer makes pages scroll sideways on a phone: the
+  sections get a row of their own. Text on the purple accent is dark in the dark theme, so primary buttons pass WCAG AA
+  contrast.
 - **git lints before every commit (F-50).** `crissp init` writes `.githooks/pre-commit` and sets
   `core.hooksPath .githooks`, so a commit runs the project's lint steps first (`lint` and every `*-lint` step, such as
   `backend-lint` and `frontend-lint`) and a red lint stops it. The hook runs the crissp `.mcp.json` pins (the new

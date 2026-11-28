@@ -216,6 +216,26 @@ def is_lint(key: str) -> bool:
     return key == "lint" or key.endswith("-lint")
 
 
+SECURITY = ("audit", "secrets", "sast")  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations, secrets, unsafe code)
+BLOCKING_LINE = re.compile(r"^BLOCKING\b", re.MULTILINE)
+
+
+def is_security(key: str) -> bool:
+    return key in SECURITY
+
+
+def not_tests(key: str) -> bool:
+    """A step that runs no tests (a lint or a scan): the dashboard shows it on its own tile, not as a suite of 0 tests."""
+    return is_lint(key) or is_security(key)
+
+
+def blocking_findings(log: str, status: str) -> int | None:
+    """How many findings of a scan block the release: lib/audit.py writes one BLOCKING line each. A failed scan that lists
+    none gives None: the scanner may not have run at all."""
+    found = len(BLOCKING_LINE.findall(log))
+    return found if found or status == "passed" else None
+
+
 def lint_problems(log: str, status: str) -> int | None:
     """How many problems a lint step found, from its log; a passed step that says no number found none (a clean ESLint
     prints nothing). A failed step that says no number gives None: the linter may not have run at all."""
@@ -229,16 +249,16 @@ def lint_problems(log: str, status: str) -> int | None:
     return 0 if status == "passed" else None
 
 
-def _lint(steps: list[dict]) -> list[dict]:
-    """Every lint step of the project with its state in the last run and the problems it found (F-41)."""
+def _not_tests(steps: list[dict], keep, count, field: str) -> list[dict]:
+    """The project's lint steps (F-41) or scans (F-73), each with its state in the last run and what it found."""
     ran = {s.get("key") or s.get("name"): s for s in steps}
     out = []
     for key, (label, _, _) in SUITES.items():
-        if is_lint(key):
+        if keep(key):
             step = ran.get(key)
             status = step.get("status", "not run") if step else "not run"
             out.append({"key": key, "label": label, "status": status,
-                        "problems": lint_problems(step.get("log", ""), status) if step else None,
+                        field: count(step.get("log", ""), status) if step else None,
                         "seconds": step.get("seconds") if step else None})
     return out
 
@@ -246,7 +266,7 @@ def _lint(steps: list[dict]) -> list[dict]:
 def _product() -> dict:
     """What the page needs to name this product: from suites.json, plus the Claude sessions when they were built."""
     out = {k: CONFIG[k] for k in ("product", "monogram", "texts")}
-    out.update(coverageKeys=COVERAGE, unitSuites=[k for k in SUITES if k not in SPECIAL and not is_lint(k)])
+    out.update(coverageKeys=COVERAGE, unitSuites=[k for k in SUITES if k not in SPECIAL and not not_tests(k)])
     summary = RESULTS / "sessions" / "summary.json"
     if summary.exists():
         out["sessions"] = {"href": "../results/sessions/index.html", **json.loads(summary.read_text(encoding="utf-8"))}
@@ -350,8 +370,9 @@ def main(root: Path | None = None) -> int:
 
     journeys = _journeys()
     capabilities = _capabilities(by_ref, threats, journeys)
-    data = {"generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"), "root": str(ROOT), "steps": steps, "suites": {k: summary(k) for k in SUITES if not is_lint(k)},
-            "lint": _lint(steps),
+    data = {"generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"), "root": str(ROOT), "steps": steps, "suites": {k: summary(k) for k in SUITES if not not_tests(k)},
+            "lint": _not_tests(steps, is_lint, lint_problems, "problems"),
+            "security": _not_tests(steps, is_security, blocking_findings, "blocking"),
             "tests": tests, "coverage": {k: coverage(k) for k in COVERAGE}, "changes": changes, "gaps": manifest.get("gaps", []), "gate": gate, "threats": threats, "capabilities": capabilities,
             "journeys": journeys, "screenshots": shots, "backlog": _backlog(), **_product()}
     RESULTS.mkdir(parents=True, exist_ok=True)

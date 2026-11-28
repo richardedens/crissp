@@ -373,3 +373,36 @@ def test_lint_steps_are_shown_as_lint_and_not_as_suites_of_zero_tests(collect):
         {"key": "lint", "label": "Shell lint", "status": "not run", "problems": None, "seconds": None}]
     assert "backend-lint" not in data["suites"] and "lint" not in data["suites"] and "linter-docs" in data["suites"]
     assert "frontend-lint" not in data["unitSuites"] and "api" in data["unitSuites"]
+
+
+def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(collect):
+    """F-73: the scans (audit, secrets, sast) run no tests either; the Suites table listed each as 0 tests even when one
+    found a leaked secret. The dashboard gets each scan with its state and how many findings block the release."""
+    config = {**SHOP, "steps": SHOP["steps"] + [
+        {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "dir": ".", "run": "audit run"},
+        {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "dir": ".", "run": "audit secrets"},
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "dir": ".", "run": "audit sast"}]}
+    (collect.ROOT / "crissp/testsuite/suites.json").write_text(json.dumps(config))
+    collect.configure(collect.ROOT)
+    _write(collect.RESULTS / "steps.json", json.dumps({"audit": "passed", "secrets": "failed"}))
+    _write(collect.RESULTS / "steps.jsonl", "\n".join(json.dumps(s) for s in [
+        {"key": "audit", "label": "x", "status": "passed", "seconds": 15},
+        {"key": "secrets", "label": "x", "status": "failed", "seconds": 1}]) + "\n")
+    _write(collect.RESULTS / "audit.log", "Scanned: 2 — trivy fs app/backend\nNo known vulnerability blocks (0 listed).\n")
+    _write(collect.RESULTS / "secrets.log", "Scanned: 1 — gitleaks git history\nBLOCKING HIGH  stripe-access-token  a.env line 1\n"
+                                            "BLOCKING HIGH  generic-api-key  b.py line 2\nreview   LOW  x\nNot green: a secret leaked.\n")
+    assert collect.main(collect.ROOT) == 0
+    data = json.loads((collect.RESULTS / "data.js").read_text()[len("window.SUITE = "):-2])
+    assert data["security"] == [
+        {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "status": "passed",
+         "blocking": 0, "seconds": 15},
+        {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "status": "failed", "blocking": 2, "seconds": 1},
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "status": "not run", "blocking": None, "seconds": None}]
+    assert not {"audit", "secrets", "sast"} & set(data["suites"]) and not {"audit", "secrets", "sast"} & set(data["unitSuites"])
+    assert data["lint"] == []
+
+
+def test_a_failed_scan_that_lists_nothing_has_no_count():
+    module = _module()
+    assert module.blocking_findings("trivy: command not found\n", "failed") is None
+    assert module.blocking_findings("", "passed") == 0

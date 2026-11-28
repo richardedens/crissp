@@ -90,3 +90,64 @@ pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--
 .agent.finished { opacity: .75; }
 .agent-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .long-history { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--amber) 10%, transparent); }
+
+/* F-70: the Overview: the verdict first, tiles that read at a glance, the steps and suites side by side */
+.verdict { display: flex; gap: 16px; align-items: flex-start; padding: 18px 20px; margin-bottom: 18px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); }
+.verdict h2 { margin: 0 0 2px; font-size: 20px; } .verdict p { margin: 0; }
+.vicon { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 800 22px var(--font); }
+.verdict.ok { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+.verdict.ok .vicon { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.verdict.bad { border-color: color-mix(in srgb, var(--red) 50%, var(--line)); background: color-mix(in srgb, var(--red) 7%, var(--panel)); }
+.verdict.bad .vicon { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }
+.verdict.none .vicon { background: var(--panel2); color: var(--muted); }
+.redlist { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.redlist a { display: inline-flex; gap: 8px; align-items: baseline; padding: 5px 12px; border-radius: 99px; font-weight: 600; font-size: 13px;
+  color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
+.redlist a span { font-weight: 500; opacity: .8; } .redlist a:hover { text-decoration: none; background: color-mix(in srgb, var(--red) 20%, transparent); }
+.kpis { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.kpi.row { align-items: flex-start; } .kpi .ring { margin-top: 2px; }
+.kbody { min-width: 0; flex: 1; }
+.kpi .v { font-size: 28px; line-height: 1.15; margin: 2px 0 4px; }
+.kpi .unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.kpi.click, .area-card { cursor: pointer; transition: border-color .15s; }
+.kpi.click:hover, .area-card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.parts { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; font-size: 12px; }
+.parts a { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); padding: 2px 0; }
+.parts a span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.parts a b { flex: none; } .parts a:hover { text-decoration: none; color: var(--text); }
+.cols2 { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 18px; align-items: start; }
+.cols2 > section:only-child { grid-column: 1 / -1; }
+.card.flush { padding: 4px 0; }
+.steplist { list-style: none; margin: 0; padding: 0; }
+.steplist li + li { border-top: 1px solid var(--line); }
+.steplist a { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 16px; color: var(--text); }
+.steplist a:hover { text-decoration: none; background: var(--panel2); }
+.sname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.suites td, table.suites th { padding: 9px 16px; } .num { text-align: right; white-space: nowrap; }
+table.suites tr:last-child td { border-bottom: 0; }
+.areas { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.area-card .v { font-size: 22px; font-weight: 700; margin: 2px 0 6px; } .area-card .unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.area-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; } .area-card li { overflow-wrap: anywhere; }
+.note { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--amber) 10%, transparent); }
+@media (max-width: 900px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* F-71: a test's description wraps in two lines and a failure's log wraps in the page: the table never grows sideways */
+td.tname { min-width: 0; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+pre.log.wrap { overflow-wrap: anywhere; word-break: break-word; }
+.card[style*="padding:0"] { overflow-x: auto; }
+/* F-70: the steps' logs fold; a failed one is open */
+.steplog { margin-bottom: 12px; padding: 0; overflow: hidden; }
+.steplog > summary { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 18px; cursor: pointer; list-style: none; }
+.steplog > summary::-webkit-details-marker { display: none; }
+.steplog > summary::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform .15s; }
+.steplog[open] > summary::after { transform: rotate(90deg); }
+.steplog > pre.log { margin: 0 18px 18px; }
+.steplog.failed { border-color: color-mix(in srgb, var(--red) 45%, var(--line)); }
+@media (max-width: 600px) {
+  .verdict { padding: 14px; gap: 12px; } .vicon { width: 36px; height: 36px; font-size: 18px; }
+  .kpis { grid-template-columns: minmax(0, 1fr); } .steplist a { grid-template-columns: 58px minmax(0, 1fr) auto; padding: 9px 12px; }
+  table.suites td, table.suites th { padding: 8px 10px; }
+  .toolbar select { max-width: 100%; min-width: 0; flex: 1 1 100%; }
+}

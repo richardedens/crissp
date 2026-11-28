@@ -990,17 +990,107 @@
     },
     {
      "file": "crissp/testsuite/lib/collect.py",
-     "symbol": "def _lint("
+     "symbol": "def _not_tests("
     },
     {
      "file": "crissp/testsuite/dashboard/app.js",
-     "symbol": "function lintCard("
+     "symbol": "function partsCard("
     }
    ],
    "tests": [
     "test_collect::test_a_lint_log_says_how_many_problems_it_found",
     "test_collect::test_a_failed_lint_step_without_a_count_is_not_called_clean",
     "test_collect::test_lint_steps_are_shown_as_lint_and_not_as_suites_of_zero_tests"
+   ]
+  },
+  {
+   "id": "overview-verdict-first",
+   "title": "The Overview gave no verdict and its tiles were hard to read (F-70)",
+   "problem": "To know whether a run may go out one had to read every step. Tiles were named by long uppercase step labels with the tool in brackets, 'Changes proven' said 'every change has passing tests' at 41 of 49, 'Changes by area' was one card holding 49 titles, and every step's log was open on Runs & logs.",
+   "fix": "The Overview opens with a verdict: ready to release, or not ready with each failed step linked to its own log. Tiles use short names (no 'CRISSP: ', no tool in brackets), line and branch coverage share one tile, a tile says what is not right yet and links to it, steps and suites sit side by side, and per area only the changes not proven yet are listed. On Runs & logs a failed step's log is open and a passed one folded.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function verdict("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function overview("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function stepsView("
+    }
+   ],
+   "tests": [
+    "test_dashboard_page::test_the_overview_opens_with_the_verdict_and_what_stops_the_release",
+    "test_dashboard_page::test_a_green_run_says_it_is_ready",
+    "test_dashboard_page::test_the_changes_without_a_passing_test_can_be_listed_on_their_own",
+    "test_dashboard_page::test_a_failed_step_s_log_is_open_and_a_passed_one_folded"
+   ]
+  },
+  {
+   "id": "tests-tab-failures-first",
+   "title": "One long failure made the Tests table 150,000 px wide, and failures were buried (F-71)",
+   "problem": "A failing test's assertion without spaces to break at made the table grow sideways to 150,000 px; the failures were listed among all the passing tests.",
+   "fix": "A test's description takes at most two lines, a failure's log wraps anywhere, and failed tests come first.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function fillTests("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/style.css",
+     "symbol": "pre.log.wrap"
+    }
+   ],
+   "tests": [
+    "test_dashboard_page::test_failing_tests_come_first_and_a_long_failure_wraps"
+   ]
+  },
+  {
+   "id": "look-phone-and-contrast",
+   "title": "Pages scrolled sideways on a phone, and the primary button's text was hard to read (F-72)",
+   "problem": "On a 390 px phone the top bar's six sections made it 31 px wider than the screen, so every page scrolled sideways. The primary button was white on the dark theme's light purple, a contrast of 3.2:1.",
+   "fix": "Below 800 px the sections get a row of their own that scrolls sideways itself. Text on the accent uses --on-accent: dark in the dark theme (6.2:1), white in the light one (5.9:1).",
+   "sources": [
+    {
+     "file": "crissp/look/look.css",
+     "symbol": "--on-accent"
+    },
+    {
+     "file": "crissp/look/look.css",
+     "symbol": ".primary {"
+    }
+   ],
+   "tests": [
+    "test_look::test_text_on_the_accent_is_readable_in_both_themes",
+    "test_look::test_on_a_phone_the_sections_scroll_in_their_own_row_and_the_page_never_sideways"
+   ]
+  },
+  {
+   "id": "security-on-the-dashboard",
+   "title": "The scans showed as suites of 0 tests, and nowhere said what they found (F-73)",
+   "problem": "The audit, secrets and sast steps run no tests; the Suites table listed each as 0 tests, 0 failed, even when gitleaks had found a leaked secret.",
+   "fix": "collect.py gives the dashboard each scan with its state and how many findings block the release (its BLOCKING lines), and leaves the scans out of the suites. The Overview shows a Security tile next to Lint; the suites table lists only suites that ran tests.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def blocking_findings("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def _not_tests("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function partsCard("
+    }
+   ],
+   "tests": [
+    "test_collect::test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests",
+    "test_collect::test_a_failed_scan_that_lists_nothing_has_no_count",
+    "test_dashboard_page::test_security_has_its_own_tile_and_no_suite_of_zero_tests_is_listed"
    ]
   }
  ],
@@ -1010,6 +1100,7 @@
   "The deploy step needs helm (and terraform for its fmt and validate) on the machine; without terraform that part is skipped with a visible line, not proven.",
   "The CVE audit needs the network (uv resolves the pinned tools, pip-audit asks the advisories): offline the audit step is red, never green.",
   "Without git there is no release certificate: check.sh stops and check-all.sh proves the tree but certifies nothing until the repository has commits.",
-  "The coverage baseline starts empty: the first green full run with a commit sets it, and until then the rule that every changed line is covered is skipped."
+  "The coverage baseline starts empty: the first green full run with a commit sets it, and until then the rule that every changed line is covered is skipped.",
+  "The dashboard's page is tested by rendering app.js in node with a stand-in for the browser (test_dashboard_page): what it shows, not how it looks. Layout and colours are checked in a browser by hand, with screenshots."
  ]
 }
