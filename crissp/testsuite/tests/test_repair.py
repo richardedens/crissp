@@ -169,6 +169,14 @@ def test_a_move_never_overwrites_it_says_so_instead(old):
     assert (old / "crissp/uxsuite/prototype/index.html").is_file()
 
 
+def test_the_team_s_and_the_rules_files_are_the_ux_suite_s_own(old):
+    """E7-F1-01 / E7-F2-01: personas/ and rules/ are the UX suite's configuration, never moved out as extras."""
+    write(old / "crissp/uxsuite/personas/sam.md", "---\nname: Sam\n---\nx\n")
+    write(old / "crissp/uxsuite/rules/plain-words.md", "---\ntitle: Plain words\n---\nx\n")
+    moves = [p.name for p in {r.key: r for r in repair.find(old)}["ux-extra"].moves]
+    assert "personas" not in moves and "rules" not in moves
+
+
 def test_the_frameworks_own_repository_keeps_its_engine_in_crissp_uxsuite(tmp_path, monkeypatch):
     monkeypatch.setattr(repair, "ENGINE", tmp_path / "eng" / "crissp")
     write(tmp_path / "eng/crissp/uxsuite/ux_team.py", "")

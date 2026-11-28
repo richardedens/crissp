@@ -69,6 +69,8 @@ exclude = [
   "crissp/uxsuite/tests",
   "crissp/uxsuite/team.json",
   "crissp/uxsuite/walks",
+  "crissp/uxsuite/personas",
+  "crissp/uxsuite/rules",
   "crissp/testsuite/dashboard/data.js",
   "**/.DS_Store",
 ]

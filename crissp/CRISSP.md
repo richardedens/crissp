@@ -257,8 +257,13 @@ them.
 - **The panel**: someone who knows technology (states, consistency, keyboard, edge cases, speed), someone who does not
   work with computers (words, readability, fear of mistakes, what it costs and what happens next), a student who only
   uses a phone (thumb reach, speed, small screens) and a UX expert who moderates (heuristics, accessibility, conversion)
-  and gives the verdict. Who they are exactly — names, ages, what they want from this product — is in the project's
-  `team.json`, with the product, its audience and its languages.
+  and gives the verdict. Who they are exactly — names, ages, what they want from this product, the jobs they come to
+  do — is the project's own: one file per persona in `crissp/uxsuite/personas/`, edited in the suite's Team tab or by
+  hand (the product, its audience and its languages are in `team.json`).
+- **The rules**: what the panel judges by and every design follows, one file per rule in `crissp/uxsuite/rules/`
+  (title, weight must · should · could, on or off), added and switched off in the suite's Rules tab. The framework
+  starts a project with its eight principles (`PRINCIPLES.md`); the product owner makes them the product's own. Every
+  piece of advice names the rule it is about.
 - **A session**: a **walk** (`walks/*.json`: goto, click by role and name, fill, press, wait, shot) is captured on a
   laptop and a phone, a screenshot and the page's accessible text per shot; a step that fails is a dead end the panel
   sees. Then each tester **looks** alone, on their own device; then **debate** rounds in which everyone answers the

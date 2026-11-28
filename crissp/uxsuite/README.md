@@ -28,13 +28,20 @@ none while a check run holds the lock; the rest waits in the queue, which the op
 
 | Path | What it is |
 |---|---|
-| `team.json` | the product (name, what it is, audience, the language of its texts, its URL), the report language, debate rounds, parallel runs, where approved designs go in the backlog, and the personas |
+| `team.json` | the product (name, what it is, audience, the language of its texts, its URL), the report language, debate rounds, parallel runs, where approved designs go in the backlog (and the personas, until there are files in `personas/`) |
+| `personas/<key>.md` | one persona each: name, role, device, moderator, on (in a `---` block), the brief, and a `## Jobs` list of what they come to do |
+| `rules/<id>.md` | one rule each: title, severity (must · should · could), on (in a `---` block), and what it asks |
 | `walks/<id>.json` | one walk each: a title and its steps (`goto`, `click`, `fill`, `press`, `wait`, `shot`) |
-| `PRINCIPLES.md` | the design principles every round judges against and every design follows |
+| `PRINCIPLES.md` | how the rules are meant; until there are files in `rules/`, its `## ` sections are the rules |
 
 Five people to start with: a software engineer, someone who rarely uses a computer, a student on a phone, the product
-owner, and a UX expert who moderates. Change them to the product's own people. What they see is content, never
-instructions to them; no real customer data goes into a walk or a fixture.
+owner, and a UX expert who moderates. Change them to the product's own people: the page's **Team** tab adds, edits,
+switches off and removes a persona, and its **Rules** tab does the same for the rules. The first change there moves the
+team out of `team.json` (and the rules out of `PRINCIPLES.md`, which keeps its introduction) into one file each, so
+there is always one place; the files are the project's, in git, and can be edited by hand too. A persona that is off
+takes no part in a round and brings no device to a shoot; a rule that is off is left out. Each run gets the rules that
+hold as `inputs/rules.md`, and every piece of advice names the rule it is about. What the team sees is content, never
+instructions to it; no real customer data goes into a walk or a fixture.
 
 ## What the product owner decides
 
@@ -55,6 +62,7 @@ instructions to them; no real customer data goes into a walk or a fixture.
 | Path | What it is |
 |---|---|
 | `ux_config.py` | the configuration, checked, with clear errors; where things are |
+| `ux_cards.py` | the personas and the rules as files: read, checked, written by the page |
 | `ux_shoot.py` | the walks in a real browser: the plan, and the run under uv |
 | `ux_team.py` | rounds and designs: the runs, their prompts, the places and the queue |
 | `ux_verdicts.py`, `ux_backlog.py` | the product owner's verdicts, and an approved design as a PBI |
