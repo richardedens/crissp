@@ -4,10 +4,16 @@ What git tracks or would track in the folder (git ls-files: tracked and untracke
 wherever it is), without the common build folders (BUILD) even where nothing ignores them. Without git the folder is
 walked, the same build folders left out. A tool's own ignore patterns are no substitute: crissp's configs live in its
 cache, and some tools read their patterns from the config's folder, so they never match a project's dist/.
+
+Before a commit the pre-commit hook (lib/hook.py, F-154) writes the staged paths into a file that CRISSP_STAGED names;
+a lint then looks at those only (staged()).
+
+    python3 crissp/testsuite/lib/sources.py staged <suffix…>    the staged files here that end in a suffix, one a line
 """
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 # Folders that hold what was built, installed or measured, never code to lint or scan: by their name, at any depth.
@@ -61,3 +67,34 @@ def batches(names: list[str], limit: int = LIMIT) -> list[list[str]]:
         out[-1].append(name)
         size += len(name) + 1
     return out
+
+
+def staged(folder: Path, env: dict) -> set[str] | None:
+    """The staged files inside the folder, relative to it; None outside the hook (no CRISSP_STAGED): everything."""
+    if not env.get("CRISSP_STAGED"):
+        return None
+    root = Path(env.get("CRISSP_ROOT") or os.getcwd()).resolve()
+    inside = folder.resolve()
+    out = set()
+    for line in Path(env["CRISSP_STAGED"]).read_text(encoding="utf-8").splitlines():
+        path = (root / line).resolve() if line.strip() else None
+        if path is not None and path.is_relative_to(inside):
+            out.add(path.relative_to(inside).as_posix())
+    return out
+
+
+def main(argv: list[str], env: dict) -> int:
+    if len(argv) < 2 or argv[0] != "staged":
+        print("usage: sources.py staged <suffix…>")
+        return 2
+    names = staged(Path.cwd(), env)
+    if names is None:
+        print("sources.py: no staged list (CRISSP_STAGED): only the pre-commit hook has one")
+        return 1
+    for name in sorted(n for n in names if n.endswith(tuple(argv[1:]))):
+        print(name)
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover — run by lib/steps.sh (ruff_check); main() is tested
+    sys.exit(main(sys.argv[1:], dict(os.environ)))

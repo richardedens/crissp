@@ -356,3 +356,33 @@ def test_covered_loads_the_timing_plugin_when_the_run_names_it(tmp_path):  # E1-
     first = (tmp_path / "calls").read_text().splitlines()[0]
     assert "-m pytest -q -p no:cacheprovider -p crissp_timing --junitxml=J.xml tests" in first
     assert first.endswith("PYTHONPATH=/engine/plugins:/theirs")  # theirs kept, after the plugin's folder
+
+
+def test_before_a_commit_ruff_check_lints_the_staged_python_only(tmp_path):
+    """F-154: with the hook's staged list (CRISSP_STAGED) the backend lint checks the staged Python files of its folder,
+    the project's excludes still holding (--force-exclude); with none staged there it says so and passes."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "py").write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n')
+    (bin_ / "py").chmod(0o755)
+    backend = tmp_path / "app/backend"
+    backend.mkdir(parents=True)
+    staged = tmp_path / "staged"
+    staged.write_text("app/backend/api.py\napp/backend/my file.py\napp/backend/README.md\napp/frontend/a.js\n")
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "PY": str(bin_ / "py"),
+        "CRISSP_STAGED": str(staged),
+        "CRISSP_ROOT": str(tmp_path),
+    }
+    done = subprocess.run(
+        ["bash", "-c", "ruff_check ."], capture_output=True, text=True, check=False, env=env, cwd=backend
+    )
+    argv = done.stdout.splitlines()
+    assert argv[-3:] == ["--force-exclude", "api.py", "my file.py"] and "." not in argv, done.stderr
+    staged.write_text("app/frontend/a.js\n")
+    done = subprocess.run(
+        ["bash", "-c", "ruff_check ."], capture_output=True, text=True, check=False, env=env, cwd=backend
+    )
+    assert done.returncode == 0 and done.stdout == "ruff: no staged Python in this folder\n"

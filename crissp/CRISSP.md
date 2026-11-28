@@ -251,7 +251,8 @@ page. A new capability is documented by a journey in the same piece of work.
   (`frontend_lint --baseline`, `crissp/testsuite/lint-baseline.json`), and switches a rule off only with a reason
   (`crissp/testsuite/lint-exceptions.json`), which the dashboard shows.
 - **The lint runs before every commit**: `.githooks/pre-commit` runs the lint steps (`lint` and every `*-lint` step)
-  with the crissp `.mcp.json` pins (`crissp hook`), and `core.hooksPath .githooks` turns it on. `crissp init` sets it
+  with the crissp `.mcp.json` pins (`crissp hook`), on the staged files only (a part with nothing staged is skipped;
+  `crissp check` still lints everything), and `core.hooksPath .githooks` turns it on. `crissp init` sets it
   and `crissp repair --yes` sets it in every clone that lacks it, but never over hooks the repository already has
   (a `core.hooksPath` of its own, hooks in `.git/hooks`): those are said, not switched off. `git commit --no-verify`
   skips it once; `crissp check` and CI still run the lint.

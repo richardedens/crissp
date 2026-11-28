@@ -21,15 +21,21 @@
 #   ruff_check <paths…>
 #       ruff (the pinned one, through py) on top of the part's own ruff configuration, with ruff's Bandit rules (S)
 #       added: a backend's lint is also a security lint. Tests may assert and use made-up secrets and random numbers;
-#       nothing else is allowed there that is not allowed in the code.
+#       nothing else is allowed there that is not allowed in the code. Before a commit (the hook's CRISSP_STAGED) it lints
+#       the staged Python files of the folder only, the project's excludes still holding (--force-exclude).
 CRISSP_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 audit() { python3 "$CRISSP_LIB/audit.py" "$@"; }
 quality() { python3 "$CRISSP_LIB/quality.py" "$@"; }  # complexity and duplication, held by a ratchet (lib/quality.py)
 ruff_check() {
-  local ignores=() pattern code
+  local ignores=() pattern code staged=() name
   for pattern in "**/tests/**" "**/test_*.py" "**/conftest.py"; do
     for code in S101 S105 S106 S107 S311; do ignores+=(--extend-per-file-ignores "$pattern:$code"); done
   done
+  if [ -n "${CRISSP_STAGED:-}" ]; then  # F-154: before a commit, the staged Python files of this folder only
+    while IFS= read -r name; do staged+=("$name"); done < <(python3 "$CRISSP_LIB/sources.py" staged .py .pyi)
+    if [ ${#staged[@]} -eq 0 ]; then echo "ruff: no staged Python in this folder"; return 0; fi
+    set -- --force-exclude "${staged[@]}"
+  fi
   py -m ruff check --no-cache --extend-select S "${ignores[@]}" "$@"
 }
 py() {

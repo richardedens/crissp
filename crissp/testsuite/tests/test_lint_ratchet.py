@@ -132,3 +132,18 @@ def test_a_baseline_that_is_not_an_object_names_nothing(tmp_path):
     (tmp_path / lint_ratchet.BASELINE).write_text("[]\n")
     assert lint_ratchet.load(tmp_path) == {}
     assert lint_ratchet.digest(tmp_path / "gone.js") == ""
+
+
+def test_before_a_commit_only_the_staged_files_are_linted_and_the_baseline_stays(shop, tmp_path):
+    """F-154: with the hook's staged list only those files go to the tools; the baseline is judged for them and never
+    shrunk from a part of the folder."""
+    assert lint(shop, OLD, "--baseline") == 0
+    before = (shop / lint_ratchet.BASELINE).read_text()
+    staged = tmp_path / "staged"
+    staged.write_text("app/frontend/src/clean.js\n")
+    npm = Npm(found={"src/clean.js": []})
+    env = {"CRISSP_CACHE": str(shop / "cache"), "CRISSP_ROOT": str(shop), "CRISSP_STAGED": str(staged)}
+    assert frontend_lint.main(["app/frontend"], env, run=npm, which=lambda n: n, cwd=shop) == 0
+    linted = [argv[-1] for tool, argv, _ in npm.calls if tool == "eslint"]
+    assert linted == ["src/clean.js"] and [t for t, _, _ in npm.calls] == ["eslint"]  # no staged CSS: no stylelint
+    assert (shop / lint_ratchet.BASELINE).read_text() == before  # src/old.js's findings were not seen, nor dropped
