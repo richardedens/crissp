@@ -89,3 +89,14 @@ Done when  Ten screenshots and a whole read of a big file are flagged; a read wi
            subagent's read are not.
 Tests      tests/test_activity.py, tests/test_vibesessions.py, tests/test_activity_page.py
 Depends    —
+
+### E5-F2-06 · Vibe uses crissp fully without exploring first                            [review] [M]
+Why        A Vibe session explored for ten steps, hit the one-minute tool budget, started the full run on a vague wish,
+           and its full run was red on a Mac for reasons outside the code (F-105 to F-112).
+What       The root AGENTS.md gives the first moves; the crissp skill is the playbook; the tools answer within a minute;
+           check-all needs asked: true; the Vibe config carries the terminal PATH; /activity reads packed Vibe sessions.
+Done when  A Vibe session in a crissp project calls brief first, checks with run check and status within the budget,
+           asks before the full run, and its check-all is green on a Mac.
+Tests      test_template, test_repair, test_cli (agent files), test_crissp_tool (budget, asked), test_serve, test_vibe
+           (PATH), test_lint (bash 3.2), test_vibesessions (packed)
+Depends    —
