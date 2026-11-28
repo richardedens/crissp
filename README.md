@@ -83,8 +83,11 @@ same size, with *Approve · Approve with a remark… · Again, with… · Reject
 item, and your remark is the first thing the builder reads in it.
 ![A design: before and after](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-design.jpg)
 
-**The team**: who they are, which device they use and what they look for, configured per product.
+**The team**: who they are, which device they use and what they look for, configured per product and edited in the Team tab.
 ![The UX team](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-team.jpg)
+
+**The rules**: what every screen must do, checked on each round and edited in the Rules tab.
+![The UX rules](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-rules.jpg)
 
 <sub>The pictures show demo projects made with `crissp init` (the Tests dashboard with 0.1.10, the rest with 0.1.4). Its backlog and its moves, test run, workers and
 screenshots are real; the UX round's and the design's text and the Claude session on the Activity page are samples,
