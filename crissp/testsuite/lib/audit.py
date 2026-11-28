@@ -288,8 +288,10 @@ def secrets_all(root: Path, run, on: datetime.date, accepted: dict) -> dict:
         problems.append(f"gitleaks: {e}")
     else:
         history = (root / ".git").exists()
+        # the history of what is checked out: gitleaks' own default is --all, every branch a clone happens to have
+        where = ["git", "--log-opts", "--full-history HEAD"] if history else ["dir"]
         scan("gitleaks git history" if history else "gitleaks files",
-             [gitleaks, "git" if history else "dir", "--no-banner", "--redact", "--report-format", "json",
+             [gitleaks, *where, "--no-banner", "--redact", "--report-format", "json",
               "--report-path", "-", "--exit-code", "0", "--log-level", "warn", "."], root, from_gitleaks,
              "git history" if history else "files")
     return _report("secrets", on, scanned, problems, findings, accepted)

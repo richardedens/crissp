@@ -1018,7 +1018,7 @@
    "id": "secrets-step",
    "title": "Nothing scanned git for secrets (F-43, E6-F2-01)",
    "problem": "'Never in git: keys, .env' was guarded by .gitignore only. A key committed anyway, in crissp or in a project, was found by nothing, and stayed in the history.",
-   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is in .gitleaksignore with why.",
+   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the git history of HEAD (--log-opts \"--full-history HEAD\": gitleaks' default --all also scanned every other fetched branch, which made CI red on a branch that is not this one; over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is in .gitleaksignore with why.",
    "sources": [
     {
      "file": "crissp/testsuite/lib/audit.py",

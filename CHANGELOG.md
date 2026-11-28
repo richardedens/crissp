@@ -19,8 +19,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   backend's lint now also runs ruff's security rules (`S`, from Bandit) on top of the backend's own ruff
   configuration (`ruff_check .`), with `assert` and made-up passwords allowed in tests. Projects brought in earlier
   can copy the `sast` step and change their `backend-lint` run to `ruff_check .`.
-- **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit
-  and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
+- **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit of
+  what is checked out (not other fetched branches) and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
   It runs in `crissp check` for every change under `app/`. The project's own `.gitleaks.toml`, `.gitleaksignore` and
   `gitleaks:allow` count; a finding that is no secret goes into `.gitleaksignore` by its fingerprint (from
   `crissp/testsuite/results/secrets.json`). A step runs it as `audit secrets`.

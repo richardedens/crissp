@@ -352,12 +352,15 @@ def test_a_secret_in_the_history_blocks_and_its_value_is_never_kept_or_said(repo
     (argv, cwd), = runner.calls
     assert argv[:2] == ["/cache/tools/gitleaks", "git"] and "--redact" in argv and cwd == repo
     assert argv[argv.index("--report-path") + 1] == "-" and argv[-1] == "."
+    # the history of what is checked out, never every branch a clone fetched (gitleaks' own default is --all)
+    assert argv[argv.index("--log-opts") + 1] == "--full-history HEAD"
 
 
 def test_without_git_the_files_are_scanned(repo):
     runner = Runner({"gitleaks": (0, [])})
     report = audit.secrets_all(repo, runner, TODAY, accepted={"accepted": []})
     assert runner.calls[0][0][1] == "dir" and report["scanned"] == ["gitleaks files"]
+    assert "--log-opts" not in runner.calls[0][0]
     assert report["blocking"] == [] and audit.render(report).splitlines()[-1] == "No secret found."
 
 
