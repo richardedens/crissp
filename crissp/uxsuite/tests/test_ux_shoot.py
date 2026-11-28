@@ -62,3 +62,9 @@ def test_a_shoot_that_fails_says_how_to_get_the_browser(tmp_path):
     assert code == 1 and "Executable doesn't exist" in text and "playwright install chromium" in text
     code, text = ux_shoot.shoot(suite, conf, "first-visit", _browser()[0])
     assert code == 1 and "without a list of shots" in text
+
+
+def test_a_persona_that_is_off_brings_no_device(tmp_path):
+    suite = make_product(tmp_path, team={"product": "D", "url": "http://x", "personas": [
+        {**PERSONAS[0], "moderator": True}, {**PERSONAS[1], "on": False}]})
+    assert ux_shoot.devices(ux_config.load(suite)) == ["laptop"]

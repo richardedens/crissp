@@ -11,6 +11,20 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
   ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
   what to do instead. `git commit --no-verify` skips the hook once.
+- **The UX suite's team and rules are yours to edit (E7-F1-01, E7-F2-01).** The UX page has a **Team** tab that adds,
+  edits, switches off and removes a persona (name, role, device, moderator, the brief and the jobs they come to do),
+  and a **Rules** tab that does the same for the rules the team judges by (title, weight must · should · could, on or
+  off). Each persona is a file in `crissp/uxsuite/personas/` and each rule a file in `crissp/uxsuite/rules/`, in git
+  and editable by hand; the first change in the page moves the personas out of `team.json` and the rules out of
+  `PRINCIPLES.md` (which keeps its introduction), so there is one place for each. A persona that is off takes no part
+  in a round and brings no device to a shoot; a rule that is off is left out. Every round and design gets the rules
+  that hold, and the advice names the rule it is about. Projects that have not changed anything keep working as they
+  are; `crissp repair` leaves both folders where they are.
+- **Several backends and frontends, and the advice to split (F-60).** When a project is brought in, Claude now first
+  asks how many backends and frontends the product has and will have, and advises a part of its own for each
+  (`app/backend-<name>/`, `app/frontend-<name>/`, each with its own steps; CRISSP.md, *Several parts*). `crissp check
+  --plan` advises splitting a part whose tests take more than about three minutes (the last run's time, else
+  `suites.json`'s), because every change in that part runs all of them.
 - **Static security analysis (SAST) for every project (F-44).** A new `sast` step runs Semgrep (pinned, offline, no
   metrics) with crissp's own rules on `app/`: Python, JavaScript, TypeScript and JSX. It blocks on eval or exec of a
   value, a shell command built from a value, `yaml.load`, switched-off TLS checks and a debug server, and lists for

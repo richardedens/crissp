@@ -26,6 +26,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import ux_cards
 from ux_config import Suite, speak
 
 KINDS = ("round", "proposal")
@@ -222,9 +223,16 @@ def drain(suite: Suite, conf: dict, begin) -> list[str]:
 
 # ------------------------------------------------------------------------------------------------------- the runs
 
+def on(conf: dict) -> list[dict]:
+    """The personas that take part (a persona switched off in the Team tab does not)."""
+    return [p for p in conf["personas"] if p.get("on", True)]
+
+
 def _team(conf: dict) -> str:
+    def jobs(p: dict) -> str:
+        return f" Their jobs: {'; '.join(p['jobs'])}." if p.get("jobs") else ""
     return "\n".join(f"- {p['key']} ({p['name']}, {p['role']}, {p['device']}{', the moderator' if p['moderator'] else ''}): "
-                     f"{p['brief']}" for p in conf["personas"])
+                     f"{p['brief']}{jobs(p)}" for p in on(conf))
 
 
 def _steps(walk: dict) -> str:
@@ -249,7 +257,8 @@ The screenshots, in order (open every one with the Read tool; a line without a f
 that is a finding too):
 {chr(10).join(shot_lines)}
 
-Read first: {suite.here / 'PRINCIPLES.md'} (the design principles: they bind every judgement and every design)
+Read first: {vdir / 'inputs' / 'rules.md'} (the rules that hold, each with its id and weight: must, should, could; they bind
+every judgement and every design) and {suite.here / 'PRINCIPLES.md'} when it is there (how the rules are meant)
 {'and ' + str(rules) + " (the product's agreement: how it is built, its words and rules)" if rules.is_file() else ''}
 and {vdir / 'inputs' / 'context.json'} (earlier rounds and proposals of this walk and the product owner's verdicts on
 them: a verdict with a reason is what the product owner wants). No real customer data, ever.
@@ -267,8 +276,8 @@ every running agent with it: never end your turn while an agent is running, and 
 
 
 def round_prompt(suite: Suite, conf: dict, walk: dict, vdir: Path, seen: list[dict]) -> str:
-    lookers = [p["key"] for p in conf["personas"] if not p["moderator"]] or [conf["personas"][0]["key"]]
-    moderator = next(p["key"] for p in conf["personas"] if p["moderator"])
+    lookers = [p["key"] for p in on(conf) if not p["moderator"]] or [on(conf)[0]["key"]]
+    moderator = next(p["key"] for p in on(conf) if p["moderator"])
     return _common(suite, conf, walk, vdir, seen) + f"""
 DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the start of each phase (phases: "review",
 "debate", "moderate", "done"):
@@ -283,14 +292,15 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 3. moderate — the moderator ({moderator}, description "moderate") separates taste from real problems, takes the quietest
    voice seriously and writes {vdir}/round.json: {{"summary" (three sentences), "scores": {{"<persona key>": score}},
    "consensus": [], "disputes": [{{"topic", "positions": [{{"persona", "position"}}]}}], "advice": [{{"title", "detail",
-   "priority": "must|should|could", "effort": "S|M|L", "personas": [keys of who asked], "shot": "<device> <n>"}}]}},
+   "priority": "must|should|could", "effort": "S|M|L", "personas": [keys of who asked], "shot": "<device> <n>",
+   "rule": "<the id of the rule it is about, from rules.md, or empty>"}}]}},
    the advice worst first, each piece something a developer can act on.
 4. done — status.json with phase "done" and a one-line note.
 """ + FOREGROUND
 
 
 def proposal_prompt(suite: Suite, conf: dict, walk: dict, vdir: Path, seen: list[dict], focus: str) -> str:
-    moderator = next(p["key"] for p in conf["personas"] if p["moderator"])
+    moderator = next(p["key"] for p in on(conf) if p["moderator"])
     return _common(suite, conf, walk, vdir, seen) + f"""
 THE PRODUCT OWNER'S FOCUS for this design: {focus or '(none given: the must-advice of the last round first)'}
 The last round's advice is in {vdir}/inputs/round.json when there was one; earlier designs and the verdicts on them are
@@ -301,7 +311,7 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 1. design — one designer agent (description "design") writes
    - {vdir}/proposal.json: {{"title", "summary" (three sentences), "focus_answer" (how the focus was handled),
      "changes": [{{"what", "why", "who_asked": [persona keys], "priority": "must|should|could"}}], "left_out":
-     [{{"what", "why"}}], "open_questions": [], "principles": [{{"principle", "how"}}]}};
+     [{{"what", "why"}}], "open_questions": [], "principles": [{{"rule", "how"}}] (per rule of rules.md, how the design meets it)}};
    - {vdir}/mockup.html: the walk's main screen as it would look after the changes: ONE self-contained HTML file (inline
      CSS and JS, no external URL, no web font), at the laptop size (1440 wide), in both themes (light by default, dark
      under @media (prefers-color-scheme: dark) and :root[data-theme="dark"]; every colour a token), in the product's own
@@ -356,6 +366,7 @@ def start(suite: Suite, conf: dict, kind: str, walk_id: str, focus: str = "") ->
         earlier = {k: [v["result"] for v in versions(suite, k, walk_id) if v["result"]] for k in KINDS}
         (vdir / "inputs" / "context.json").write_text(json.dumps(
             {"rounds": earlier["round"], "proposals": earlier["proposal"], "decisions": mine}, ensure_ascii=False, indent=1))
+        (vdir / "inputs" / "rules.md").write_text(ux_cards.rules_for_a_run(ux_cards.rules(suite)))
         (vdir / "status.json").write_text(json.dumps({"phase": "queued", "note": "the team starts"}) + "\n")
         if kind == "round":
             prompt = round_prompt(suite, conf, walk, vdir, seen)

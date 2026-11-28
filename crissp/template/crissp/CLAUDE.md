@@ -14,7 +14,10 @@ in `.mcp.json`) instead of reading the backlog files; write findings, decisions,
   at the root that runs them together locally. The first PBIs build that skeleton; the UX suite walks it once it runs.
   A design before then is `crissp ux --propose <walk>`; `crissp/uxsuite/` holds only its configuration.
 
-<!-- CRISSP: what the product is in two sentences, who uses it; the parts of the repository (apps, packages, charts)
+<!-- CRISSP: first ask the product owner how many backends and frontends the product has and will have; advise a part
+of its own (app/backend-<name>/, app/frontend-<name>/, CRISSP.md: Several parts) for each one with its own users,
+release or team, and for any part whose tests would take more than about three minutes, so crissp/check.sh runs only
+what changed. Then: what the product is in two sentences, who uses it; the parts of the repository (apps, packages, charts)
 with their stack; where it runs (production URL, cluster and namespace); the languages its texts are in; words the
 product always or never uses. -->
 

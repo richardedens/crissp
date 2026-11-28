@@ -197,3 +197,28 @@ def test_a_team_of_moderators_still_has_someone_to_look(tmp_path, monkeypatch):
     add_shots(suite)
     ux_team.start(suite, ux_config.load(suite), "round", "first-visit")
     assert '"review ux"' in started[0][2]
+
+
+def test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_hold(product):
+    """E7-F1-01 / E7-F2-01: a persona switched off takes no part, a persona's jobs are in the brief, the rules that are on
+    are the run's inputs/rules.md (with their weight), and every piece of advice names the rule it is about."""
+    import ux_cards
+    add_shots(product)
+    ux_cards.save_persona(product, {"key": "phone", "name": "Mo", "role": "student", "device": "mobile",
+                                    "brief": "Uses a thumb.", "on": False})
+    ux_cards.save_persona(product, {"key": "tech", "name": "Sam", "role": "engineer", "brief": "Notices states.",
+                                    "jobs": ["Find why a run is red"]})
+    ux_cards.save_rule(product, {"title": "Prices first", "severity": "must", "text": "Show the cost first."})
+    ux_cards.save_rule(product, {"title": "Old rule", "on": False, "text": "Not any more."})
+    ux_team.request(product, _conf(product), "round", "first-visit")
+    prompt = ux_team.popen.started[0].cmd[2]
+    vdir = product.results / "rounds" / "first-visit" / "r1"
+    assert '"review tech"' in prompt and '"review phone"' not in prompt and "- phone (" not in prompt
+    assert "jobs: Find why a run is red" in prompt
+    assert str(vdir / "inputs" / "rules.md") in prompt and '"rule": "<the id of the rule it is about' in prompt
+    rules = (vdir / "inputs" / "rules.md").read_text()
+    assert "## prices-first · Prices first (must)" in rules and "Old rule" not in rules
+    ux_team.popen.started[0].end(0)
+    finish(product, "round", "first-visit", 1, ROUND)
+    ux_team.request(product, _conf(product), "proposal", "first-visit")
+    assert '"principles": [{"rule", "how"}]' in ux_team.popen.started[1].cmd[2].replace("{{", "{").replace("}}", "}")

@@ -1082,6 +1082,82 @@
     "test_template::test_every_project_s_code_is_scanned_for_unsafe_code",
     "test_package::test_init_makes_a_crissp_project_that_is_green"
    ]
+  },
+  {
+   "id": "split-large-parts",
+   "title": "crissp never asked about several backends or frontends, nor advised splitting a part whose tests take long",
+   "problem": "The template knew one app/backend and one app/frontend: a big product became one part, every change in it ran all of its tests, and nothing said so (F-60).",
+   "fix": "CRISSP.md gets Several parts (app/backend-<name>, app/frontend-<name>, each with its own steps; split past about three minutes); the template's first CRISSP block asks the product owner how many parts there are; crissp init says so; crissp/check.sh --plan advises a split for a step over three minutes (the last measured time, else suites.json's).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def too_long("
+    },
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def measured("
+    },
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def say_plan("
+    },
+    {
+     "file": "crissp/CRISSP.md",
+     "symbol": "Several parts"
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "how many backends and frontends"
+    }
+   ],
+   "tests": [
+    "test_impact::test_a_part_whose_tests_take_long_is_advised_to_split",
+    "test_check_scripts::test_the_plan_advises_splitting_a_part_that_takes_long"
+   ]
+  },
+  {
+   "id": "ux-team-and-rules-as-files",
+   "title": "The UX suite's personas could only be edited by hand in team.json, and no rule could be added",
+   "problem": "The team was an array in team.json with no way to change it in the page, personas had no jobs and could not be switched off, and the rules were one prose PRINCIPLES.md: nothing to add, weigh or switch off, and advice never said which rule it was about (F-61).",
+   "fix": "ux_cards: one Markdown file per persona (personas/) and per rule (rules/), checked with clear errors; the page's Team and Rules tabs write them through POST /ux/api/persona and /ux/api/rule (same origin only); the first write moves team.json's personas and PRINCIPLES.md's sections into files; rounds and shoots use only the personas that are on, with their jobs; each run gets inputs/rules.md with the rules that hold, and advice names its rule; repair keeps both folders.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def save_persona("
+    },
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def save_rule("
+    },
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def team("
+    },
+    {
+     "file": "crissp/uxsuite/api.py",
+     "symbol": "def _card("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def on("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function team()"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function rulesTab()"
+    }
+   ],
+   "tests": [
+    "test_ux_cards::test_the_page_adds_a_persona_and_the_first_write_moves_team_json_s_into_files",
+    "test_ux_cards::test_the_first_rule_written_moves_the_principles_into_files_and_keeps_their_intro",
+    "test_ux_api::test_the_page_edits_the_team_and_the_rules",
+    "test_ux_team::test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_hold",
+    "test_ux_shoot::test_a_persona_that_is_off_brings_no_device",
+    "test_repair::test_the_team_s_and_the_rules_files_are_the_ux_suite_s_own"
+   ]
   }
  ],
  "gaps": [

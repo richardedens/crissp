@@ -136,6 +136,12 @@ def test_a_write_only_from_the_suite_s_own_page(site):
     ("/ux/api/request", None, b"{", "Expecting"),
     ("/ux/api/request", None, b"x" * 20001, "too large"),
     ("/ux/api/verdict", {"id": "first-visit#v9", "verdict": "approve"}, None, "unknown design"),
+    ("/ux/api/persona", {"persona": {"name": "Bo", "role": "x", "brief": "y", "device": "watch"}}, None, "device must be one of"),
+    ("/ux/api/persona", {"remove": "nobody"}, None, "no persona 'nobody'"),
+    ("/ux/api/persona", {"persona": "Bo"}, None, "send {persona: {…}} or {remove: <key>}"),
+    ("/ux/api/rule", {"rule": {"title": "A", "text": ""}}, None, "text must be a text"),
+    ("/ux/api/rule", {"remove": "nothing"}, None, "no rule 'nothing'"),
+    ("/ux/api/rule", {}, None, "send {rule: {…}} or {remove: <id>}"),
 ])
 def test_a_wrong_write_is_a_clear_400(site, path, body, raw, says):
     _, base = site
@@ -188,3 +194,22 @@ def test_the_state_still_answers_when_no_crissp_tool_can_be_found(product, monke
     finish(product, "proposal", "first-visit", 1, PROPOSAL)
     out = api.state(product)
     assert out["walks"][0]["proposals"][0]["pbi"] is None and "error" not in out
+
+
+def test_the_page_edits_the_team_and_the_rules(site):
+    """E7-F1-01 / E7-F2-01: the Team and Rules tabs write through the suite's own POSTs; the state carries both."""
+    _, base = site
+    s = json.loads(get(base + "/ux/api/state")[2])
+    assert s["personas_from"] == "team.json" and s["rules"] == [] and s["rules_from"] == "none"  # no PRINCIPLES.md
+    code, out = post(base, "/ux/api/persona", {"persona": {"name": "Gerda", "role": "retired", "brief": "Careful.",
+                                                           "jobs": "See the cost"}})
+    assert code == 200 and "gerda" in [p["key"] for p in out["personas"]]
+    code, out = post(base, "/ux/api/persona", {"remove": "gerda"})
+    assert code == 200 and "gerda" not in [p["key"] for p in out["personas"]]
+    code, out = post(base, "/ux/api/rule", {"rule": {"title": "Prices first", "severity": "must", "text": "Cost first."}})
+    assert code == 200 and out["rules"][0]["id"] == "prices-first"
+    s = json.loads(get(base + "/ux/api/state")[2])
+    assert s["personas_from"] == "files" and s["rules"][0]["severity"] == "must" and s["rules_from"] == "files"
+    assert post(base, "/ux/api/rule", {"remove": "prices-first"}) == (200, {"rules": []})
+    code, out = post(base, "/ux/api/rule", {"rule": {"title": "A", "text": "b"}}, origin="http://evil.example")
+    assert code == 403

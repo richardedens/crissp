@@ -32,7 +32,7 @@ def slug(title: str) -> str:
 
 def devices(conf: dict) -> list[str]:
     """The devices the team looks on, laptop first."""
-    used = {d for p in conf["personas"] for d in ON[p["device"]]}
+    used = {d for p in conf["personas"] if p.get("on", True) for d in ON[p["device"]]}
     return [d for d in VIEWPORTS if d in used]
 
 

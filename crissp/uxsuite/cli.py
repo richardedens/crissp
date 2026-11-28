@@ -26,7 +26,7 @@ import ux_verdicts  # noqa: E402
 
 def listing(conf: dict) -> str:
     lines = [f"{conf['product']}: {conf['about']}".rstrip(": "), f"Runs against {conf['url']}.", "", "The team:"]
-    lines += [f"  {p['key']:<10} {p['name']}, {p['role']} ({p['device']}){' — moderator' if p['moderator'] else ''}"
+    lines += [f"  {p['key']:<10} {p['name']}, {p['role']} ({p['device']}){' — moderator' if p['moderator'] else ''}{'' if p.get('on', True) else ' — off'}"
               for p in conf["personas"]]
     lines += ["", "The walks:"] + [f"  {w['id']:<18} {w['title']}" for w in conf["walks"].values()]
     return "\n".join(lines if conf["walks"] else lines[:-1] + ["  none yet: add one to crissp/uxsuite/walks/"])
