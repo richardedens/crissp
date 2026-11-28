@@ -10,7 +10,10 @@ The audit step runs the scanners the project names (crissp/testsuite/suites.json
 - fs         folders whose lock files trivy fs scans; config: what trivy config checks (a chart, Terraform), together
              with the `dockerfiles` (globs); images: files whose image: lines name images (a compose file, chart
              values), scanned with trivy image together with every Dockerfile's FROM. own_images: {values, parts} the
-             chart's own images, named as not scanned yet (they need a build). High and critical block when a fix
+             chart's own images, named as not scanned yet (they need a build). An image only a build stage uses is
+             labelled "build stage, never ships"; one this machine has is scanned as it is here, so it is labelled
+             "local" with its build date (docker image inspect), and build_images: true builds a compose file's own
+             images fresh first (F-163, F-164). High and critical block when a fix
              exists (vulnerabilities) or the check fails (misconfigurations); the rest is listed.
 trivy is the pinned one (lib/tools.py), never whatever a machine has on its PATH. A scanner that cannot run is a
 problem, never a pass. crissp/testsuite/accepted-risks.json accepts a finding for at most
@@ -237,21 +240,109 @@ def dockerfiles(root: Path, conf: dict) -> list[Path]:
     return sorted({p for pattern in conf.get("dockerfiles", []) for p in root.glob(pattern) if p.is_file()})
 
 
-def images(root: Path, conf: dict) -> list[str]:
-    """Every image the Dockerfiles (FROM) and the listed files (compose files, chart values: image:) name."""
-    found: set[str] = set()
+def image_roles(root: Path, conf: dict) -> dict[str, str]:
+    """F-163: every image the Dockerfiles (FROM) and the listed files (compose files, chart values: image:) name, with
+    its role: "runtime" when it ships (a Dockerfile's last stage is built on it, or a compose file or the chart runs
+    it), else "build" (a stage such as FROM node:22-alpine AS build, whose files are copied out: it never ships, but
+    its CVEs still count). A stage built on another stage has that stage's image; a compose `target:` is not read."""
+    roles: dict[str, str] = {}
     for dockerfile in dockerfiles(root, conf):
-        stages: set[str] = set()
+        stages: dict[str, str] = {}
+        based = []
         for image, alias in _FROM.findall(dockerfile.read_text()):
-            if image not in stages and image != "scratch":
-                found.add(image)
+            base = stages.get(image, image)
+            based.append(base)
             if alias:
-                stages.add(alias)
+                stages[alias] = base
+        for base in based:
+            if base != "scratch" and roles.get(base) != "runtime":
+                roles[base] = "runtime" if base == based[-1] else "build"
     for name in conf.get("images", []):
         path = root / name
         if path.is_file():
-            found.update(_IMAGE.findall(path.read_text()))
-    return sorted(found)
+            roles.update(dict.fromkeys(_IMAGE.findall(path.read_text()), "runtime"))
+    return dict(sorted(roles.items()))
+
+
+def images(root: Path, conf: dict) -> list[str]:
+    """Every image the Dockerfiles (FROM) and the listed files (compose files, chart values: image:) name."""
+    return list(image_roles(root, conf))
+
+
+def built_here(text: str) -> dict[str, str]:
+    """F-164: the images a compose file builds itself (a service with both image: and build:), by service name."""
+    out: dict[str, str] = {}
+    service, image, build, inner = None, None, False, None
+    services = outer = None
+
+    def done() -> None:
+        if service and image and build:
+            out[service] = image
+
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent == 0:
+            done()
+            services, service = line.rstrip() == "services:", None
+            outer = None
+            continue
+        if not services:
+            continue
+        if outer is None or indent == outer:
+            done()
+            outer, service, image, build, inner = indent, line.strip().rstrip(":"), None, False, None
+        elif inner is None or indent == inner:
+            inner = indent
+            name, _, value = line.strip().partition(":")
+            if name == "image":
+                image = value.strip().strip("\"'") or None
+            build = build or name == "build"
+    done()
+    return out
+
+
+def local_images(root: Path, conf: dict, run, problems: list) -> dict[str, dict]:
+    """F-164: what this machine has of each image: trivy scans a local copy as it is, so a stale build shows CVEs its
+    Dockerfile no longer has. {image: {built: YYYY-MM-DD, compose: file, service}} for every image docker has here;
+    with audit.build_images the images a compose file builds are built fresh first."""
+    built: dict[str, tuple[str, str]] = {}
+    for name in conf.get("images", []):
+        path = root / name
+        if path.is_file():
+            for service, image in built_here(path.read_text()).items():
+                built[image] = (name, service)
+    if conf.get("build_images"):
+        for name in sorted({file for file, _ in built.values()}):
+            services = sorted(s for f, s in built.values() if f == name)
+            code, _, err = run(["docker", "compose", "-f", name, "build", *services], root)
+            if code != 0:
+                problems.append(f"docker compose -f {name} build: could not build (exit {code}): {err.strip()[-300:]}")
+    out = {}
+    for image in images(root, conf):
+        code, said, _ = run(["docker", "image", "inspect", "--format", "{{.Created}}", image], root)
+        if code == 0 and said.strip():
+            file, service = built.get(image, (None, None))
+            out[image] = {"built": said.strip()[:10], "compose": file, "service": service}
+    return out
+
+
+def scan_images(root: Path, conf: dict, run, problems: list, scan, roles: dict, trivy: list[str]) -> list[dict]:
+    """trivy image on every image, each named by its role and, for a local copy, its build date (F-163, F-164)."""
+    local = local_images(root, conf, run, problems) if roles else {}
+    for image, role in roles.items():
+        target = image_target(image, role, local.get(image))
+        scan(f"trivy image {image}", [*trivy, "--format", "json", image], root, from_trivy, target)
+    return [{"image": i, "role": r, **local.get(i, {})} for i, r in roles.items()]
+
+
+def image_target(image: str, role: str, local: dict | None) -> str:
+    """How a finding names its image: build stage or not, and when it is this machine's copy, from when."""
+    notes = ["build stage, never ships"] if role == "build" else []
+    if local:
+        notes.append(f"local, built {local['built']}")
+    return f"image {image}" + (f" ({'; '.join(notes)})" if notes else "")
 
 
 def own_images(root: Path, conf: dict) -> list[str]:
@@ -361,7 +452,8 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         *(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
         *(c for c in conf.get("config", []) if there(f"trivy config {c}", c)),
     ]
-    found_images = images(root, conf)
+    roles = image_roles(root, conf)
+    found_images = list(roles)
     trivy_bin = None
     if fs or configs or found_images:
         try:
@@ -376,13 +468,32 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
     for target in configs if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
-    for image in found_images if trivy_bin else []:
-        scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
+    found = scan_images(root, conf, run, problems, scan, roles, trivy("image")) if trivy_bin else []
     if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
     return _report(
-        "audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf), absent=absent
+        "audit",
+        on,
+        scanned,
+        problems,
+        findings,
+        accepted,
+        not_scanned=own_images(root, conf),
+        absent=absent,
+        images=found,
     )
+
+
+TEST_FAKE = (
+    "in a test file: check first whether it is a fake (then allow it in .gitleaks.toml, with why); a real one: rotate "
+    "it, then remove it from the history"
+)
+_TEST = re.compile(r"(^|/)(tests?|__tests__|spec|fixtures?|testdata)/|(^|/)test_[^/]*$|[._-](test|spec)\.[^/]+$")
+
+
+def in_tests(path: str) -> bool:
+    """F-166: a test file, where a hit is most often a stand-in secret (a fake key, a token-named variable)."""
+    return bool(_TEST.search(path))
 
 
 def from_gitleaks(data: list, target: str) -> list[dict]:
@@ -400,7 +511,7 @@ def from_gitleaks(data: list, target: str) -> list[dict]:
                     where,
                     leak["RuleID"],
                     "HIGH",
-                    "rotate it, then remove it from the history",
+                    TEST_FAKE if in_tests(leak["File"]) else "rotate it, then remove it from the history",
                     leak.get("Description", ""),
                     True,
                 ),
@@ -953,7 +1064,8 @@ def licenses_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict,
 NOT_GREEN = {
     "audit": "Not green: update the package or image to the fixed version, or accept it for a while with a reason in "
     "crissp/testsuite/accepted-risks.json (at most 90 days).",
-    "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
+    "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history; a hit in a test "
+    "file is most often a fake, so check that first. A finding that "
     "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
     "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
     "sast": "Not green: change the code (each finding says why), or accept it for a while with a reason in "
@@ -1040,12 +1152,30 @@ def rules_test(root: Path, run) -> tuple[int, str]:
     return code, (out + err).strip()
 
 
+def image_notes(found: list[dict]) -> list[str]:
+    """F-163/F-164: which images never ship, and which were scanned as this machine has them."""
+    lines = []
+    for i in found:
+        if i["role"] == "build":
+            lines.append(f"note     build stage only, never ships: {i['image']} (its CVEs still count)")
+        if i.get("built"):
+            fresh = (
+                f"built here from {i['compose']}: `docker compose -f {i['compose']} build {i['service']}` first, or "
+                "set audit.build_images, to scan what its Dockerfile makes now"
+                if i.get("compose")
+                else "docker pull it for the current one"
+            )
+            lines.append(f"note     scanned as this machine has it: {i['image']} (local, built {i['built']}); {fresh}")
+    return lines
+
+
 def render(report: dict) -> str:
     lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
     for image in report["not_scanned"]:
         lines.append(
             f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above"
         )
+    lines += image_notes(report.get("images", []))
     for path in report.get("absent", []):
         lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:

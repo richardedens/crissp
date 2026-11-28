@@ -7,7 +7,7 @@
   "crissp/testsuite/lib/activity.py::session": 48,
   "crissp/testsuite/lib/audit.py::main": 16,
   "crissp/testsuite/lib/audit.py::render": 21,
-  "crissp/testsuite/lib/audit.py::run_all": 27,
+  "crissp/testsuite/lib/audit.py::run_all": 26,
   "crissp/testsuite/lib/check.py::changed": 32,
   "crissp/testsuite/lib/cluster_plan.py::config_stops": 17,
   "crissp/testsuite/lib/collect.py::_backlog": 17,
@@ -46,9 +46,5 @@
   "crissp/uxsuite/web/ux.js::reviewTab": 45,
   "src/crissp/cli.py::init": 17
  },
- "duplicated_lines": 0,
- "accepted": {
-  "reason": "the merge of main 0.2.0: its functions were written before the ratchet existed; none is new in this branch",
-  "on": "2026-11-28"
- }
+ "duplicated_lines": 0
 }

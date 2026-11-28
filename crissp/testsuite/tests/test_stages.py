@@ -179,6 +179,13 @@ def test_verify_says_how_far_head_is_from_the_last_green_state(tmp_path):
         "Uncommitted changes: commit first, the checks test what is committed."
         in by(stages.state(root, crissp, ux=ux()))["verify"]["items"]
     )
+    certify(root)  # F-165: green on HEAD, but the tree is not what was tested
+    dirty = by(stages.state(root, crissp, ux=ux()))["verify"]
+    assert dirty["status"] == "work"
+    assert (
+        dirty["summary"]
+        == f"Green on {git(root, 'rev-parse', '--short', 'HEAD')}, the last commit; uncommitted changes."
+    )
     certify(root, first, {"tools": "failed", "lint": "passed"})
     assert "Red in the last full run: tools." in by(stages.state(root, crissp, ux=ux()))["verify"]["items"]
 

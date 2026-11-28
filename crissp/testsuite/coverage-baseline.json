@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "0c27db7e2ab6f577a0ed52b8e3c346178388df5c",
+ "commit": "eb7aa016f7fac85d207bcf3f03bccb29fbf73280",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -42,6 +42,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/impact.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/level.py": {
      "branch": 100.0,
      "line": 100.0
     },

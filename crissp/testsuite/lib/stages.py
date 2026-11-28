@@ -278,7 +278,9 @@ def verify(root: Path, head: str) -> tuple[dict, bool]:
         items.append("Red in the last full run: " + ", ".join(red) + ".")
     commit = str(cert.get("commit", ""))
     if commit == head and not red:
-        return stage("verify", "work" if items else "clear", f"Green on {head[:7]}, this commit.", items), not items
+        if items:  # F-165: the certificate is the last commit's, not what is in the tree now
+            return stage("verify", "work", f"Green on {head[:7]}, the last commit; uncommitted changes.", items), False
+        return stage("verify", "clear", f"Green on {head[:7]}, this commit.", items), True
     since = _git(root, "rev-list", "--count", f"{commit}..HEAD")
     summary = (
         f"{_plural(int(since), 'commit')} since the last green state: crissp/check.sh tests what changed."

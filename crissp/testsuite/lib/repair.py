@@ -7,6 +7,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     steps      suites.json still holds the old template's steps on src/ (and src/ is not there), or no steps at all:
                the default parts' steps from the template (app/backend, app/frontend; each exists once its part does).
                The project's own path rules and shared ground stay; the template's shared ground is added
+    suites     suites.json has steps of its own but lacks steps, path rules, shared ground or the audit block the
+               template has (F-160): each step whose part is here is added with its path rules; one whose part is not
+               here is said (lib/level.py)
     new-steps  suites.json is the project's own but lacks a step a newer template has (quality, licenses, dast; F-145):
                the template's step and its audit settings are added, and quality on a path rule that runs sast;
                the project's own steps, rules and settings stay
@@ -29,6 +32,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
                and offers help with it): replaced by the template's, or added before "Sessions that stay small"
                (else before "Working with the product owner", else at the end)
     vibe-pin   .vibe/config.toml pins an older crissp than the one that repairs (F-27): the pin moves, as in .mcp.json
+    pins       a tracked file still pins an older crissp==<version> (F-161: a deploy script, a README, the agreement,
+               deploy settings, their tests): each moves to the crissp that repairs and is listed; the history
+               (CHANGELOG.md, crissp/backlog/, changes.json) stays as it was
     git-hook   .githooks/pre-commit is not there, or core.hooksPath is not set (F-50): the template's hook, and
                core.hooksPath .githooks, so git runs the lint steps before every commit; never over a core.hooksPath
                or .git/hooks of the project's own (said instead). The framework's own checkout: only turned on
@@ -41,9 +47,10 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
 
 And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no
 docker-compose.yml (nothing runs for the UX suite to walk);
-a move whose place is taken. It never deletes, never overwrites what a project wrote (only the spots named above),
-never changes the backlog's content and never commits. The framework's own repository is left as it is, but for
-its git hook and its .vibe/config.toml.
+a move whose place is taken; a template step whose part is not here; a scan of the project's own that a crissp step
+already runs (F-162: bandit, gitleaks, Grype), with the one to keep. It never deletes, never overwrites what a project
+wrote (only the spots named above), never changes the backlog's content and never commits. The framework's own
+repository is left as it is, but for its git hook and its .vibe/config.toml.
 Exit 0: nothing left to say, or --yes put it in place; 1: something is out of place or needs you; 2: wrong arguments.
 """
 
@@ -60,6 +67,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import hook  # F-50: the lint before every commit, shared with crissp init
+import level  # F-160 to F-162: the template's steps, every stale pin, scans the project runs itself
 import upgrade  # F-145: the steps a newer crissp brings, shared with crissp init
 import vibe  # F-26: Vibe's trusted folders, shared with crissp init
 
@@ -155,6 +163,7 @@ def fix_steps(root: Path) -> Repair | None:
         data["steps"] = template["steps"]
         data["paths"] = template["paths"] + own
         data["shared"] = shared + [r for r in template["shared"] if r["match"] not in {s.get("match") for s in shared}]
+        data.setdefault("audit", template["audit"])  # F-160: what the template's audit step scans
         upgrade.add(data, template)  # F-145: with the audit settings of the newer steps
         write(root / SUITES, data)
 
@@ -175,8 +184,9 @@ def fix_new_steps(root: Path) -> Repair | None:
         return None
 
     def do() -> None:
-        upgrade.add(data, template)
-        write(root / SUITES, data)
+        now = read(root / SUITES)  # read again: the suites repair may have added the template's other steps first
+        upgrade.add(now, template)
+        write(root / SUITES, now)
 
     return Repair("new-steps", f"{SUITES}: {upgrade.said(gap)}", do)
 
@@ -576,12 +586,50 @@ def fix_hook(root: Path) -> Repair | None:
     return Repair("git-hook", "; ".join(parts), do)
 
 
+def fix_suites(root: Path) -> Repair | None:
+    """F-160: suites.json lacks steps (whose part is here), path rules, shared ground or the audit block the template
+    has. A project with no steps or the old template's steps gets the whole default from fix_steps instead."""
+    data = read(root / SUITES)
+    steps = data.get("steps") if brought_in(root) and data is not None else None
+    if not isinstance(steps, list) or not steps or not all(isinstance(s, dict) for s in steps):
+        return None
+    if {s.get("key") for s in steps} <= OLD_KEYS and not (root / "src").exists():
+        return None
+    out, what, _ = level.suites(root, data, read(TEMPLATE / SUITES))
+    if out is None:
+        return None
+    return Repair("suites", f"{SUITES} lacks {'; '.join(what)} → added", lambda: write(root / SUITES, out))
+
+
+def suites_needs(root: Path) -> list[str]:
+    """F-160: a template step whose part is not here: said, for the folder the project keeps that part in."""
+    data = read(root / SUITES)
+    if not brought_in(root) or data is None or fix_steps(root) or not isinstance(data.get("steps"), list):
+        return []
+    return level.suites(root, data, read(TEMPLATE / SUITES))[2]
+
+
+def fix_pins(root: Path, version: str | None) -> Repair | None:
+    """F-161: every tracked file that still pins an older crissp (a deploy script, a README, the agreement, deploy
+    settings, their tests) moves to the crissp that repairs, so the release gate runs the crissp the session runs."""
+    found = level.stale_pins(root, version) if version and brought_in(root) else {}
+    if not found:
+        return None
+    said = ", ".join(f"{rel} ({' '.join(old)})" for rel, old in found.items())
+    return Repair(
+        "pins",
+        f"older crissp pins in {said} → crissp=={version}, the crissp that repairs",
+        lambda: level.move_pins(root, found, version),
+    )
+
+
 def find(root: Path, version: str | None = None, home: Path | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
     return [
         r
         for r in (
             fix_steps(root),
+            fix_suites(root),
             fix_new_steps(root),
             fix_ux_url(root),
             fix_ux_extra(root),
@@ -595,6 +643,7 @@ def find(root: Path, version: str | None = None, home: Path | None = None) -> li
             fix_changes(root),
             fix_pin(root, version),
             fix_vibe_pin(root, version),
+            fix_pins(root, version),
             fix_vibe(root, version, home),
             fix_hook(root),
         )
@@ -626,6 +675,9 @@ def needs(root: Path) -> list[str]:
     if hook.needs(root):
         out.append(hook.needs(root))
     out += vibe_needs(root)
+    out += suites_needs(root)
+    if brought_in(root):
+        out += level.overlaps(root)  # F-162
     if not committed(root):
         out.append("no commit yet: the checks test what is committed; review the diff and commit")
     if not is_engine(root) and not (root / "docker-compose.yml").exists():
