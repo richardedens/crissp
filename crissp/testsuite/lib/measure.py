@@ -179,36 +179,9 @@ def compare(requests: list[dict], items: dict[str, list[str]], costs: dict[str, 
 
 # The pages are the dashboard's own: its stylesheet, its water, its cards, rings, badges and tables (dashboard/), so
 # the Claude pages look and read exactly like the rest of the test suite.
-EXTRA = """
-.sub-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 26px}
-.sub-tabs a{padding:9px 18px;border-radius:10px;border:1px solid var(--line);color:var(--muted);font:600 14px var(--font)}
-.sub-tabs a.on{background:var(--panel2);color:var(--text);border-color:var(--panel2)}.sub-tabs a:hover{text-decoration:none;color:var(--text)}
-nav a.tab{color:var(--muted);padding:7px 12px;border-radius:8px;font:500 13px var(--font)}nav a.tab:hover{text-decoration:none;color:var(--text)}
-nav a.tab.on{background:var(--panel2);color:var(--text)}
-.lead{font-size:16px;line-height:1.7;max-width:70ch;margin:0 0 6px}.how{color:var(--muted);font-size:14px;line-height:1.6;max-width:75ch;margin:0 0 14px}
-.recs{display:grid;gap:14px;margin:0;padding:0;list-style:none}.recs .card{display:flex;gap:16px;align-items:flex-start}
-.recs .n{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
-.recs h3{font-size:16px;margin:6px 0 4px}.recs p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
-.bars{display:grid;gap:16px}.bars .lbl{font-size:14px;margin:0 0 6px}.bars .row{display:flex;align-items:center;gap:12px}
-.bars .bar{flex:1;height:12px}.bars .v{font-weight:700;font-size:14px;white-space:nowrap;min-width:92px;text-align:right}
-.chart{width:100%;height:auto;display:block}.chart text{font:500 13px var(--font);fill:var(--muted)}
-.key{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:0 0 12px}
-.key span{display:inline-flex;gap:6px;align-items:center}.key i{width:12px;height:12px;border-radius:3px}
-.asked{max-width:520px;overflow-wrap:anywhere}td.num,th.num{text-align:right;white-space:nowrap}
-.pipe{display:flex;overflow-x:auto;align-items:flex-start;padding:6px 0 24px}.col{flex:0 0 320px;padding:0 10px}
-.node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;overflow-wrap:anywhere;font-size:13px}
-.node.prompt{border-top:2px solid var(--accent)}.ptext{white-space:pre-wrap;margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:4;
--webkit-box-orient:vertical;overflow:hidden}.tree,.tree ul{list-style:none;margin:0;padding:0 0 0 18px}.tree li{padding:8px 0 0}
-.kind{display:block;font-size:11px;color:var(--muted)}.chip{display:inline-block;margin:4px 4px 0 0;padding:0 6px;border-radius:8px;
-border:1px solid var(--line);font-size:11px}.tank,.cost,.status,.when{font-size:12px;color:var(--muted)}.tank span{display:none}
-.node ol{list-style:none;padding:0;margin:6px 0 0}.node ol li{padding:3px 0;border-top:1px solid var(--line);font-size:12px}
-.node pre{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}.n.pill{font-weight:700;margin-right:6px}
-.row.taken .id{text-decoration:line-through}.small{font-size:12px}"""
+EXTRA = (sv.DASHBOARD / "measure.css").read_text(encoding="utf-8")  # F-94: in files linters read
 
-TABS_JS = """(()=>{const tabs=[...document.querySelectorAll('section.stab')],links=[...document.querySelectorAll('.sub-tabs a')];
-const show=()=>{const id=(location.hash||'#dashboard').slice(1);if(!tabs.some(t=>t.id==='tab-'+id))return;
-tabs.forEach(t=>t.hidden=t.id!=='tab-'+id);links.forEach(a=>a.classList.toggle('on',a.hash==='#'+id));};
-addEventListener('hashchange',show);show();})();"""
+TABS_JS = (sv.DASHBOARD / "session-tabs.js").read_text(encoding="utf-8")
 
 
 def shell(title: str, sub: str, body: str, script: str = "") -> str:

@@ -1366,6 +1366,25 @@
     "test_python_lint::test_without_uv_the_duplicate_check_is_a_finding_never_a_silent_pass",
     "test_python_lint::test_the_step_is_clean_or_names_every_finding"
    ]
+  },
+  {
+   "id": "session-pages-css-in-files",
+   "title": "The session pages' CSS and script move out of Python strings (F-94)",
+   "problem": "sessionview.STYLE, measure.EXTRA and measure.TABS_JS held the Claude session pages' CSS and JavaScript as Python strings: no linter read them, and the long lines were most of the Python's line-length findings.",
+   "fix": "They live in crissp/testsuite/dashboard/ (sessions.css, measure.css, session-tabs.js), unchanged, read as UTF-8 at load; the pages still inline them, so they stay self-contained. lint.sh's ESLint picks session-tabs.js up as a tracked JavaScript file.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/sessionview.py",
+     "symbol": "STYLE = (DASHBOARD"
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "TABS_JS = (sv.DASHBOARD"
+    }
+   ],
+   "tests": [
+    "test_measure::test_the_session_pages_css_and_script_live_in_files_a_linter_reads"
+   ]
   }
  ],
  "gaps": [
