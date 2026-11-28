@@ -12,6 +12,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
   of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
   project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
+- **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
+  commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
+  automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings
+  the section into projects brought in earlier.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

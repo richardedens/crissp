@@ -168,6 +168,16 @@ context (this agreement, the tools) is small. Keeping sessions short saves the m
 - The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
   fresh.
 
+The same in **Mistral Vibe** (the same habits, its own commands):
+
+- A fresh session per item: `/clear` in the terminal, or a new session in the desktop app; `/compact <what to keep>`
+  in the middle of a long item. Vibe compacts by itself at `auto_compact_threshold` (400k tokens unless set lower in
+  `~/.vibe/config.toml`): start fresh before that, a summary loses what a new session asks for again.
+- Heavy output in a subagent: the `task` tool starts one that reports text (the `explore` agent for searching the
+  code, another for a browser check and its screenshots), so its files and images stay out of the main session.
+- The crissp tools come from `.vibe/config.toml` (crissp repair writes it for this machine): `brief` and `backlog`
+  instead of reading the backlog files; restart Vibe after a change to it.
+
 ## The guards
 
 | Guard | Purpose |

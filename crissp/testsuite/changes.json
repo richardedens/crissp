@@ -1332,6 +1332,21 @@
     "test_cli::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
     "test_vibe_session::test_a_vibe_session_in_a_brought_in_project_finds_brief_and_backlog"
    ]
+  },
+  {
+   "id": "sessions-section-vibe",
+   "title": "'Sessions that stay small' spoke only Claude Code (F-102)",
+   "problem": "The agreement's habits for short sessions named only Claude Code's commands (/clear, /compact, the Explore agent), so a Vibe session had no stated way to keep its context small.",
+   "fix": "The section, in CRISSP.md, this agreement and the template's (which crissp repair keeps in step, F-21), names Vibe's own: /clear or a new desktop session per item, /compact <what to keep>, its auto_compact_threshold, the task tool with the explore agent for heavy output, and the crissp tools from .vibe/config.toml.",
+   "sources": [
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "## Sessions that stay small"
+    }
+   ],
+   "tests": [
+    "test_template::test_the_sessions_section_names_the_vibe_way_too"
+   ]
   }
  ],
  "gaps": [
