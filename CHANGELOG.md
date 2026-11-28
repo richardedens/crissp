@@ -42,6 +42,29 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   project switches off, each with `rule`, `why`, `by` and `since` (like `accepted-risks.json`). Their findings are
   not counted, every run says how many there were, and the dashboard's Lint tile lists the rules that are off. An
   incomplete entry is red and switches nothing off.
+- **`crissp repair` names every template step a project lacks, and `--yes` adds it (F-160).** A project brought in by
+  an older crissp could miss `frontend-lint`, `audit`, `secrets`, `sast` and the audit block, and repair said
+  "nothing out of place". Now each missing step is named; `--yes` adds the ones whose part is there (with their path
+  rules, the shared ground and the audit block), and a step whose part is somewhere else is said under "Needs you". A
+  step the project keeps under its own name (the same `run`) is not missing.
+- **`crissp repair` moves every older `crissp==<version>` in the tracked files (F-161).** Not only `.mcp.json` and
+  `.vibe/config.toml`: a deploy script, the README, the agreement, deploy settings and their tests named the old
+  crissp too, so the release gate ran an older crissp than the session. Each file is listed and moves with `--yes`;
+  the history (`CHANGELOG.md`, the backlog, `changes.json`) stays as it was.
+- **`crissp repair` says when a scan of the project's own does what a crissp step does (F-162).** bandit (ruff's S
+  rules in `backend-lint` are the same checks), gitleaks on the files or the history (the `secrets` step scans the
+  whole history) and Grype (the `audit` step scans the same images with trivy), each with the one to keep. Nothing is
+  changed.
+- **The audit labels build-stage images apart from the ones that ship (F-163).** An image only a build stage uses
+  (`FROM node:22-alpine AS build`) is "build stage, never ships"; its CVEs still count.
+- **The audit says when it scanned this machine's copy of an image (F-164).** trivy scans a local image as it is, so a
+  stale local build showed CVEs its Dockerfile no longer has. The report gives the image's build date and "local",
+  and for an image a compose file builds, the command that builds it fresh; `audit.build_images: true` builds those
+  before the scan.
+- **The Verify stage no longer calls a dirty tree green (F-165).** "Green on <commit>, the last commit; uncommitted
+  changes" instead of "this commit".
+- **A secret found in a test file says: check first whether it is a fake (F-166).** Before, every hit said "rotate it,
+  then remove it from the history", also for test keys and variables named token.
 
 ## 0.2.0 — 2026-11-28
 

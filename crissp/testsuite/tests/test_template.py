@@ -90,6 +90,7 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
         "dockerfiles": ["app/*/Dockerfile"],
         "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
         "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
+        "build_images": False,  # F-164: scan the local copies as they are, said with their build date
         "own_images": {"values": "crissp/deploy/helm/app/values.yaml", "parts": ["backend", "frontend"]},
         "sast": ["app"],
         "sast_rules": [],

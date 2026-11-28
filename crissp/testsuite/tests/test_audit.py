@@ -290,6 +290,7 @@ CLEAN = {
     "pip-audit": (0, {"dependencies": []}),
     "npm audit": (0, {"vulnerabilities": {}}),
     "trivy": (0, {"Results": []}),
+    "docker": (1, ""),  # F-164: no local copy of an image
 }
 
 
@@ -679,3 +680,129 @@ def test_this_repository_scans_its_own_code_and_tests_its_rules():
     step = next(s for s in conf["steps"] if s["key"] == "sast")
     assert step["run"] == "python3 lib/audit.py rules && python3 lib/audit.py sast"
     assert conf["audit"]["sast"] == ["src", "crissp", "site"]
+
+
+def test_a_build_stage_image_is_labelled_apart_from_the_runtime_ones(tmp_path):
+    """F-163: FROM node:22-alpine AS build never ships; the last stage's image does. Both are scanned."""
+
+    def write(rel: str, text: str) -> None:
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+
+    write("app/frontend/Dockerfile", "FROM node:22-alpine AS build\nFROM nginx:1.29 AS run\nFROM run\n")
+    write("app/backend/Dockerfile", "FROM python:3.13-slim AS base\nFROM base AS final\n")
+    write("app/tool/Dockerfile", "FROM node:22-alpine AS b\nFROM scratch\n")
+    write("app/web/Dockerfile", "FROM node:22-alpine\n")  # ships here, so it is a runtime image after all
+    assert audit.image_roles(tmp_path, {"dockerfiles": ["app/frontend/Dockerfile", "app/backend/Dockerfile"]}) == {
+        "nginx:1.29": "runtime",
+        "node:22-alpine": "build",
+        "python:3.13-slim": "runtime",
+    }
+    assert audit.image_roles(tmp_path, {"dockerfiles": ["app/*/Dockerfile"]})["node:22-alpine"] == "runtime"
+    trivy = {
+        "Results": [
+            {
+                "Vulnerabilities": [
+                    {"PkgName": "busybox", "VulnerabilityID": "CVE-1", "Severity": "HIGH", "FixedVersion": "2"}
+                ]
+            }
+        ]
+    }
+    runner = Runner({**CLEAN, "json node:22-alpine": (0, trivy)})
+    report = audit.run_all(tmp_path, runner, TODAY, {"accepted": []}, {"dockerfiles": ["app/frontend/Dockerfile"]})
+    assert report["blocking"][0]["target"] == "image node:22-alpine (build stage, never ships)"  # it still counts
+    assert {"image": "node:22-alpine", "role": "build"} in report["images"]
+    assert "note     build stage only, never ships: node:22-alpine (its CVEs still count)" in audit.render(report)
+
+
+COMPOSE = """\
+# the local stack
+services:
+  db:
+    image: "shop-db:16-pgvector"
+    build:
+      context: ./db
+  backend:
+    build: ./app/backend
+  cache:
+    image: redis:8
+    environment:
+      build: no
+volumes:
+  data:
+"""
+
+
+def test_the_images_a_compose_file_builds_itself_are_known():
+    assert audit.built_here(COMPOSE) == {"db": "shop-db:16-pgvector"}
+    assert audit.built_here("x: 1\n  y: 2\nservices:\n  a:\n    image: a:1\n    build: .\n") == {"a": "a:1"}
+
+
+def test_a_local_image_is_labelled_with_its_build_date_and_how_to_scan_it_fresh(tmp_path):
+    """F-164: trivy scans the copy this machine has; a stale local build shows CVEs its Dockerfile no longer has."""
+    (tmp_path / "docker-compose.yml").write_text(COMPOSE)
+    conf = {"images": ["docker-compose.yml"]}
+    runner = Runner(
+        {
+            **CLEAN,
+            "docker image inspect": (1, ""),
+            "inspect --format {{.Created}} shop-db": (0, "2026-09-01T10:00:00Z\n"),
+            "inspect --format {{.Created}} redis": (0, "2026-11-02T08:00:00.1Z\n"),
+        }
+    )
+    report = audit.run_all(tmp_path, runner, TODAY, {"accepted": []}, conf)
+    assert report["images"] == [
+        {"image": "redis:8", "role": "runtime", "built": "2026-11-02", "compose": None, "service": None},
+        {
+            "image": "shop-db:16-pgvector",
+            "role": "runtime",
+            "built": "2026-09-01",
+            "compose": "docker-compose.yml",
+            "service": "db",
+        },
+    ]
+    said = audit.render(report)
+    assert (
+        "scanned as this machine has it: shop-db:16-pgvector (local, built 2026-09-01); built here from "
+        "docker-compose.yml: `docker compose -f docker-compose.yml build db` first"
+    ) in said
+    assert "redis:8 (local, built 2026-11-02); docker pull it for the current one" in said
+    assert (
+        audit.image_target("x:1", "build", {"built": "2026-01-01"})
+        == "image x:1 (build stage, never ships; local, built 2026-01-01)"
+    )
+    assert not any("compose" in " ".join(a) and "build" in a for a, _ in runner.calls)  # not built unless asked
+
+
+def test_build_images_builds_a_compose_files_own_images_fresh_first(tmp_path):
+    (tmp_path / "docker-compose.yml").write_text(COMPOSE)
+    runner = Runner({**CLEAN, "docker compose": (0, "")})
+    audit.run_all(tmp_path, runner, TODAY, {"accepted": []}, {"images": ["docker-compose.yml"], "build_images": True})
+    calls = [" ".join(a) for a, _ in runner.calls]
+    assert calls.index("docker compose -f docker-compose.yml build db") < next(
+        i for i, c in enumerate(calls) if "trivy image" in c
+    )
+    failed = Runner({**CLEAN, "docker compose": (1, "")})
+    report = audit.run_all(
+        tmp_path, failed, TODAY, {"accepted": []}, {"images": ["docker-compose.yml"], "build_images": True}
+    )
+    assert report["problems"] == ["docker compose -f docker-compose.yml build: could not build (exit 1): stderr text"]
+
+
+@pytest.mark.parametrize(
+    "path,fake",
+    [
+        ("app/backend/tests/test_auth.py", True),
+        ("test_keys.py", True),
+        ("app/frontend/src/push.spec.ts", True),
+        ("app/frontend/src/__tests__/a.js", True),
+        ("app/backend/fixtures/keys.json", True),
+        ("app/backend/settings.py", False),
+        ("app/backend/contest.py", False),
+    ],
+)
+def test_a_secret_in_a_test_file_says_check_it_is_a_fake_first(path, fake):
+    """F-166: most hits in a test file are stand-ins; the advice says to check that before rotating anything."""
+    (f,) = audit.from_gitleaks([{**LEAKS[0], "File": path}], "git history")
+    assert f["fixed"].startswith("in a test file: check first whether it is a fake") is fake
+    assert f["blocks"] is True  # it still blocks until it is allowed or gone

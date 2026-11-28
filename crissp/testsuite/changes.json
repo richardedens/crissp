@@ -2219,6 +2219,132 @@
    ]
   },
   {
+   "id": "repair-template-steps",
+   "title": "F-160: crissp repair adds the template's missing steps",
+   "problem": "suites.json lacked frontend-lint, audit, secrets, sast and the audit block the template has, yet crissp repair said nothing out of place: it only replaced a project's steps when there were none or the old src/ ones.",
+   "fix": "lib/level.py suites() compares suites.json with the template: a missing step whose `when` part is here is added with its path rules, the template's shared ground and audit block too; one whose part is not here is said under Needs you; a step under another name with the same run is not missing. repair.py fix_suites (key suites) and suites_needs; fix_steps adds the audit block as well.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/level.py",
+     "symbol": "suites"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_suites"
+    }
+   ],
+   "tests": [
+    "test_level.py::test_the_missing_template_steps_whose_part_is_here_are_added_with_their_path_rules",
+    "test_level.py::test_repair_names_the_missing_steps_and_yes_adds_them",
+    "test_level.py::test_a_step_whose_part_is_not_here_is_said_and_one_under_its_own_name_is_not_missing"
+   ]
+  },
+  {
+   "id": "repair-every-pin",
+   "title": "F-161: crissp repair moves every older crissp pin",
+   "problem": "repair moved the crissp pin only in .mcp.json and .vibe/config.toml; a deploy script, the README, the agreement and deploy settings still named crissp==0.1.8, so the release gate ran an older crissp than the session.",
+   "fix": "lib/level.py stale_pins() reads every tracked text file (git ls-files, under 1 MB) for crissp==<version> older than the crissp that repairs, leaving CHANGELOG.md, crissp/backlog/ and changes.json (the history) and the two files with repairs of their own; move_pins() replaces only those pins. repair.py fix_pins (key pins) lists each file.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/level.py",
+     "symbol": "stale_pins"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_pins"
+    }
+   ],
+   "tests": [
+    "test_level.py::test_every_older_pin_in_the_tracked_files_moves_and_is_listed",
+    "test_level.py::test_without_git_or_a_version_crissp_could_pin_no_pin_moves"
+   ]
+  },
+  {
+   "id": "repair-scan-overlaps",
+   "title": "F-162: crissp repair says when a project's own scan overlaps a crissp step",
+   "problem": "bandit next to ruff's S rules, gitleaks on the files next to the history scan, Grype next to trivy: the same checks ran twice and nobody said so.",
+   "fix": "lib/level.py overlaps() reads the files a project runs its tools from (CI workflows, pre-commit, Makefile, scripts, dependency lists; not crissp/) for bandit, gitleaks on the files or on the history, and Grype, and says each with the one to keep; repair lists them under Needs you.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/level.py",
+     "symbol": "overlaps"
+    }
+   ],
+   "tests": [
+    "test_level.py::test_scans_of_the_projects_own_are_said_with_the_one_to_keep"
+   ]
+  },
+  {
+   "id": "audit-build-stage",
+   "title": "F-163: the audit labels build-stage images",
+   "problem": "A build-stage image (FROM node:22-alpine AS build) was reported like the images that ship, so its CVEs looked like the product's.",
+   "fix": "audit.py image_roles() follows each Dockerfile's stages to the image its last stage is built on (runtime); every other base is build; compose and chart images are runtime. A build image's findings are named (build stage, never ships) and the report lists it in a note.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "image_roles"
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "image_target"
+    }
+   ],
+   "tests": [
+    "test_audit.py::test_a_build_stage_image_is_labelled_apart_from_the_runtime_ones"
+   ]
+  },
+  {
+   "id": "audit-local-images",
+   "title": "F-164: the audit says when it scanned a local copy of an image",
+   "problem": "trivy scanned a local image as it was on the machine: a stale local build gave CVEs the current Dockerfile no longer has, and the report did not say it was a local copy.",
+   "fix": "audit.py local_images() asks docker image inspect for each image's build date; one this machine has is labelled local with that date, and one a compose file builds (built_here) gets the docker compose build command; audit.build_images: true builds them before the scan, a failed build is a problem.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "local_images"
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "built_here"
+    }
+   ],
+   "tests": [
+    "test_audit.py::test_a_local_image_is_labelled_with_its_build_date_and_how_to_scan_it_fresh",
+    "test_audit.py::test_build_images_builds_a_compose_files_own_images_fresh_first",
+    "test_audit.py::test_the_images_a_compose_file_builds_itself_are_known"
+   ]
+  },
+  {
+   "id": "stage-dirty-tree",
+   "title": "F-165: Verify does not call a dirty tree green",
+   "problem": "Verify said green on <commit>, this commit while the tree had uncommitted changes.",
+   "fix": "stages.verify() says the last commit is green and that there are uncommitted changes, and the stage stays work.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/stages.py",
+     "symbol": "verify"
+    }
+   ],
+   "tests": [
+    "test_stages.py::test_verify_says_how_far_head_is_from_the_last_green_state"
+   ]
+  },
+  {
+   "id": "secrets-test-fakes",
+   "title": "F-166: a secret in a test file says to check it is a fake first",
+   "problem": "Every gitleaks hit said rotate it, then remove it from the history, also test fakes and variables named token in test files.",
+   "fix": "audit.py in_tests() knows a test file by its folder or name; from_gitleaks gives such a hit the advice to check first whether it is a fake; it still blocks.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "in_tests"
+    }
+   ],
+   "tests": [
+    "test_audit.py::test_a_secret_in_a_test_file_says_check_it_is_a_fake_first"
+   ]
+  },
+  {
    "id": "lint-skips-build-output",
    "title": "F-150: lint and scans skip git-ignored build output",
    "problem": "crissp's frontend lint passed its configs from crissp's cache, so stylelint's ignoreFiles and ESLint's ignores never matched a project's git-ignored dist/: thousands of findings in minified bundles. Semgrep and trivy fs looked into build folders too.",
