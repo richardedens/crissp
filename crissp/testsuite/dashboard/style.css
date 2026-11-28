@@ -151,3 +151,6 @@ pre.log.wrap { overflow-wrap: anywhere; word-break: break-word; }
   table.suites td, table.suites th { padding: 8px 10px; }
   .toolbar select { max-width: 100%; min-width: 0; flex: 1 1 100%; }
 }
+/* F-72: a card in a grid may shrink below its content, so a long name or path wraps instead of widening the page */
+.grid > .card, .change > * { min-width: 0; } .change h3, .change p { overflow-wrap: anywhere; }
+.parts li, .proof ul, .proof li { min-width: 0; } .proof a, .src summary { overflow-wrap: anywhere; min-width: 0; }
