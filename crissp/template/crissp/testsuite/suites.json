@@ -34,7 +34,7 @@
  "audit": {"missing": "skip", "pip": ["app/backend/requirements.txt"], "npm": ["app/frontend"],
            "fs": ["app/backend", "app/frontend"], "dockerfiles": ["app/*/Dockerfile"],
            "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
-           "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
+           "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"], "build_images": false,
            "own_images": {"values": "crissp/deploy/helm/app/values.yaml", "parts": ["backend", "frontend"]},
            "sast": ["app"], "sast_rules": []},
  "texts": {}

@@ -32,7 +32,7 @@ the project's crissp/testsuite/suites.json:
     shared       [{match, why}] the product's shared ground: a change there needs the full run
     notes        [prefix] what needs no test besides Markdown, the backlog and docs/
     setup        {venvs: [dir], npm: [dir], needs: [{command, hint}]} what lib/setup_plan.py installs or asks for
-    audit        {pip, npm, fs, config, dockerfiles, images, own_images, python} what lib/audit.py scans
+    audit        {pip, npm, fs, config, dockerfiles, images, own_images, build_images, python} what lib/audit.py scans
     texts        the dashboard's texts for the product (e2e, journeys)
 
     python3 crissp/testsuite/lib/project.py check     say what is wrong with the configuration (exit 1), or that it is fine
