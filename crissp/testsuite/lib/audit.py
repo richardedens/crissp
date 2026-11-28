@@ -344,6 +344,45 @@ def from_zap(data: dict, target: str, fail: set[str]) -> list[dict]:
     return out
 
 
+def _zap(root: Path, run, target: str, rules: Path | None, platform: str) -> tuple[dict | None, str]:
+    """One ZAP baseline of one target: its JSON report, or None and why."""
+    with tempfile.TemporaryDirectory(prefix="crissp-zap-") as work:
+        os.chmod(work, 0o777)  # noqa: S103 — ZAP runs as its own user in the container and writes its report here
+        network = ["--network", "host"] if platform.startswith("linux") else []
+        seen = target if network else LOCAL.sub(r"\1host.docker.internal", target)
+        args = ["-t", seen, "-J", "zap.json", "-I"]
+        if rules:
+            (Path(work) / "rules.tsv").write_text(rules.read_text())
+            args += ["-c", "rules.tsv"]
+        code, out, err = run(["docker", "run", "--rm", *network, "-v", f"{work}:/zap/wrk:rw", ZAP, "zap-baseline.py",
+                              *args], root)
+        report = Path(work) / "zap.json"
+        if not report.is_file():
+            return None, f"ZAP could not scan {target} (exit {code}): {(err or out).strip()[-300:]}"
+        return json.loads(report.read_text()), ""
+
+
+def _start(root: Path, run, compose: Path | None, targets: list[str], reach, problems: list) -> bool:
+    """Start the app with its compose file when it does not answer; whether this scan started it."""
+    if not compose or not compose.is_file() or all(reach(t) for t in targets):
+        return False
+    code, out, err = run(["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait"], root)
+    if code:
+        problems.append(f"docker compose up could not start the app (exit {code}): {(err or out).strip()[-300:]}")
+    return code == 0
+
+
+def _rules_file(root: Path, dast: dict, conf: dict, absent: list, problems: list) -> Path | None:
+    """The project's ZAP rules file, when it names one and it is there."""
+    if not dast.get("rules"):
+        return None
+    rules = root / dast["rules"]
+    if rules.is_file():
+        return rules
+    (absent if conf.get("missing") == "skip" else problems).append(dast["rules"])
+    return None
+
+
 def dast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict, reach=None,
              platform: str = sys.platform) -> dict:
     """The passive ZAP baseline (pinned image) against the running app. Started with docker compose when it is not up
@@ -352,42 +391,25 @@ def dast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict, rea
     findings, problems, scanned, absent = [], [], [], []
     dast = conf.get("dast") or {}
     targets = dast.get("targets", [])
-    rules = root / dast["rules"] if dast.get("rules") else None
-    if rules and not rules.is_file():
-        (absent if conf.get("missing") == "skip" else problems).append(dast["rules"])
-        rules = None
+    if not targets:
+        absent.append("audit.dast.targets")
+    rules = _rules_file(root, dast, conf, absent, problems)
     compose = root / dast["compose"] if dast.get("compose") else None
-    started = False
-    if targets and not all(reach(t) for t in targets) and compose and compose.is_file():
-        code, out, err = run(["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait"], root)
-        started = code == 0
-        if not started:
-            problems.append(f"docker compose up could not start the app (exit {code}): {(err or out).strip()[-300:]}")
+    started = bool(targets) and _start(root, run, compose, targets, reach, problems)
     down = [t for t in targets if not problems and not reach(t)]
     if down:
         problems.append(f"the app does not answer at {', '.join(down)}: start it first (docker compose up)")
-    fail = zap_rules(rules.read_text()) if rules else set()
-    for target in targets if not problems else []:
-        with tempfile.TemporaryDirectory(prefix="crissp-zap-") as work:
-            os.chmod(work, 0o777)  # noqa: S103 — ZAP runs as its own user in the container and writes its report here
-            args = ["-t", target, "-J", "zap.json", "-I"]
-            if rules:
-                (Path(work) / "rules.tsv").write_text(rules.read_text())
-                args += ["-c", "rules.tsv"]
-            network = ["--network", "host"] if platform.startswith("linux") else []
-            seen = target if network else LOCAL.sub(r"\1host.docker.internal", target)
-            code, out, err = run(["docker", "run", "--rm", *network, "-v", f"{work}:/zap/wrk:rw", ZAP, "zap-baseline.py",
-                                  *[seen if a == target else a for a in args]], root)
-            report = Path(work) / "zap.json"
-            if not report.is_file():
-                problems.append(f"ZAP could not scan {target} (exit {code}): {(err or out).strip()[-300:]}")
-                continue
-            findings.extend(from_zap(json.loads(report.read_text()), target, fail))
-            scanned.append(f"zap baseline {target}")
+    if not problems:
+        fail = zap_rules(rules.read_text()) if rules else set()
+        for target in targets:
+            report, why = _zap(root, run, target, rules, platform)
+            if report is None:
+                problems.append(why)
+            else:
+                findings.extend(from_zap(report, target, fail))
+                scanned.append(f"zap baseline {target}")
     if started:
         run(["docker", "compose", "-f", str(compose), "down"], root)
-    if not targets:
-        absent.append("audit.dast.targets")
     return {**_report("dast", on, scanned, problems, findings, accepted), "absent": absent}
 
 

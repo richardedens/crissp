@@ -106,6 +106,19 @@ def _lines(root: Path, file: str) -> list[tuple[int, str]]:
     return out
 
 
+def _blocks(groups: set, size: int, lines: dict) -> list[dict]:
+    """The copies as blocks: a run of windows that continue one another, one line further in every place, is one."""
+    blocks = []
+    for at in sorted(groups):
+        if tuple((f, i - 1) for f, i in at) in groups:
+            continue  # the same copy, one line further: counted with the block it continues
+        length = size
+        while tuple((f, i + length - size + 1) for f, i in at) in groups:
+            length += 1
+        blocks.append({"lines": length, "at": [[f, lines[f][i][0]] for f, i in at]})
+    return blocks
+
+
 def duplication(root: Path, code: list[str], size: int) -> dict:
     """Every run of `size` counted lines or more that is in two places or more."""
     lines = {f: _lines(root, f) for f in code}
@@ -115,19 +128,10 @@ def duplication(root: Path, code: list[str], size: int) -> dict:
             key = hashlib.sha1("\n".join(t for _, t in ls[i:i + size]).encode(), usedforsecurity=False).hexdigest()
             seen.setdefault(key, []).append((f, i))
     groups = {tuple(sorted(at)) for at in seen.values() if len(at) > 1}
-    marked, blocks = set(), []
-    for at in sorted(groups):
-        for f, i in at:
-            marked.update((f, j) for j in range(i, i + size))
-        if tuple((f, i - 1) for f, i in at) in groups:
-            continue  # the same copy, one line further: counted with the block it continues
-        length = size
-        while tuple((f, i + length - size + 1) for f, i in at) in groups:
-            length += 1
-        blocks.append({"lines": length, "at": [[f, lines[f][i][0]] for f, i in at]})
+    marked = {(f, j) for at in groups for f, i in at for j in range(i, i + size)}
     total = sum(len(ls) for ls in lines.values())
     return {"min_lines": size, "lines": len(marked), "of": total,
-            "percent": round(100 * len(marked) / total, 1) if total else 0.0, "blocks": blocks}
+            "percent": round(100 * len(marked) / total, 1) if total else 0.0, "blocks": _blocks(groups, size, lines)}
 
 
 def judge(measured: dict, baseline: dict | None, limit: int = COMPLEXITY) -> tuple[list[str], dict]:
@@ -178,39 +182,50 @@ def render(report: dict) -> str:
     return "\n".join(lines)
 
 
+def _measure(root: Path, conf: dict) -> tuple[list[str], dict, dict, list[str]]:
+    """The code, every function's complexity, what is above the limit and the copies, and what could not be measured."""
+    code, problems = files(root, conf), []
+    try:
+        functions = complexity(root, code, runner)
+    except QualityError as e:
+        functions, problems = {}, [str(e)]
+    limit = conf.get("complexity", COMPLEXITY)
+    measured = {"complex": {k: v for k, v in functions.items() if v["ccn"] > limit},
+                "duplication": duplication(root, code, conf.get("duplicate_lines", DUPLICATE_LINES))}
+    return code, functions, measured, problems
+
+
+def _ratchet(path: Path, measured: dict, limit: int, reason: str | None) -> tuple[list[str], str]:
+    """Compare with the baseline (or take the numbers, with --accept) and write it when it moved."""
+    baseline = json.loads(path.read_text()) if path.is_file() else None
+    if reason:
+        keep, said, regressions = accepted(measured, reason, datetime.date.today().isoformat()), f"accepted ({reason})", []
+    else:
+        regressions, keep = judge(measured, baseline, limit)
+        said = "baseline set" if baseline is None else "held" if keep == baseline else "the baseline went down"
+    if keep != baseline:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(keep, indent=1) + "\n")
+    return regressions, said
+
+
 def main(argv: list[str], root: Path | None = None) -> int:
-    reason = None
-    if len(argv) == 3 and argv[1] == "--accept" and argv[2].strip():
-        reason = argv[2].strip()
-    elif len(argv) != 1:
+    ok_call = len(argv) == 1 or (len(argv) == 3 and argv[1] == "--accept" and argv[2].strip())
+    if not ok_call:
         print(__doc__, file=sys.stderr)
         return 2
+    reason = argv[2].strip() if len(argv) == 3 else None
     root = root or project.root()
     try:
         conf = (project.load(root)["audit"] or {}).get("quality") or {}
     except project.ConfigError as e:
         print(f"quality: {e}", file=sys.stderr)
         return 2
-    limit, size = conf.get("complexity", COMPLEXITY), conf.get("duplicate_lines", DUPLICATE_LINES)
-    code, problems = files(root, conf), []
-    try:
-        functions = complexity(root, code, runner)
-    except QualityError as e:
-        functions, problems = {}, [str(e)]
-    measured = {"complex": {k: v for k, v in functions.items() if v["ccn"] > limit},
-                "duplication": duplication(root, code, size)}
-    path = root / "crissp/testsuite/quality-baseline.json"
-    baseline = json.loads(path.read_text()) if path.is_file() else None
-    regressions, keep, said = [], baseline, "held"
+    limit = conf.get("complexity", COMPLEXITY)
+    code, functions, measured, problems = _measure(root, conf)
+    regressions, said = [], "held"
     if not problems:
-        if reason:
-            keep, said = accepted(measured, reason, datetime.date.today().isoformat()), f"accepted ({reason})"
-        else:
-            regressions, keep = judge(measured, baseline, limit)
-            said = "baseline set" if baseline is None else "held" if keep == baseline else "the baseline went down"
-        if keep != baseline:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(keep, indent=1) + "\n")
+        regressions, said = _ratchet(root / "crissp/testsuite/quality-baseline.json", measured, limit, reason)
     report = {"date": datetime.date.today().isoformat(), "paths": _paths(conf), "absent": absent(root, conf),
               "files": len(code), "functions": len(functions), "threshold": limit,
               "complex": sorted(measured["complex"].values(), key=lambda c: (-c["ccn"], c["file"], c["function"])),
