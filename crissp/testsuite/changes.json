@@ -1529,6 +1529,43 @@
     "test_ux_accept::test_a_pbi_that_cannot_move_is_told_and_the_verdict_stands",
     "test_ux_api::test_the_state_says_when_a_walk_was_shot_and_what_was_built"
    ]
+  },
+  {
+   "id": "ux-measured-rules",
+   "title": "The team had to find overflowing text, small targets and see-through dialogs in a picture",
+   "problem": "Every rule was judged by the team from the screenshots alone, so facts the browser can measure (text that is cut off or runs past the screen, tap targets under 44 × 44, the primary action below the fold, a see-through dialog, a control without visible focus) cost tokens and were missed (E7-F2-02).",
+   "fix": "A rule may name the checks the browser runs for it (measure: in its file, \"Measured by the browser: ...\" in PRINCIPLES.md, a set of ticks in the Rules tab). The shoot hands the checks of the rules that hold to measure.js on every shot; each shot keeps what was found with its rule and place, the shoot says how much, the round's prompt lists them as facts, and the viewer draws a numbered box where each one is.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def _measure("
+    },
+    {
+     "file": "crissp/uxsuite/ux_shoot.py",
+     "symbol": "def plan("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _measured("
+    },
+    {
+     "file": "crissp/uxsuite/measure.js",
+     "symbol": "window.crisspMeasure"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function marks("
+    }
+   ],
+   "tests": [
+    "test_ux_measure::test_a_principle_says_what_the_browser_measures",
+    "test_ux_measure::test_the_page_sets_and_clears_what_a_rule_measures",
+    "test_ux_measure::test_a_check_the_browser_does_not_run_is_refused",
+    "test_ux_measure::test_a_rule_file_with_an_unknown_check_is_named",
+    "test_ux_measure::test_the_shoot_hands_the_checks_of_the_rules_that_hold_to_the_browser",
+    "test_ux_measure::test_the_shoot_says_how_much_was_measured",
+    "test_ux_measure::test_each_shot_brings_what_was_measured_and_the_team_reads_it_as_facts"
+   ]
   }
  ],
  "gaps": [

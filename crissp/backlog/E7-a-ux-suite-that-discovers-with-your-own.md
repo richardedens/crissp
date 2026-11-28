@@ -36,7 +36,7 @@ Tests      uxsuite tests at 100%: parse and write a rule file, the POSTs, the PR
            only rules that are on.
 Depends    —
 
-### E7-F2-02 · Measured rules: what the browser checks at every shoot                    [todo] [M]
+### E7-F2-02 · Measured rules: what the browser checks at every shoot                    [review] [M]
 Why        Overflowing text, small tap targets, an action below the fold and low contrast cost tokens to find by reading
            screenshots, and are found unevenly.
 What       A rule may be kind: measured with a check the shoot runs in the page (overflow, tap targets under 44x44,

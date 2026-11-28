@@ -105,7 +105,7 @@ def shots(suite: Suite, walk: str) -> list[dict]:
         path = suite.results / "shots" / walk / str(s.get("file", ""))
         found = not s.get("error") and path.is_file()
         out.append({"device": s.get("device"), "n": s.get("n"), "title": s.get("title", ""), "error": s.get("error"),
-                    "at": s.get("path"),
+                    "at": s.get("path"), "measured": s.get("measured") or [],
                     "path": str(path) if found else None, "url": f"/ux/results/shots/{walk}/{s['file']}" if found else None})
     return out
 
@@ -256,6 +256,19 @@ def _steps(walk: dict) -> str:
     return "\n".join(say(s) for s in walk["steps"])
 
 
+def _measured(seen: list[dict]) -> str:
+    """What the browser measured on each shot (E7-F2-02), for the rules that ask it: facts, so the team need not look
+    for them in the pictures; where is x,y w×h in the screenshot's CSS pixels, none when it is off the screen."""
+    def at(w):
+        return f" at {w['x']},{w['y']} {w['w']}×{w['h']}" if w else ""
+    lines = [f"  {s['device']} {s['n']} · {f['check']} (rule {f['rule']}){at(f['where'])}: {f['detail']}"
+             for s in seen for f in s.get("measured", [])]
+    if not lines:
+        return ""
+    return ("MEASURED BY THE BROWSER (facts, not opinions: report each one under its rule, with its shot; say where it is,"
+            " and do not argue it away):\n" + "\n".join(lines) + "\n")
+
+
 def _common(suite: Suite, conf: dict, walk: dict, vdir: Path, seen: list[dict]) -> str:
     shot_lines = [f"  {s['device']} {s['n']} · {s['title']}: " + (s["path"] or f"(none: {s['error']})") for s in seen]
     rules = suite.root / "CLAUDE.md"
@@ -270,7 +283,7 @@ THE WALK: "{walk['title']}" ({walk['id']}), on {conf['url']}. The steps a person
 The screenshots, in order (open every one with the Read tool; a line without a file is where the walk got stuck, and
 that is a finding too):
 {chr(10).join(shot_lines)}
-
+{_measured(seen)}
 Read first: {vdir / 'inputs' / 'rules.md'} (the rules that hold, each with its id and weight: must, should, could; they bind
 every judgement and every design) and {suite.here / 'PRINCIPLES.md'} when it is there (how the rules are meant)
 {'and ' + str(rules) + " (the product's agreement: how it is built, its words and rules)" if rules.is_file() else ''}

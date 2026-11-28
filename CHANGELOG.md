@@ -4,6 +4,12 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The browser measures what it can, so the team does not guess (E7-F2-02).** A rule can say what the browser checks
+  for it at every shoot: text that is cut off or runs past the screen, tap targets under 44 × 44 on a phone, the
+  primary action below the fold, a see-through dialog, a control without a visible focus. Tick them in the Rules tab
+  (or write `measure:` in the rule's file, or "Measured by the browser: ..." under a section of PRINCIPLES.md; the
+  template's principles 1, 6, 7 and 8 do). Each shot keeps what was found; the enlarged screenshot draws a numbered box
+  where it is, and the team reports it as a fact under its rule.
 - **Accept what was built, or send it back (E7-F5-01).** Once an approved design is built and its walk shot again, the
   Designs tab puts the new screens next to the design. **Accept** moves its backlog item to review; **Not good…** moves
   it back to doing and writes your reason as a finding for that item. Screenshots taken before the approval are never

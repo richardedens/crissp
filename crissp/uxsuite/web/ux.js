@@ -122,7 +122,7 @@
   const walkPicker = (w, to) => `<div class="toolbar"><select id="walk" data-to="${to}" aria-label="Walk">${S.walks.map(x => `<option value="${esc(x.id)}" ${x === w ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></div>`;
 
   function shotsOf(w) {
-    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><button class="shot" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(s.device)}" data-n="${s.n}" title="Enlarge"><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"></button><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}</figcaption></figure>`
+    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><button class="shot" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(s.device)}" data-n="${s.n}" title="Enlarge"><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"></button><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}${(s.measured || []).length ? " " + badge("must", `${s.measured.length} measured`) : ""}</figcaption></figure>`
       : `<p class="small">${badge("failed", s.device)} ${esc(s.error)}</p>`).join("") || '<p class="small muted">No screenshots yet.</p>'}</div>`;
   }
 
@@ -263,7 +263,8 @@
     $("#viewer-modes").innerHTML = modes.map(([m, l], i) => `<button class="ghost small" data-mode-to="${m}" aria-pressed="${m === v.mode}" title="key ${i + 1}">${l}</button>`).join("");
     document.querySelectorAll("#viewer [data-zoom]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zoom === String(v.zoom))));
     const pane = (what, label) => what === "before"
-      ? `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><img src="${esc(v.before.url)}" alt="${esc(v.before.title || "")}" data-z></div></figure>`
+      ? `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><div class="marked">
+          <img src="${esc(v.before.url)}" alt="${esc(v.before.title || "")}" data-z>${marks(v.before)}</div></div>${markList(v.before)}</figure>`
       : `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><div class="mock" data-z><iframe sandbox="allow-scripts" src="${esc(v.after)}" title="The design"></iframe></div></div></figure>`;
     const panes = v.mode === "both" ? pane("before", "<b>Before</b> · now") + pane("after", "<b>After</b> · the design") : pane(v.mode === "after" ? "after" : "before");
     $("#viewer-body").className = `viewer-body ${v.mode === "both" ? "two" : "one"}`;
@@ -271,13 +272,25 @@
     $("#viewer-body").querySelectorAll("img[data-z]").forEach(img => img.complete ? zoomViewer() : img.addEventListener("load", zoomViewer));
     zoomViewer();
   }
+  /* What the browser measured on a shot (E7-F2-02): a box on the picture where it is, and the list under it. The
+     screenshot is the viewport at its CSS size, so a place is a share of the picture's width and height. */
+  const SIZE = { laptop: [1440, 900], phone: [390, 844] };
+  function marks(s) {
+    const [W, H] = SIZE[s.device] || [1440, 900];
+    return (s.measured || []).filter(f => f.where).map((f, i) => `<span class="mark" title="${esc(measureName(f.check))}: ${esc(f.detail)}" style="left:${100 * f.where.x / W}%;top:${100 * f.where.y / H}%;width:${100 * f.where.w / W}%;height:${100 * f.where.h / H}%"><b>${i + 1}</b></span>`).join("");
+  }
+  function markList(s) {
+    if (!(s.measured || []).length) return "";
+    let n = 0;
+    return `<ol class="measured small">${s.measured.map(f => `<li${f.where ? ` value="${++n}"` : ' class="off-screen"'}>${badge("must", measureName(f.check))} ${esc(f.detail)}${f.rule ? ` <code class="muted">${esc(f.rule)}</code>` : ""}${f.where ? "" : ' <span class="muted">(not on the first screen)</span>'}</li>`).join("")}</ol>`;
+  }
   function zoomViewer() {
     if (!view) return;
     document.querySelectorAll("#viewer-body .pane").forEach(pane => {
       const box = pane.querySelector(".scroll"), img = pane.querySelector("img"), mock = pane.querySelector(".mock");
-      if (img) {
-        img.style.width = view.zoom === "fit" ? "" : `${img.naturalWidth * view.zoom}px`;
-        img.classList.toggle("fit", view.zoom === "fit");
+      if (img && img.naturalWidth) {  // fit: as large as the pane holds, never larger than the picture
+        const z = view.zoom === "fit" ? Math.min(1, (box.clientWidth - 2) / img.naturalWidth, (box.clientHeight - 2) / img.naturalHeight) : Number(view.zoom);
+        img.style.width = `${img.naturalWidth * z}px`;
       }
       if (mock) {  // the design is drawn 1440 wide; fit scales it to the pane
         const z = view.zoom === "fit" ? Math.min(1, (box.clientWidth - 2) / 1440) : Number(view.zoom);
@@ -313,6 +326,10 @@
   const field = (label, name, value, extra = "") => `<label class="field"><span>${label}</span><input type="text" name="${name}" value="${esc(value ?? "")}" ${extra}></label>`;
   const area = (label, name, value, hint = "") => `<label class="field"><span>${label}${hint ? `<span class="hint muted small">${hint}</span>` : ""}</span><textarea name="${name}">${esc(value ?? "")}</textarea></label>`;
   const choose = (label, name, value, options) => `<label class="field"><span>${label}</span><select name="${name}">${options.map(o => `<option ${o === value ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+  /* What the browser itself checks at every shoot for a rule (E7-F2-02, measure.js). */
+  const MEASURES = [["overflow", "Text that overflows"], ["tap-targets", "Tap targets under 44 × 44 (phone)"],
+    ["below-fold", "The primary action below the fold"], ["dialog-opaque", "See-through dialogs"], ["focus-visible", "No visible focus"]];
+  const measureName = m => (MEASURES.find(x => x[0] === m) || [m, m])[1];
   const tick = (label, name, value) => `<label class="chk"><input type="checkbox" name="${name}" ${value ? "checked" : ""}> ${label}</label>`;
 
   function personaForm(p) {
@@ -348,6 +365,7 @@
       ${field("Title", "title", r.title, "required")}${choose("Weight", "severity", r.severity, ["must", "should", "could"])}
       ${area("What it asks", "text", r.text, "in plain words, as the team should judge it")}
       <div class="row">${tick("Holds", "on", r.on)}</div>
+      <fieldset class="measures"><legend>Measured by the browser at every shoot</legend><div class="row">${MEASURES.map(([m, l]) => tick(l, "m:" + m, (r.measure || []).includes(m))).join("")}</div></fieldset>
       <div class="row"><button class="primary">Save</button><a href="#rules">Cancel</a></div></form>`;
   }
 
@@ -357,6 +375,7 @@
       ${e === "new" ? ruleForm(null) : ""}
       ${S.rules.map(r => e === r.id ? ruleForm(r) : `<article class="card rule ${r.on ? "" : "off"}"><div class="row">${badge(r.severity, r.severity)}<h3>${esc(r.title)}</h3><code class="small muted">${esc(r.id)}</code>${r.on ? "" : badge("missing", "off")}</div>
         <p class="small">${esc(r.text)}</p>
+        ${(r.measure || []).length ? `<div class="row small"><span class="muted">Measured by the browser:</span>${r.measure.map(m => badge("ver", measureName(m))).join("")}</div>` : ""}
         <div class="row"><a href="#rules?edit=${encodeURIComponent(r.id)}">Edit</a>
           <button class="ghost small" data-toggle="rule" data-id="${esc(r.id)}">${r.on ? "Switch off" : "Switch on"}</button>
           <button class="ghost small" data-remove="rule" data-id="${esc(r.id)}">Remove</button></div></article>`).join("") || '<div class="card">No rules yet: add the first one.</div>'}`;
@@ -463,7 +482,8 @@
     if (!f) return;
     e.preventDefault();
     const kind = f.dataset.form, data = Object.fromEntries(new FormData(f));
-    const body = { ...data, on: !!data.on, ...(kind === "persona" ? { key: f.dataset.key || undefined, moderator: !!data.moderator } : { id: f.dataset.key || undefined }) };
+    const measure = Object.keys(data).filter(k => k.startsWith("m:")).map(k => { delete data[k]; return k.slice(2); });
+    const body = { ...data, on: !!data.on, ...(kind === "rule" ? { measure } : {}), ...(kind === "persona" ? { key: f.dataset.key || undefined, moderator: !!data.moderator } : { id: f.dataset.key || undefined }) };
     try { await api(`api/${kind}`, { [kind]: body }); tell(`Saved ${kind === "persona" ? data.name : data.title}`); location.hash = kind === "persona" ? "team" : "rules"; }
     catch (err) { tell(err.message); }
     return load();

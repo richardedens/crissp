@@ -18,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import ux_cards
 from ux_config import Suite
 
 HERE = Path(__file__).resolve().parent
@@ -41,8 +42,10 @@ def plan(suite: Suite, conf: dict, walk_id: str) -> dict:
     walk = conf["walks"].get(walk_id)
     if walk is None:
         raise ValueError(f"unknown walk {walk_id!r} (known: {', '.join(conf['walks']) or 'none'})")
+    measure = [{"check": c, "rule": r["id"]} for r in ux_cards.rules(suite) if r["on"] for c in r.get("measure", [])]
     return {"url": conf["url"], "walk": walk_id, "out": str(suite.results / "shots" / walk_id),
-            "devices": {d: VIEWPORTS[d] for d in devices(conf)}, "steps": walk["steps"]}
+            "devices": {d: VIEWPORTS[d] for d in devices(conf)}, "steps": walk["steps"],
+            "measure": measure, "measure_js": str(HERE / "measure.js")}
 
 
 def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[int, str]:
@@ -62,8 +65,11 @@ def shoot(suite: Suite, conf: dict, walk_id: str, run=subprocess.run) -> tuple[i
     except (OSError, json.JSONDecodeError):
         return 1, "The browser ended without a list of shots (shots.json)."
     stuck = [f"{s['device']}: {s['error']}" for s in shots if s.get("error")]
-    return 0, (f"{walk_id}: {len(shots) - len(stuck)} screenshot(s) in {out.relative_to(suite.root)}"
-               + "".join(f"\n  {s}" for s in stuck))
+    taken = len(shots) - len(stuck)
+    measured = [len(s["measured"]) for s in shots if s.get("measured")]
+    if measured:
+        stuck.append(f"measured by the browser: {sum(measured)} finding(s) on {len(measured)} shot(s)")
+    return 0, (f"{walk_id}: {taken} screenshot(s) in {out.relative_to(suite.root)}" + "".join(f"\n  {s}" for s in stuck))
 
 
 def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real browser; shoot() and plan() are tested with a stand-in
@@ -97,7 +103,8 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                         file = f"{device}/{n:02d}-{slug(step['title'])}.png"
                         page.screenshot(path=str(out / file))
                         shots.append({"device": device, "n": n, "title": step["title"], "file": file,
-                                      "path": urlsplit(page.url).path or "/"})  # the screen it shows, for the map
+                                      "path": urlsplit(page.url).path or "/",  # the screen it shows, for the map
+                                      "measured": measured(page, p, vp["touch"])})
                 except Exception as e:
                     shots.append({"device": device, "n": n + 1, "title": step.get("title", step["do"]), "file": "",
                                   "error": f"Stuck at step {i} ({step['do']}): {str(e).splitlines()[0][:200]}"})
@@ -105,6 +112,21 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
             ctx.close()
         browser.close()
     (out / "shots.json").write_text(json.dumps(shots, indent=1) + "\n")
+
+
+def measured(page, p: dict, touch: bool) -> list[dict]:  # pragma: no cover — runs in the browser, with capture()
+    """What measure.js finds on the page now, for the checks the rules ask, each with the rule it is for."""
+    if not p.get("measure"):
+        return []
+    try:
+        page.add_script_tag(path=p["measure_js"])
+        found = page.evaluate("([c, t]) => window.crisspMeasure(c, t)", [[m["check"] for m in p["measure"]], touch])
+    except Exception as e:
+        return [{"check": "measure", "rule": "", "where": None, "detail": f"could not measure: {str(e).splitlines()[0][:200]}"}]
+    rule = {}
+    for m in p["measure"]:
+        rule.setdefault(m["check"], m["rule"])
+    return [{**f, "rule": rule.get(f["check"], "")} for f in found]
 
 
 if __name__ == "__main__":  # pragma: no cover — run by shoot() under uv with Playwright

@@ -106,7 +106,7 @@ def test_a_walk_s_screenshots_are_listed_with_where_it_got_stuck(product):
     add_shots(product)
     shots = ux_team.shots(product, "first-visit")
     assert shots[0]["url"] == "/ux/results/shots/first-visit/laptop/01-the-first-screen.png" and shots[0]["path"]
-    assert shots[1] == {"device": "phone", "n": 1, "title": "The first screen", "error": "Stuck at step 2", "at": None, "path": None, "url": None}
+    assert shots[1] == {"device": "phone", "n": 1, "title": "The first screen", "error": "Stuck at step 2", "at": None, "measured": [], "path": None, "url": None}
 
 
 def test_the_places_fill_up_and_the_rest_waits_in_the_queue(product, monkeypatch):
