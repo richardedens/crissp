@@ -1018,7 +1018,7 @@
    "id": "secrets-step",
    "title": "Nothing scanned git for secrets (F-43, E6-F2-01)",
    "problem": "'Never in git: keys, .env' was guarded by .gitignore only. A key committed anyway, in crissp or in a project, was found by nothing, and stayed in the history.",
-   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is in .gitleaksignore with why.",
+   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is allowed in .gitleaks.toml by its file and value, with why (F-51: a .gitleaksignore fingerprint names a commit and missed in a shallow clone).",
    "sources": [
     {
      "file": "crissp/testsuite/lib/audit.py",
@@ -1029,8 +1029,8 @@
      "symbol": "def from_gitleaks("
     },
     {
-     "file": ".gitleaksignore",
-     "symbol": ""
+     "file": ".gitleaks.toml",
+     "symbol": "[[allowlists]]"
     }
    ],
    "tests": [
@@ -1039,7 +1039,10 @@
     "test_audit::test_a_secrets_scan_that_cannot_run_is_a_problem",
     "test_audit::test_the_command_line_runs_each_scan_into_its_own_results",
     "test_audit::test_this_repository_scans_its_history_for_secrets",
-    "test_template::test_every_project_scans_its_git_history_for_secrets"
+    "test_template::test_every_project_scans_its_git_history_for_secrets",
+    "test_gitleaks_config::test_the_default_rules_stay_on",
+    "test_gitleaks_config::test_the_made_up_key_in_the_cluster_plan_test_is_allowed_by_file_and_value",
+    "test_gitleaks_config::test_no_finding_is_ignored_by_its_commit"
    ]
   },
   {

@@ -56,7 +56,8 @@ This project's steps (`crissp/testsuite/suites.json`):
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
 - `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that
-  is no secret goes into `.gitleaksignore` by fingerprint, with a comment saying why.
+  is no secret is allowed in `.gitleaks.toml` by its file and value, with why; never by a commit fingerprint (a shallow
+  clone misses it).
 - `sast`: Semgrep (pinned) with crissp's own rules on `src`, `crissp` and `site`, after the rules' own tests
   (`crissp/testsuite/sast/tests`). An ERROR blocks, a WARNING is listed for review.
 - `audit`: pip-audit and npm audit of the pinned tools, the lint tools too, and trivy config of the deploy chart and
