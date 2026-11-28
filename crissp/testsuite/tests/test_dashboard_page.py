@@ -98,7 +98,8 @@ def test_the_changes_without_a_passing_test_can_be_listed_on_their_own():
     change = {"title": "T", "problem": "p", "fix": "f", "sources": [], "proof": [], "screenshots": [], "area": "a",
               "version": "1"}
     data = run_data(changes=[{**change, "id": "ok", "verdict": "passed"}, {**change, "id": "open", "verdict": "missing"}])
-    assert "1 change without a passing test" in render(data)["#view"]
+    view = render(data)["#view"]
+    assert "1 change without a passing test" in view and "Changes by area" not in view  # one area: the tile says it all
     listed = render(data, "#changes?open=1")["#view"]
     assert 'id="c-open"' in listed and 'id="c-ok"' not in listed
 

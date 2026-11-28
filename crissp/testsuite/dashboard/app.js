@@ -139,7 +139,7 @@
             <td class="num">${s.failed ? badge("failed", s.failed) : '<span class="muted">0</span>'}</td><td class="num muted">${s.time}s</td></tr>`).join("")}
           </tbody></table></div></section>` : ""}
       </div>
-      ${S.changes.length ? `<h2>Changes by area</h2>
+      ${new Set(S.changes.map(c => c.area)).size > 1 ? `<h2>Changes by area</h2>
       <div class="grid areas">${[...new Set(S.changes.map(c => c.area))].map(a => {
         const cs = S.changes.filter(c => c.area === a), notyet = cs.filter(c => c.verdict !== "passed");
         return `<div class="card click area-card" data-go="changes" data-q="area=${encodeURIComponent(a)}"><div class="label">${esc(a)}</div>
