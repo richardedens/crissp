@@ -73,7 +73,14 @@
   const ring = (p, label, c) => `<div class="ring" style="--p:${p};--c:${c}" data-label="${esc(label)}"></div>`;
   const stepLink = (key, inner) => `<a href="#steps?step=${encodeURIComponent(key)}" class="steplink">${inner}</a>`;
 
-  function partsCard(title, parts, field, noun, okWord) {
+  // F-153: the lint rules the project switched off (crissp/testsuite/lint-exceptions.json), each with why: never silent
+  function lintOff() {
+    const off = S.lintExceptions?.off || [], wrong = S.lintExceptions?.problems || [];
+    if (!off.length && !wrong.length) return "";
+    return `<div class="s">${off.length ? `${plural(off.length, "rule")} off:` : ""}</div><ul class="parts off">${off.map(e => `<li title="${esc(`${e.by}, since ${e.since}`)}"><span><code>${esc(e.rule)}</code></span><b class="muted">${esc(e.why)}</b></li>`).join("")}${wrong.map(w => `<li><b style="color:var(--red)">${esc(w)}</b></li>`).join("")}</ul>`;
+  }
+
+  function partsCard(title, parts, field, noun, okWord, extra = "") {
     if (!parts.length) return "";
     const ok = parts.filter(x => x.status === "passed").length, failing = parts.filter(x => x.status === "failed").length;
     const found = parts.reduce((n, x) => n + (x[field] || 0), 0);
@@ -82,7 +89,7 @@
       : found ? `${found}<span class="unit">${found === 1 ? noun : noun + "s"}</span>` : `${failing}<span class="unit">failing</span>`;
     return `<div class="card kpi row">${ring(failing ? 100 : pct(ok, parts.length), `${ok}/${parts.length}`, failing ? "var(--red)" : ok === parts.length ? "var(--green)" : "var(--amber)")}
       <div class="kbody"><div class="l">${title}</div><div class="v">${head}</div>
-      <ul class="parts">${parts.map(x => `<li title="${esc(x.label)}">${stepLink(x.key, `<span>${esc(short(x.label))}</span><b style="color:${tint(x.status)}">${what(x)}</b>`)}</li>`).join("")}</ul></div></div>`;
+      <ul class="parts">${parts.map(x => `<li title="${esc(x.label)}">${stepLink(x.key, `<span>${esc(short(x.label))}</span><b style="color:${tint(x.status)}">${what(x)}</b>`)}</li>`).join("")}</ul>${extra}</div></div>`;
   }
 
   // F-142: complexity and duplication, held by a ratchet like coverage (lib/quality.py, results/quality.json)
@@ -124,7 +131,7 @@
         ${tests.length ? `<div class="card kpi row click" data-go="tests" data-q="${failed ? "status=failed" : ""}">${ring(totalPass, totalPass + "%", failed ? "var(--red)" : "var(--green)")}<div class="kbody"><div class="l">Tests</div>
           <div class="v">${tests.length - failed - skipped}<span class="unit">of ${tests.length} pass</span></div>
           <div class="s">${failed ? `<b style="color:var(--red)">${failed} failing</b>` : "none failing"}${skipped ? ` · ${skipped} skipped` : ""}</div></div></div>` : ""}
-        ${partsCard("Lint", S.lint || [], "problems", "problem", "clean")}
+        ${partsCard("Lint", S.lint || [], "problems", "problem", "clean", lintOff())}
         ${partsCard("Security", S.security || [], "blocking", "finding", "nothing found")}
         ${covCard(keys[0], cov)}${covCard(keys[1], pcov)}
         ${cov ? `<div class="card kpi row">${touchedFiles.length ? ring(tCov, tCov + "%", color(tCov)) : ring(100, "–", "var(--line)")}<div class="kbody"><div class="l">Changed files</div>

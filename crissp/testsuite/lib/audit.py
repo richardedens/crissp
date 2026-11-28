@@ -25,7 +25,9 @@ configuration counts, as gitleaks reads it: .gitleaks.toml, .gitleaksignore (fin
 
 SAST is the pinned Semgrep, offline (metrics off, no registry), with crissp's rules (crissp/testsuite/sast: Python,
 JavaScript, TypeScript, JSX) and the rules folders the project names (sast_rules), on the code it names (sast). An
-ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts.
+ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts, and so does its .gitignore (Semgrep
+reads both); the build folders (lib/sources.py: dist, build, node_modules, …) are always left out, and trivy fs leaves
+them out too: their lock files are not the project's (F-150).
 
 DAST is OWASP ZAP (the image pinned by digest) against the app (audit.dast). With a compose file (compose) it starts a
 throwaway stack of its own (compose project crissp-dast, built fresh) and removes it afterwards with its volumes, so
@@ -73,6 +75,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import project
+import sources
 import tools
 
 BLOCKING = ("CRITICAL", "HIGH")
@@ -81,6 +84,10 @@ NEEDED = ("id", "package", "why", "by", "since", "until")
 PIP_AUDIT = "pip-audit==2.10.1"
 SEMGREP = "semgrep==1.185.0"  # SAST, run offline with crissp's own rules (never the registry, metrics off)
 RULES = Path(__file__).resolve().parents[1] / "sast"  # crissp's Semgrep rules, with their tests in sast/tests
+# F-150: never a build folder (its lock files are not the project's; built code is not its code), also when the project's
+# own .semgrepignore leaves Semgrep's defaults out
+UNBUILT_TRIVY = [x for name in sources.BUILD for x in ("--skip-dirs", f"**/{name}")]
+UNBUILT_SEMGREP = [x for name in sources.BUILD for x in ("--exclude", name)]
 PYTHON = "3.14"  # what pip-audit resolves for, unless the project names another
 
 
@@ -465,7 +472,13 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         return [trivy_bin, sub, "--quiet"]
 
     for app in fs if trivy_bin else []:
-        scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
+        scan(
+            f"trivy fs {app}",
+            [*trivy("fs"), "--scanners", "vuln", *UNBUILT_TRIVY, "--format", "json", app],
+            root,
+            from_trivy,
+            app,
+        )
     for target in configs if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
     found = scan_images(root, conf, run, problems, scan, roles, trivy("image")) if trivy_bin else []
@@ -1136,7 +1149,17 @@ def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> 
         configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
         _scanner(run, findings, problems, scanned)(
             f"semgrep {' '.join(paths)}",
-            semgrep("scan", *configs, "--json", "--metrics", "off", "--disable-version-check", "--quiet", *paths),
+            semgrep(
+                "scan",
+                *configs,
+                *UNBUILT_SEMGREP,
+                "--json",
+                "--metrics",
+                "off",
+                "--disable-version-check",
+                "--quiet",
+                *paths,
+            ),
             root,
             parse,
             "code",

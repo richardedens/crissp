@@ -24,6 +24,24 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **`crissp repair` and `crissp init` turn the new steps on in projects brought in earlier (F-145).** It adds the template's `quality`,
   `licenses` and `dast` steps and their `audit` settings to a project's `suites.json` where they are missing, and
   leaves the project's own steps and settings as they are; `crissp init` over such a project does the same.
+- **The lint and the scans skip build output (F-150).** crissp's frontend lint linted a git-ignored `dist/`
+  (thousands of findings in minified bundles): its ignore patterns were read from crissp's own cache, never from the
+  project. ESLint and stylelint now get the project's own files by name, as git lists them (every `.gitignore`
+  counts), and never a build folder (`dist`, `build`, `node_modules`, `coverage`, `.next`, `.nuxt`, `.svelte-kit`,
+  `.turbo`), even where nothing ignores it. Semgrep and `trivy fs` leave the build folders out as well.
+- **The frontend lint finds mistakes, not layout (F-151).** stylelint uses its recommended rules, as crissp's own
+  CSS does (no layout rules, no `no-descending-specificity`), and React hooks are held to `rules-of-hooks` and
+  `exhaustive-deps`. A project that uses the React Compiler gets the compiler's rules too: `frontend_lint
+  --react-compiler` in its `frontend-lint` step.
+- **Switch the frontend lint on in a project that already has code (F-152).** `frontend_lint --baseline`
+  writes what the lint finds now into `crissp/testsuite/lint-baseline.json` (commit it). From then on the findings
+  only go down, like coverage only goes up: an unchanged file may keep its count of each rule, a new or changed file
+  must be clean, and a green run with fewer findings shrinks the baseline. Without a baseline every finding blocks,
+  as before.
+- **Switch one lint rule off, with a reason (F-153).** `crissp/testsuite/lint-exceptions.json` lists rules the
+  project switches off, each with `rule`, `why`, `by` and `since` (like `accepted-risks.json`). Their findings are
+  not counted, every run says how many there were, and the dashboard's Lint tile lists the rules that are off. An
+  incomplete entry is red and switches nothing off.
 - **`crissp repair` names every template step a project lacks, and `--yes` adds it (F-160).** A project brought in by
   an older crissp could miss `frontend-lint`, `audit`, `secrets`, `sast` and the audit block, and repair said
   "nothing out of place". Now each missing step is named; `--yes` adds the ones whose part is there (with their path

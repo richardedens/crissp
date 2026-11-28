@@ -670,6 +670,19 @@ def test_lint_steps_are_shown_as_lint_and_not_as_suites_of_zero_tests(collect):
     ]
     assert "backend-lint" not in data["suites"] and "lint" not in data["suites"] and "linter-docs" in data["suites"]
     assert "frontend-lint" not in data["unitSuites"] and "api" in data["unitSuites"]
+    assert data["lintExceptions"] == {"off": [], "problems": []}
+
+
+def test_the_lint_rules_switched_off_reach_the_dashboard(collect):
+    """F-153: the project's lint-exceptions.json, as the lint reads it: the rules off and what is wrong in the file."""
+    off = {"rule": "no-alert", "why": "an admin page confirms a delete", "by": "Pat", "since": "2026-11-28"}
+    _write(collect.ROOT / "crissp/testsuite/lint-exceptions.json", json.dumps({"exceptions": [off, {"rule": "x"}]}))
+    assert collect.main(collect.ROOT) == 0
+    data = json.loads((collect.RESULTS / "data.js").read_text()[len("window.SUITE = ") : -2])
+    assert data["lintExceptions"]["off"] == [off]
+    assert data["lintExceptions"]["problems"] == [
+        "crissp/testsuite/lint-exceptions.json: exception 2 lacks why, by, since, so it switches nothing off"
+    ]
 
 
 def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(collect):

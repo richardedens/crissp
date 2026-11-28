@@ -318,6 +318,9 @@ def test_a_clean_run_scans_everything_and_passes(repo):
     assert "--no-deps" in pip and "--disable-pip" in pip and "--format json" in pip
     assert report["not_scanned"] == []
     assert all("--exit-code" not in c for c in commands)  # the verdict is ours, from the JSON
+    for fs in (argv for argv, _ in runner.calls if argv[1:2] == ["fs"]):  # F-150: never a build folder's lock files
+        skipped = [fs[i + 1] for i, a in enumerate(fs) if a == "--skip-dirs"]
+        assert skipped == [f"**/{name}" for name in audit.sources.BUILD]
 
 
 def test_trivy_is_the_pinned_one_never_the_one_on_the_path(repo):
@@ -599,6 +602,8 @@ def test_unsafe_code_blocks_on_error_and_is_listed_on_warning(repo):
     assert configs == [str(audit.RULES), "rules/semgrep"]  # crissp's rules and the project's own
     assert "--metrics" in argv and argv[argv.index("--metrics") + 1] == "off" and "--disable-version-check" in argv
     assert argv[-2:] == ["app/backend", "app/frontend"]
+    excluded = [argv[i + 1] for i, a in enumerate(argv) if a == "--exclude"]
+    assert excluded == list(audit.sources.BUILD)  # F-150: never build output, whatever the project's .semgrepignore
     text = audit.render(report)
     assert "BLOCKING HIGH     crissp-py-shell  app/backend/run.py line 7" in text and "subprocess.run" not in text
     assert text.splitlines()[-1].startswith("Not green: change the code")
