@@ -50,10 +50,11 @@ This project's steps (`crissp/testsuite/suites.json`):
   library, and pylint's duplicate-code check (pinned in `crissp/testsuite/lint/requirements.txt`, `[tool.pylint]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
-- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script and ESLint on every tracked
-  JavaScript file (the look, the dashboard, the uxsuite's page). Dev-only tools, pinned in `crissp/testsuite/lint/`
-  (`requirements.txt` for shellcheck-py, `package.json` and its lock for ESLint) and never in the wheel; it needs uv
-  and Node.js (20 or newer), and says FAILED, never a silent pass, without them.
+- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script, ESLint on every tracked
+  JavaScript file (the look, the dashboard, the uxsuite's page) and stylelint (its recommended rules) on every tracked
+  CSS file. Dev-only tools, pinned in `crissp/testsuite/lint/` (`requirements.txt` for shellcheck-py, `package.json`
+  and its lock for ESLint and stylelint) and never in the wheel; it needs uv and Node.js (20 or newer), and says
+  FAILED, never a silent pass, without them.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
 - `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that

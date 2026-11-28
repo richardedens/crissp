@@ -1433,6 +1433,26 @@
    ]
   },
   {
+   "id": "stylelint-crissp-css",
+   "title": "crissp's own CSS is linted (F-96)",
+   "problem": "lint.sh ran shellcheck and ESLint, but no tool read crissp's six stylesheets; a deprecated value (word-break: break-word) went unnoticed three times.",
+   "fix": "lint.sh runs stylelint 17.16.0 with stylelint-config-recommended 18.0.0 (pinned in crissp/testsuite/lint/package.json and its lock, dev-only) over every tracked CSS file, with stylelint.config.mjs there. no-descending-specificity is off: the sheets are ordered by component. The three uses of break-word are overflow-wrap: anywhere.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": "== stylelint (every CSS file)"
+    },
+    {
+     "file": "crissp/testsuite/lint/stylelint.config.mjs",
+     "symbol": "stylelint-config-recommended"
+    }
+   ],
+   "tests": [
+    "test_lint::test_the_step_lints_every_css_file_of_this_repository_with_stylelint",
+    "test_lint::test_this_repository_has_a_lint_step_with_its_own_dev_only_tools"
+   ]
+  },
+  {
    "id": "vibe-desktop-mcp-tools",
    "title": "A Vibe desktop session got no crissp tools: the config named no folder (F-100)",
    "problem": "Vibe's desktop app starts MCP servers from its own app server: the server's working directory is the config's cwd, else the app server's own folder, and its environment only HOME, PATH, SHELL, TERM, USER and LOGNAME plus the config's env. .vibe/config.toml gave a relative server path (this repository) or `uvx crissp==x mcp` without CRISSP_ROOT (a project), so the server was not found or did not know the project, and search_tool_functions showed only Vibe's own tools.",
