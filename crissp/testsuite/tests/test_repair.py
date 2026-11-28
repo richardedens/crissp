@@ -82,7 +82,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 10" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 11" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
