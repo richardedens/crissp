@@ -92,3 +92,32 @@ def test_a_page_s_own_tabs_get_a_row_of_their_own_on_one_line():
     assert re.search(r"^\.top #theme \{[^}]*margin-left: auto", css, re.MULTILINE)
     assert re.search(r"^\.brand \{[^}]*flex: 0 0 300px", css, re.MULTILINE)  # the sections start at the same place on every page
     assert re.search(r"^\.tabs button \{[^}]*white-space: nowrap", css, re.MULTILINE)
+
+
+def _luminance(hex_: str) -> float:
+    rgb = [int(hex_.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def contrast(a: str, b: str) -> float:
+    la, lb = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def test_text_on_the_accent_is_readable_in_both_themes():
+    """F-72: the primary button was white on the dark theme's light purple, 3.2:1; WCAG AA asks 4.5:1 for its 13 px text."""
+    css = (ENGINE / "look" / "look.css").read_text(encoding="utf-8")
+    for theme in (r"^:root \{([^}]*)\}", r'^:root\[data-theme="light"\] \{([^}]*)\}'):
+        tokens = dict(re.findall(r"--([\w-]+): (#[0-9a-fA-F]{6})", re.search(theme, css, re.MULTILINE).group(1)))
+        assert contrast(tokens["accent"], tokens["on-accent"]) >= 4.5, theme
+    assert re.search(r"^\.primary \{[^}]*color: var\(--on-accent\)", css, re.MULTILINE)
+    assert contrast("#9b7bff", "#ffffff") < 4.5  # the old pair, so the check can fail
+
+
+def test_on_a_phone_the_sections_scroll_in_their_own_row_and_the_page_never_sideways():
+    """F-72: on a 390 px phone the six sections made the top bar 31 px wider than the screen, so the page scrolled."""
+    css = (ENGINE / "look" / "look.css").read_text(encoding="utf-8")
+    phone = css.split("@media (max-width: 800px) {", 1)[1].split("@media", 1)[0]
+    rule = re.search(r"\.sections \{([^}]*)\}", phone)
+    assert rule and "flex: 1 0 100%" in rule.group(1) and "overflow-x: auto" in rule.group(1) and "min-width: 0" in rule.group(1)
