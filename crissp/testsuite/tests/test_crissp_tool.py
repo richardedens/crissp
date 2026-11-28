@@ -279,7 +279,9 @@ def test_features_and_their_pbis_are_three_levels(tmp_path):
 
 def test_the_writers_answer_over_mcp(tmp_path):
     root = _repo(tmp_path)
-    call = lambda name, args: srv.handle(root, {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}})["result"]  # noqa: E731
+    def call(name, args):
+        return srv.handle(root, {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}})["result"]
+
     assert call("finding", {"seen": "a", "observation": "b", "goes_to": "c"})["content"][0]["text"] == "F-03 written to crissp/backlog/FINDINGS.md"
     assert call("decision", {"question": "q", "options": "o", "recommendation": "r"})["content"][0]["text"].startswith("D-05 ")
     assert call("epic", {"title": "Repair", "why": "w"})["content"][0]["text"] == "E2 written to crissp/backlog/E2-repair.md"
@@ -644,7 +646,10 @@ def test_test_sh_names_a_port_held_by_something_else(tmp_path):
 def test_run_status_and_dashboard_answer_over_mcp(tmp_path, monkeypatch):
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")  # never the real dashboard from a test
     _scripts(tmp_path, check='echo "plan"')
-    call = lambda name, args=None: srv.handle(tmp_path, {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}})["result"]  # noqa: E731
+    def call(name, args=None):
+        request = {"id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}
+        return srv.handle(tmp_path, request)["result"]
+
     assert call("run", {"what": "check-plan"})["content"][0]["text"].endswith("plan")
     assert call("status")["content"][0]["text"].startswith("Lock: free")
     assert call("dashboard")["isError"]  # no crissp/test.sh here

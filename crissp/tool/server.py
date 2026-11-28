@@ -248,8 +248,10 @@ def backlog(root: Path, args: dict) -> str:
         for i in items(root):
             if i["id"] == wanted:
                 return f'{i["file"]}\n{i["block"]}'
-        pbis = lambda prefix: [f'{i["id"]} · {i["title"]} [{i["status"]}] [{i["size"]}]'  # noqa: E731
-                               for i in items(root) if i["id"].startswith(prefix + "-")]
+        def pbis(prefix: str) -> list[str]:
+            return [f'{i["id"]} · {i["title"]} [{i["status"]}] [{i["size"]}]'
+                    for i in items(root) if i["id"].startswith(prefix + "-")]
+
         for ft in features(root):
             if ft["id"] == wanted:
                 return "\n".join([ft["file"], ft["block"], "PBIs:", *(pbis(wanted) or ["none yet"])])
