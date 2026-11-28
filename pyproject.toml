@@ -124,3 +124,15 @@ allowed-confusables = ["–", "×"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 130  # code is held at 120; a docstring, comment or message may run a little longer
+
+# The python-lint step's duplicate-code check (crissp/testsuite/lint/python_lint.py, F-93): pylint's R0801 alone, six
+# similar lines or more, over the same Python as ruff. Here, so a hand-run pylint gives the step's answer.
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = ["duplicate-code"]
+
+[tool.pylint.similarities]
+min-similarity-lines = 6
+
+[tool.pylint.reports]
+score = false

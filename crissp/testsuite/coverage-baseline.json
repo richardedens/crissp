@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "0af0a91d2e8eebc04784386a0d4545af69f278b0",
+ "commit": "5fa21eb14feaeffa43247ab2d0251be735fde8f8",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -98,6 +98,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/workers.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lint/python_lint.py": {
      "branch": 100.0,
      "line": 100.0
     },

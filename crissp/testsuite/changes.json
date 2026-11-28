@@ -1343,6 +1343,29 @@
    "tests": [
     "test_python_lint::test_the_standard_holds_bugs_security_and_dead_noqa_and_lives_in_pyproject_alone"
    ]
+  },
+  {
+   "id": "stdlib-only-and-no-duplicates",
+   "title": "The engine's standard-library rule and duplicate code were unguarded (F-93)",
+   "problem": "Nothing checked that src/crissp, crissp/tool, crissp/testsuite/lib and crissp/uxsuite import only the standard library and their own modules, and no step looked for copied code.",
+   "fix": "The python-lint step runs crissp/testsuite/lint/python_lint.py: ruff with pyproject.toml's rules, an AST scan of every import in the runtime code (playwright allowed in ux_shoot.py alone, where it runs under uv), and pylint's duplicate-code check (R0801, 6 lines; pinned in crissp/testsuite/lint/requirements.txt, settings in pyproject.toml [tool.pylint]). Without uv it is a finding.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "def foreign_imports("
+    },
+    {
+     "file": "crissp/testsuite/lint/python_lint.py",
+     "symbol": "def duplicates("
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_an_import_outside_the_standard_library_is_a_finding_by_file_and_line",
+    "test_python_lint::test_the_engine_itself_imports_the_standard_library_only",
+    "test_python_lint::test_duplicate_code_runs_the_pinned_pylint_with_pyprojects_settings",
+    "test_python_lint::test_without_uv_the_duplicate_check_is_a_finding_never_a_silent_pass",
+    "test_python_lint::test_the_step_is_clean_or_names_every_finding"
+   ]
   }
  ],
  "gaps": [

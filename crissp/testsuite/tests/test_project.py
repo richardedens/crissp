@@ -122,7 +122,8 @@ def test_this_repository_is_a_product_of_its_own():
     conf = project.load(REPO)
     tools = conf["steps"][0]
     assert conf["product"] == "C.R.I.S.S.P." and tools["key"] == "tools" and tools["gate"] and tools["fail_under"] == 100
-    assert tools["sources"] == ["crissp/testsuite/lib", "crissp/tool", "crissp/uxsuite"] and tools["omit"] == ["*/tests/*"]
+    assert tools["sources"] == ["crissp/testsuite/lib", "crissp/tool", "crissp/uxsuite", "crissp/testsuite/lint"]
+    assert tools["omit"] == ["*/tests/*"]
     deploy = next(s for s in conf["steps"] if s["key"] == "deploy")
     assert deploy["run"] == "crissp/deploy/check.sh" and deploy["when"] == "crissp/deploy/check.sh"
 

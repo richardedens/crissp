@@ -4,6 +4,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **crissp's own lint holds the engine to the standard library and finds copied code (F-93).** The `python-lint`
+  step also scans every import in the engine's runtime code (anything outside the standard library and the engine's
+  own modules fails, by file and line) and runs pylint's duplicate-code check (six similar lines or more).
 - **crissp's own Python is held to more of ruff's rules (F-92).** Besides the defaults: bugbear's likely bugs, bandit's
   security rules (a shell stays forbidden), simpler forms, import order, names, comprehensions, ruff's own rules (a
   `noqa` that suppresses nothing fails) and a docstring per module. The rules live in `pyproject.toml` alone, so an
