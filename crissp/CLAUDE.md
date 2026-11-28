@@ -67,7 +67,7 @@ What `crissp/check.sh` runs per change:
 - `crissp/testsuite/lint/` → lint;
 - `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`; `deploy.sh` and `deploy/check.sh` → lint instead);
 - `src/`, `pyproject.toml` → package and python-lint;
-- `.githooks/` → tools and lint;
+- `.githooks/` and `crissp/template/githooks/` → tools and lint;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 

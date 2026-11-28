@@ -41,7 +41,7 @@ def javascript() -> list[str]:
 
 def listed(kind: str) -> list[str]:
     run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", kind], cwd=REPO, capture_output=True, text=True,
-                         env={"PATH": "/usr/bin:/bin", "CRISSP_ROOT": str(REPO)})
+                         check=False, env={"PATH": "/usr/bin:/bin", "CRISSP_ROOT": str(REPO)})
     assert run.returncode == 0, run.stderr
     return sorted(run.stdout.split())
 
@@ -78,7 +78,7 @@ def test_a_change_to_a_linted_file_runs_the_lint_step():
         assert kind == "full" or (kind == "suites" and "lint" in detail), (f, kind, detail)
     assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == ("suites", ("tools", "lint"))
     assert impact.classify("crissp/testsuite/lint/eslint.config.js", conf) == ("suites", ("lint",))
-    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == ("suites", ("tools",))
+    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == ("suites", ("tools", "python-lint"))
 
 
 def test_ci_sets_up_node_and_runs_the_lint_step():
@@ -89,5 +89,6 @@ def test_ci_sets_up_node_and_runs_the_lint_step():
 
 
 def test_the_lint_script_says_how_to_use_it():
-    run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True)
+    run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True,
+                         check=False)
     assert run.returncode == 2 and "usage" in run.stderr

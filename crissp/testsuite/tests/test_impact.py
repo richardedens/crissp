@@ -107,7 +107,7 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
     ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "lint"]),
     ("crissp/deploy.sh", ["deploy", "lint"]), ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
     ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
-    (".githooks/pre-commit", ["tools", "gate", "lint"]),
+    (".githooks/pre-commit", ["tools", "gate", "lint"]), ("crissp/template/githooks/pre-commit", ["tools", "gate", "lint"]),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its bash and JavaScript (F-38),

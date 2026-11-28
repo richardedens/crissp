@@ -141,6 +141,13 @@
    ]
   },
   {
+   "match": "crissp/template/githooks/",
+   "steps": [
+    "tools",
+    "lint"
+   ]
+  },
+  {
    "match": "crissp/template/",
    "steps": [
     "tools"
