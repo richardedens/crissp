@@ -24,6 +24,7 @@
 #       nothing else is allowed there that is not allowed in the code.
 CRISSP_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 audit() { python3 "$CRISSP_LIB/audit.py" "$@"; }
+quality() { python3 "$CRISSP_LIB/quality.py" "$@"; }  # complexity and duplication, held by a ratchet (lib/quality.py)
 ruff_check() {
   local ignores=() pattern code
   for pattern in "**/tests/**" "**/test_*.py" "**/conftest.py"; do

@@ -301,7 +301,11 @@ SECURITY = (
     "audit",
     "secrets",
     "sast",
-)  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations, secrets, unsafe code)
+    "dast",
+    "licenses",
+)  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations,
+# secrets, unsafe code, the running app, licences)
+QUALITY = "quality"  # F-142: lib/quality.py, complexity and duplication, on a tile of its own
 BLOCKING_LINE = re.compile(r"^BLOCKING\b", re.MULTILINE)
 
 
@@ -311,7 +315,7 @@ def is_security(key: str) -> bool:
 
 def not_tests(key: str) -> bool:
     """A step that runs no tests (a lint or a scan): the dashboard shows it on its own tile, not as a suite of 0 tests."""
-    return is_lint(key) or is_security(key)
+    return is_lint(key) or is_security(key) or key == QUALITY
 
 
 def blocking_findings(log: str, status: str) -> int | None:
@@ -493,6 +497,11 @@ def main(root: Path | None = None) -> int:
         )
     steps = _steps()
     gate = json.loads((RESULTS / "gate.json").read_text(encoding="utf-8")) if (RESULTS / "gate.json").exists() else None
+    quality = (
+        json.loads((RESULTS / "quality.json").read_text(encoding="utf-8"))
+        if (RESULTS / "quality.json").exists()
+        else None
+    )
     threats = (
         json.loads((suite / "threats.json").read_text(encoding="utf-8"))
         if (suite / "threats.json").exists()
@@ -542,6 +551,7 @@ def main(root: Path | None = None) -> int:
         "changes": changes,
         "gaps": manifest.get("gaps", []),
         "gate": gate,
+        "quality": quality,
         "threats": threats,
         "capabilities": capabilities,
         "journeys": journeys,

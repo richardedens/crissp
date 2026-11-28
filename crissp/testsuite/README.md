@@ -158,6 +158,72 @@ before it scans `src`, `crissp` and `site`.
 The backend's lint (`ruff_check`, a helper of `lib/steps.sh`) adds ruff's Bandit rules (`S`) on top of the part's own
 ruff configuration; in tests an `assert`, a made-up password and `random` are allowed.
 
+## Code quality (lib/quality.py)
+
+The `quality` step measures what Sonar measures, and holds it by a ratchet the way the coverage gate holds coverage:
+
+- **Complexity**: the cyclomatic complexity of every function, by lizard (pinned in `lib/quality.py`, run through uv;
+  Python, JavaScript, TypeScript, Go, Java, C#, C/C++, Ruby, PHP, Rust, Swift, Scala, Lua and more). A function
+  above `audit.quality.complexity` (default 15) is complex.
+- **Duplication**: the same `audit.quality.duplicate_lines` lines (default 10) or more in two places, in one file or
+  two, whatever their indent. Blank lines, comments and lines of only brackets do not count.
+
+`audit.quality.paths` names the code (the template: `app`); tests, `node_modules`, builds and vendored code are left
+out, and `exclude` adds globs. Only tracked files count in a git repository.
+
+The baseline is `crissp/testsuite/quality-baseline.json`, written by the step: the complex functions with their
+complexity, and the number of duplicated lines. A complex function that is new, a complex function that got more
+complex, or more duplicated lines, fail the step; old code does not. A green run lowers the baseline where the code
+got better, so it only goes down. For an honest reason, `python3 crissp/testsuite/lib/quality.py --accept "why"` takes
+the numbers as they are, with why. The dashboard's Code quality tile says whether it holds, how many functions are
+complex and how much is duplicated. crissp's own Python also gets pylint's duplicate-code check in its lint (six lines,
+blocking); this step measures every language and holds the totals.
+
+## DAST (lib/audit.py dast)
+
+`audit dast` (full run only) runs OWASP ZAP (the image pinned by digest in `lib/audit.py`) against the app.
+`audit.dast`:
+
+- `targets`: the app's local URLs (the template: `http://127.0.0.1:8080`, the URL the UX suite uses);
+- `compose`: the compose file of a **throwaway stack**: the scan starts its own (`docker compose -p crissp-dast up -d
+  --build --wait`, built fresh) and removes it afterwards with its volumes (`down -v --remove-orphans`), so nothing the
+  scan does stays. Something that already answers at a target is a problem: stop it first. Without `compose` the scan
+  looks at the app that runs, the baseline only;
+- `signin` (on the throwaway stack): first-run setup, `{"setup": {"path": "/api/setup", "body": {"email":
+  "dast@example.org", "password": "{password}"}}}`, optionally a `login` of the same shape, and where the token is in
+  the answer (`token`, default `access_token`, dotted for nested; `header`, default `Authorization`; `scheme`, default
+  `Bearer`). `{password}` is a fresh random password per run, never stored or said; ZAP gets the token from a private
+  mode-600 env file, never on a command line;
+- `api` (on the throwaway stack): `{"definition": "http://127.0.0.1:8080/openapi.json", "format": "openapi"}`, the API
+  scan (`zap-api-scan.py`, an active scan: it attacks, which is why it only runs on the throwaway stack; `format`
+  openapi, soap or graphql);
+- `rules`: the project's ZAP rules file (`<id>\tIGNORE|WARN|FAIL\t(why)`, as ZAP's `-c` reads it; the template:
+  `zap/rules.tsv`, absent until the project writes one).
+
+First a **canary**: a page without any security header, served on this machine. ZAP must find something on it, else
+the scan proves nothing and says so. Then the baseline (`zap-baseline.py`, passive: it requests the pages and reads the
+answers) of every target, and the API scan. A high or a medium risk blocks, and so does every rule the rules file makes
+FAIL; low and informational are listed. A finding is accepted for a while in `accepted-risks.json` by its rule's id and
+the site (`package`: the target's origin, as the report shows it). It needs Docker; an app that does not answer is a
+problem, never a pass. On Linux ZAP shares the host's network; on macOS it reaches the app through
+`host.docker.internal`.
+
+## Licences and the SBOM (lib/audit.py licenses)
+
+`audit licenses` (full run only) reads every package of the places the audit names: `npm` folders' `package-lock.json`
+(name, version and licence as the lock file records them, dev-only packages marked) and `pip` requirements files,
+resolved with every transitive package (`uv pip compile`, as the CVE audit does), their licences from PyPI (the SPDX
+expression, else the licence field, else the classifiers; cached in the crissp cache, as a release never changes).
+
+- Forbidden (AGPL, SSPL, BUSL, non-commercial) and copyleft (GPL) licences block: a product may not ship them unseen.
+- Weak copyleft (LGPL, MPL, EPL) and a package without a licence are listed for review.
+- A dev-only package never ships: it is listed, whatever its licence.
+- `audit.licenses.allow` (`{package: why}`) allows a package for good, `block` adds SPDX ids that block, `product`
+  names the SBOM.
+
+It writes `results/licenses.json` and `results/sbom.cdx.json`, a CycloneDX 1.6 SBOM of every component (version,
+purl, licence; dev-only ones scope `excluded`), to attach to a release.
+
 ## The dashboard (dashboard/, lib/collect.py, lib/serve.py)
 
 `crissp/test.sh --dashboard` builds the data (`results/data.js`, generated, not in git) and serves the page with the UX

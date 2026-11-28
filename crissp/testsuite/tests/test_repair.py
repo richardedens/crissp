@@ -176,15 +176,8 @@ def test_old_steps_stay_while_src_is_really_there_and_an_empty_list_gets_the_def
     fix = next(r for r in repair.find(root) if r.key == "steps")
     assert "no steps" in fix.what
     fix.do()
-    assert [s["key"] for s in json.loads((root / "crissp/testsuite/suites.json").read_text())["steps"]] == [
-        "backend",
-        "backend-lint",
-        "frontend",
-        "frontend-lint",
-        "audit",
-        "secrets",
-        "sast",
-    ]
+    template = json.loads((repair.TEMPLATE / repair.SUITES).read_text())["steps"]
+    assert json.loads((root / "crissp/testsuite/suites.json").read_text())["steps"] == template
 
 
 def test_no_configuration_and_broken_json_are_not_repaired(tmp_path):
@@ -676,3 +669,74 @@ def test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought
     assert fix.what.startswith(repair.SKILL)
     fix.do()
     assert (root / "AGENTS.md").read_text() == "# own rules\n" and "agents" not in keys(root)
+
+
+def older_suites(root: Path, **own) -> None:
+    """suites.json as crissp init wrote it before the quality, licenses and dast steps (F-145), with the project's own."""
+    data = json.loads((repair.TEMPLATE / repair.SUITES).read_text().replace("{{PRODUCT}}", "x"))
+    data["steps"] = [s for s in data["steps"] if s["key"] not in {"quality", "licenses", "dast"}]
+    data["steps"].append({"key": "e2e", "label": "E2E", "run": "npm run e2e", "dir": "app/frontend"})
+    data["paths"] = [{**r, "steps": [k for k in r["steps"] if k != "quality"]} for r in data["paths"]]
+    data["paths"].append({"match": "docs/", "steps": ["e2e"]})
+    for key in ("quality", "dast", "licenses"):
+        data["audit"].pop(key)
+    data["audit"].update(own)
+    write(root / repair.SUITES, json.dumps(data))
+
+
+def test_a_project_brought_in_earlier_gets_the_new_steps_and_keeps_its_own(tmp_path, capsys):
+    """F-145: quality, licenses and dast (and their audit settings) are added; the project's own steps, rules and
+    settings stay as they are."""
+    root = tmp_path / "earlier"
+    bring_in(root)
+    older_suites(root, licenses={"allow": {"chart": "bought (contract 12)"}})
+    fix = next(r for r in repair.find(root) if r.key == "new-steps")
+    assert fix.what == (
+        "crissp/testsuite/suites.json: without the steps quality, licenses, dast → added from the template, "
+        "with audit.quality and audit.dast (quality where sast runs)"
+    )
+    fix.do()
+    data = json.loads((root / repair.SUITES).read_text())
+    template = json.loads((repair.TEMPLATE / repair.SUITES).read_text())
+    assert [s["key"] for s in data["steps"]] == [
+        "backend",
+        "backend-lint",
+        "frontend",
+        "frontend-lint",
+        "audit",
+        "secrets",
+        "sast",
+        "e2e",
+        "quality",
+        "licenses",
+        "dast",
+    ]
+    assert data["steps"][-1] == template["steps"][-1]
+    assert data["paths"] == [*template["paths"], {"match": "docs/", "steps": ["e2e"]}]
+    assert data["audit"]["dast"] == template["audit"]["dast"]
+    assert data["audit"]["quality"] == template["audit"]["quality"]
+    assert data["audit"]["licenses"] == {"allow": {"chart": "bought (contract 12)"}}
+    assert "new-steps" not in keys(root)
+
+
+def test_new_steps_are_only_said_where_the_steps_are_the_projects_own(tmp_path, monkeypatch):
+    root = tmp_path / "partly"
+    write(root / repair.SUITES, json.dumps({"steps": [{"key": "api", "run": "x"}], "audit": None}))
+    fix = next(r for r in repair.find(root) if r.key == "new-steps")
+    assert "audit.quality, audit.licenses and audit.dast" in fix.what and "where sast runs" not in fix.what
+    fix.do()
+    data = json.loads((root / repair.SUITES).read_text())
+    assert (
+        [s["key"] for s in data["steps"]] == ["api", "quality", "licenses", "dast"]
+        and set(data["audit"]) == {"quality", "dast", "licenses"}
+        and "paths" not in data
+    )
+    write(root / repair.SUITES, json.dumps({"steps": [{"key": "api"}], "audit": ["odd"]}))
+    assert next(r for r in repair.find(root) if r.key == "new-steps").what.endswith("added from the template")
+    write(root / repair.SUITES, json.dumps({"steps": []}))
+    assert "new-steps" not in keys(root)  # no steps: `steps` brings the template's, new ones among them
+    write(root / repair.SUITES, json.dumps({"steps": OLD_STEPS}))
+    assert "new-steps" not in keys(root) and "steps" in keys(root)
+    monkeypatch.setattr(repair, "is_engine", lambda _: True)
+    write(root / repair.SUITES, json.dumps({"steps": [{"key": "api"}]}))
+    assert "new-steps" not in keys(root)  # the framework's own steps are its own

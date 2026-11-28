@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "9bc01fde4f604099b8c9a58d33079ea9b21a4dff",
+ "commit": "0c27db7e2ab6f577a0ed52b8e3c346178388df5c",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -45,10 +45,6 @@
      "branch": 100.0,
      "line": 100.0
     },
-    "crissp/testsuite/lib/lint_ratchet.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
     "crissp/testsuite/lib/measure.py": {
      "branch": 100.0,
      "line": 100.0
@@ -66,6 +62,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/pytest_plugin/crissp_timing.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/quality.py": {
      "branch": 100.0,
      "line": 100.0
     },
@@ -93,15 +93,15 @@
      "branch": 100.0,
      "line": 100.0
     },
-    "crissp/testsuite/lib/sources.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
     "crissp/testsuite/lib/stages.py": {
      "branch": 100.0,
      "line": 100.0
     },
     "crissp/testsuite/lib/tools.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/upgrade.py": {
      "branch": 100.0,
      "line": 100.0
     },
