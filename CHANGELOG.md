@@ -4,6 +4,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **crissp's own Python is held to more of ruff's rules (F-92).** Besides the defaults: bugbear's likely bugs, bandit's
+  security rules (a shell stays forbidden), simpler forms, import order, names, comprehensions, ruff's own rules (a
+  `noqa` that suppresses nothing fails) and a docstring per module. The rules live in `pyproject.toml` alone, so an
+  editor or a hand-run `ruff check` gives the step's answer.
 - **The crissp tool only probes this machine's dashboard (F-91).** Checking whether the dashboard is up, it now opens
   only `http://127.0.0.1` addresses, never a file or another host named in the dashboard's log.
 - **A test that could not fail now can (F-90).** A `pytest.raises(match="cannot hold a |")` matched every message,

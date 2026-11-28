@@ -308,7 +308,7 @@ def add_row(text: str, row: str, heading: str | None = None) -> str:
     last = first
     while last + 1 < len(lines) and lines[last + 1].startswith("|"):
         last += 1
-    return "\n".join(lines[: last + 1] + [row] + lines[last + 1:]) + "\n"
+    return "\n".join([*lines[:last + 1], row, *lines[last + 1:]]) + "\n"
 
 
 def finding(root: Path, args: dict) -> str:
@@ -525,7 +525,7 @@ def status(root: Path, args: dict | None = None) -> str:
     args = args or {}
     wait, timeout = args.get("wait", False), args.get("timeout", WAIT)
     if not isinstance(wait, bool):
-        raise ValueError("wait is true or false")  # noqa: TRY004  (a bad argument: a ValueError, like the rest)
+        raise ValueError("wait is true or false")
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout < 0:
         raise ValueError(f"timeout is a number of seconds (default {WAIT}, at most {WAIT_MAX})")
     if wait:
@@ -542,7 +542,7 @@ def status(root: Path, args: dict | None = None) -> str:
         ended = EXIT.findall(log)
         state = (f"finished, exit {ended[-1]}" + (" (green)" if ended[-1] == "0" else "")) if ended else \
             "running" if alive(r["pid"]) else "stopped without an exit code"
-        tail = [line for line in EXIT.sub("", log).rstrip().splitlines()][-12:]
+        tail = EXIT.sub("", log).rstrip().splitlines()[-12:]
         lines += ["", f"{key} · started {r['started']} · {state} · {r['log']}", *("  " + t for t in tail)]
     return "\n".join(lines) if runs else lines[0] + "\nNothing started with run yet."
 
@@ -555,12 +555,12 @@ def served(url: str, root: Path | None = None) -> bool:
     if where.scheme != "http" or where.hostname != "127.0.0.1":
         return False
     try:
-        with urllib.request.urlopen(url, timeout=2) as answer:
+        with urllib.request.urlopen(url, timeout=2) as answer:  # noqa: S310 - http://127.0.0.1 only, see above
             if 'id="sessions"' not in answer.read(65536).decode(errors="replace"):
                 return False
         if root is None:
             return True
-        with urllib.request.urlopen(url.rstrip("/") + "/stamp", timeout=2) as answer:
+        with urllib.request.urlopen(url.rstrip("/") + "/stamp", timeout=2) as answer:  # noqa: S310 - the same address
             return json.loads(answer.read(65536)).get("root") == str(Path(root).resolve())
     except (OSError, ValueError):
         return False

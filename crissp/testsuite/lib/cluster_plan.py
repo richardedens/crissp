@@ -45,9 +45,9 @@ def load_config(path: Path) -> dict:
     try:
         return json.loads(Path(path).read_text())
     except FileNotFoundError:
-        raise ValueError(f"{path}: deploy.json is missing (crissp/deploy/deploy.json names what is deployed where)")
+        raise ValueError(f"{path}: deploy.json is missing (crissp/deploy/deploy.json names what is deployed where)") from None
     except json.JSONDecodeError as e:
-        raise ValueError(f"{path}: deploy.json is not valid JSON ({e.msg}, line {e.lineno})")
+        raise ValueError(f"{path}: deploy.json is not valid JSON ({e.msg}, line {e.lineno})") from None
 
 
 def _c(config: dict) -> dict:

@@ -40,7 +40,7 @@ _busy = threading.Lock()
 _qlock = threading.RLock()
 
 
-class Busy(ValueError):
+class Busy(ValueError):  # noqa: N818 - read as "the team is busy"; the name is its message
     """A run cannot start now."""
 
 
@@ -214,7 +214,7 @@ def drain(suite: Suite, conf: dict, begin) -> list[str]:
         except Full:
             enqueue(suite, nxt["kind"], nxt["walk"], nxt.get("focus", ""), front=True)
             break
-        except Exception as e:  # noqa: BLE001  reported; the queue goes on
+        except Exception as e:
             print(f"queue: {key(nxt['kind'], nxt['walk'])}: {e}", file=sys.stderr)
             continue
         started.append(key(nxt["kind"], nxt["walk"]))

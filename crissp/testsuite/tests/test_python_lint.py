@@ -8,8 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "crissp/testsuite/lib"))
-import impact  # noqa: E402
-import project  # noqa: E402
+import impact
+import project
 
 LINTED = ("src", "crissp", "site")
 
@@ -56,4 +56,15 @@ def test_a_pytest_raises_match_with_regex_signs_is_escaped_or_raw():
     """F-90: `match=` is a regular expression. `match="cannot hold a |"` matched every message (an empty alternative),
     so the test it was in could not fail. ruff's RUF043 refuses such a pattern unless it is escaped or raw."""
     lint = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
-    assert "RUF043" in lint.get("extend-select", []) + lint.get("select", [])
+    assert "RUF043" in lint.get("extend-select", []) or "RUF" in lint.get("select", [])
+
+
+def test_the_standard_holds_bugs_security_and_dead_noqa_and_lives_in_pyproject_alone():
+    """F-92: ruff's defaults alone (E4, E7, E9, F) let likely bugs (B), unsafe calls (S), a noqa that suppresses
+    nothing (RUF100) and a module without a docstring through. The rules sit in pyproject.toml, never as step flags,
+    so an editor or a hand-run ruff gives the step's answer; a shell stays forbidden (S602 is not ignored)."""
+    lint = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
+    for family in ("E", "W", "F", "B", "S", "SIM", "I", "N", "UP", "C4", "RUF", "PLW1510", "D100"):
+        assert family in lint["select"], family
+    assert "S602" not in lint.get("ignore", []) and not {"S", "B", "RUF100"} & set(lint.get("ignore", []))
+    assert "--select" not in _lint(_conf())["run"] and "--ignore" not in _lint(_conf())["run"]

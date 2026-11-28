@@ -95,7 +95,7 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                         file = f"{device}/{n:02d}-{slug(step['title'])}.png"
                         page.screenshot(path=str(out / file))
                         shots.append({"device": device, "n": n, "title": step["title"], "file": file})
-                except Exception as e:  # noqa: BLE001  a dead end is a finding: the team sees where it got stuck
+                except Exception as e:
                     shots.append({"device": device, "n": n + 1, "title": step.get("title", step["do"]), "file": "",
                                   "error": f"Stuck at step {i} ({step['do']}): {str(e).splitlines()[0][:200]}"})
                     break

@@ -10,7 +10,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
-import workers  # noqa: E402
+import workers
 
 GB = 1024  # MB
 
@@ -133,7 +133,7 @@ def test_the_real_sources_answer_on_this_machine():
 
 # E1-F1-04: the /workers page's data, from what crissp_timing wrote (results/timing), with stand-in processes and clock
 
-import json  # noqa: E402
+import json
 
 FOUND = {"cpus": 4, "cpu_from": "os.process_cpu_count", "memory_mb": 8192, "available_mb": 4096, "memory_from": "x"}
 T0 = 1_000_000.0

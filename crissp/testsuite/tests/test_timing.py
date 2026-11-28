@@ -11,7 +11,7 @@ import pytest
 
 PLUGINS = Path(__file__).resolve().parents[1] / "lib" / "pytest_plugin"
 sys.path.insert(0, str(PLUGINS))
-import crissp_timing  # noqa: E402
+import crissp_timing
 
 TESTS = {
     "tests/test_one.py": "def test_passes():\n    assert True\n\n\ndef test_fails():\n    assert False\n",

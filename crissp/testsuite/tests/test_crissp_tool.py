@@ -530,7 +530,7 @@ def test_ux_status_answers_at_once_what_the_ux_team_does(tmp_path):
 
 def test_it_works_for_the_project_it_is_started_in():
     """CRISSP_ROOT, or the current directory (Claude Code starts it in the project's root): never its own place."""
-    assert srv.ROOT == Path(srv.os.environ.get("CRISSP_ROOT") or srv.os.getcwd()).resolve()
+    assert Path(srv.os.environ.get("CRISSP_ROOT") or srv.os.getcwd()).resolve() == srv.ROOT
 
 
 def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_path, monkeypatch):

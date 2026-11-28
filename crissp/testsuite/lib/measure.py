@@ -133,7 +133,7 @@ def first_time_right(states: list[str]) -> bool | None:
     if "done" not in states or "review" not in states[: states.index("done")]:
         return None
     first = states.index("review")
-    return "done" == next(s for s in states[first + 1:] if s != "review")
+    return next(s for s in states[first + 1:] if s != "review") == "done"
 
 
 def item_costs(root: Path, requests: list[dict]) -> dict[str, int]:
