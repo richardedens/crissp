@@ -65,8 +65,8 @@ stage and offering its help.
 ![The Stages page](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/stages.jpg)
 
 **Ready to release?** The answer comes first: green, or which steps stop the release, each linked to its log. Then the
-tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code),
-line and branch coverage, the coverage gate and every step.
+tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code,
+the running app, licences), line and branch coverage, the coverage gate, the code quality ratchet and every step.
 ![The Tests dashboard](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/dashboard.jpg)
 
 **And when it is not**: the failed steps, and what lint and the scans found in each part.
@@ -154,7 +154,7 @@ diff first.
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
 | `crissp dashboard` | Where the work is in the six stages (`/stages`), the Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
-| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set, template steps or the audit block missing from `suites.json`, an older `crissp==<version>` in any tracked file); `--yes` puts it in place, never deleting or committing. It also says when a scan of the project's own (bandit, gitleaks, Grype) does what a crissp step does, and recommends one. Run it after an update: `uvx crissp==<new> repair --yes` |
+| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the steps a newer crissp brings such as `quality`, `licenses` and `dast`, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set, template steps or the audit block missing from `suites.json`, an older `crissp==<version>` in any tracked file); `--yes` puts it in place, never deleting or committing. It also says when a scan of the project's own (bandit, gitleaks, Grype) does what a crissp step does, and recommends one. Run it after an update: `uvx crissp==<new> repair --yes` |
 | `crissp hook` | The project's lint steps (`lint` and every `*-lint` step), as git runs them before every commit from `.githooks/pre-commit`; `git commit --no-verify` skips it once |
 | `crissp mcp` | The crissp MCP server that Claude Code starts from `.mcp.json` |
 

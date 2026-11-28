@@ -10,6 +10,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     suites     suites.json has steps of its own but lacks steps, path rules, shared ground or the audit block the
                template has (F-160): each step whose part is here is added with its path rules; one whose part is not
                here is said (lib/level.py)
+    new-steps  suites.json is the project's own but lacks a step a newer template has (quality, licenses, dast; F-145):
+               the template's step and its audit settings are added, and quality on a path rule that runs sast;
+               the project's own steps, rules and settings stay
     ux-url     the UX suite walks the old template's 127.0.0.1:5173 while app/frontend has no Vite dev server: the local
                stack's address (deploy.json compose.url with its default port, else 127.0.0.1:8080)
     ux-extra   anything in crissp/uxsuite/ that is not its configuration (a prototype, notes): moved to docs/ux/<name>.
@@ -65,6 +68,7 @@ from pathlib import Path
 
 import hook  # F-50: the lint before every commit, shared with crissp init
 import level  # F-160 to F-162: the template's steps, every stale pin, scans the project runs itself
+import upgrade  # F-145: the steps a newer crissp brings, shared with crissp init
 import vibe  # F-26: Vibe's trusted folders, shared with crissp init
 
 ENGINE = (
@@ -160,10 +164,31 @@ def fix_steps(root: Path) -> Repair | None:
         data["paths"] = template["paths"] + own
         data["shared"] = shared + [r for r in template["shared"] if r["match"] not in {s.get("match") for s in shared}]
         data.setdefault("audit", template["audit"])  # F-160: what the template's audit step scans
+        upgrade.add(data, template)  # F-145: with the audit settings of the newer steps
         write(root / SUITES, data)
 
     why = "no steps" if not steps else "the old template's steps on src/, which is not there"
     return Repair("steps", f"{SUITES}: {why} → the default parts' steps (app/backend, app/frontend)", do)
+
+
+def fix_new_steps(root: Path) -> Repair | None:
+    """F-145: the template's newer steps (quality, licenses, dast) and their audit settings, where the steps are the
+    project's own (an empty or old list gets the template's whole list from `steps`)."""
+    data = read(root / SUITES)
+    steps = data.get("steps") if data is not None else None
+    if is_engine(root) or not isinstance(steps, list) or not steps or fix_steps(root):
+        return None
+    template = read(TEMPLATE / SUITES)
+    gap = upgrade.missing(data, template)
+    if not gap["steps"] and not gap["audit"] and not gap["rules"]:
+        return None
+
+    def do() -> None:
+        now = read(root / SUITES)  # read again: the suites repair may have added the template's other steps first
+        upgrade.add(now, template)
+        write(root / SUITES, now)
+
+    return Repair("new-steps", f"{SUITES}: {upgrade.said(gap)}", do)
 
 
 def fix_ux_url(root: Path) -> Repair | None:
@@ -605,6 +630,7 @@ def find(root: Path, version: str | None = None, home: Path | None = None) -> li
         for r in (
             fix_steps(root),
             fix_suites(root),
+            fix_new_steps(root),
             fix_ux_url(root),
             fix_ux_extra(root),
             fix_agreement(root),

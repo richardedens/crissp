@@ -103,7 +103,16 @@ def test_repair_names_the_missing_steps_and_yes_adds_them(behind, capsys):
     )
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(behind)}) == 0
     conf = json.loads((behind / "crissp/testsuite/suites.json").read_text())
-    assert [s["key"] for s in conf["steps"]][-4:] == ["frontend-lint", "audit", "secrets", "sast"] and "audit" in conf
+    assert [s["key"] for s in conf["steps"]][3:] == [
+        "frontend-lint",
+        "audit",
+        "secrets",
+        "sast",
+        "quality",  # F-145: new-steps adds the newest ones after, on what the suites repair wrote
+        "licenses",
+        "dast",
+    ]
+    assert {"dast", "quality", "pip"} <= set(conf["audit"])
     capsys.readouterr()
     repair.main([], {"CRISSP_ROOT": str(behind)})
     assert "  suites " not in capsys.readouterr().out

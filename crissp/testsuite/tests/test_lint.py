@@ -97,15 +97,15 @@ def test_a_change_to_a_linted_file_runs_the_lint_step():
     ):
         kind, detail = impact.classify(f, conf)
         assert kind == "full" or (kind == "suites" and "lint" in detail), (f, kind, detail)
-    # every part's change is also scanned for secrets, and its code for unsafe code (F-43, F-44)
+    # every part's change is also scanned for secrets, and its code for unsafe code and its quality (F-43, F-44, F-142)
     assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == (
         "suites",
-        ("tools", "lint", "secrets", "sast"),
+        ("tools", "lint", "secrets", "sast", "quality"),
     )
     assert impact.classify("crissp/testsuite/lint/eslint.config.js", conf) == ("suites", ("lint", "secrets"))
     assert impact.classify("crissp/testsuite/lib/collect.py", conf) == (
         "suites",
-        ("tools", "python-lint", "secrets", "sast"),
+        ("tools", "python-lint", "secrets", "sast", "quality"),
     )
 
 

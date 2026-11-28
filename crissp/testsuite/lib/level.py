@@ -1,6 +1,7 @@
 """What crissp repair needs to bring a project level with the template (F-160 to F-162), next to repair.py.
 
-- suites    suites.json lacks steps, path rules, shared ground or the audit block the template has (F-160): a missing
+- suites    suites.json lacks steps, path rules, shared ground or the audit block the template has (F-160; the newest
+            steps quality, licenses and dast are lib/upgrade.py's, repair key new-steps): a missing
             step whose part is here is added (its path rules too); one whose part is not here is said, as is a step
             the project has under its own name (the same `run`: not missing)
 - pins      tracked files still name an older `crissp==<version>` than the crissp that repairs (F-161): deploy
@@ -18,6 +19,8 @@ Nothing here writes: repair.py does, with --yes. Standard library only.
 import re
 import subprocess
 from pathlib import Path
+
+import upgrade  # F-145: the newest steps (quality, licenses, dast) and their settings are its to add
 
 PIN = re.compile(r"crissp==(\d+(?:\.\d+)*)((?:\.?(?:a|b|rc|dev|post)\d*)*)")
 HISTORY = ("CHANGELOG.md", "crissp/backlog/", "crissp/testsuite/changes.json")
@@ -54,7 +57,7 @@ def suites(root: Path, data: dict, template: dict) -> tuple[dict | None, list[st
     runs = {s.get("run") for s in steps}
     added, said = [], []
     for step in template.get("steps", []):
-        if step["key"] in have or step.get("run") in runs:
+        if step["key"] in have or step["key"] in upgrade.NEW or step.get("run") in runs:
             continue
         part = step.get("when")
         if part is None or (root / part).exists():

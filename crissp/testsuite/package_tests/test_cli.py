@@ -298,3 +298,29 @@ def test_init_gives_an_agent_its_first_moves_and_the_crissp_skill(tmp_path, monk
     assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
     assert "`brief`" in (project / "AGENTS.md").read_text()
     assert (project / ".agents/skills/crissp/SKILL.md").read_text().startswith("---\nname: crissp\n")
+
+
+def test_init_over_a_project_brought_in_earlier_adds_the_new_steps(tmp_path, monkeypatch, capsys):
+    """F-145: init keeps suites.json, and adds the steps (quality, licenses, dast) a newer crissp brings."""
+    project = tmp_path / "proj"
+    suites = project / "crissp" / "testsuite" / "suites.json"
+    suites.parent.mkdir(parents=True)
+    suites.write_text('{"steps": [{"key": "api", "run": "x"}]}\n')
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    data = __import__("json").loads(suites.read_text())
+    assert [s["key"] for s in data["steps"]] == ["api", "quality", "licenses", "dast"]
+    assert "suites.json (steps added: quality, licenses, dast)" in capsys.readouterr().out
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    assert "steps added" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("text", ["{not json", "[]", '{"steps": {}}'])
+def test_init_leaves_a_suites_json_it_cannot_read_as_it_is(tmp_path, monkeypatch, text):
+    project = tmp_path / "proj"
+    suites = project / "crissp" / "testsuite" / "suites.json"
+    suites.parent.mkdir(parents=True)
+    suites.write_text(text)
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    assert suites.read_text() == text
