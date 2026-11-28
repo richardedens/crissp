@@ -154,11 +154,19 @@ def test_the_root_agents_file_gives_an_agent_its_first_moves():
     for agents in (REPO / "AGENTS.md", REPO / "crissp/template/AGENTS.md"):
         text = agents.read_text()
         assert len(text.splitlines()) <= 25, agents
-        for needed in ("`brief`", "`backlog`", "`run`", "`status`", "`check-all`", "search_tool_functions",
+        for needed in ("`brief`", "`stage`", "`backlog`", "`run`", "`status`", "`check-all`", "search_tool_functions",
                        ".agents/skills/crissp/SKILL.md", "`.env`", "repair"):
             assert needed in text, (agents, needed)
     for sub in (REPO / "crissp/AGENTS.md", TEMPLATE / "AGENTS.md"):
         assert "main session" in sub.read_text().split("\n\n")[1] and "ignores this file" in sub.read_text()
+
+
+def tools() -> list[str]:
+    """The names of the tools the crissp MCP server offers (crissp/tool/server.py's TOOLS)."""
+    sys.path.insert(0, str(REPO / "crissp" / "tool"))
+    import server
+
+    return [t["name"] for t in server.TOOLS]
 
 
 def test_the_crissp_skill_is_the_engines_and_this_repository_uses_it():
@@ -168,7 +176,7 @@ def test_the_crissp_skill_is_the_engines_and_this_repository_uses_it():
     text = skill.read_text()
     head = text.split("---")[1]
     assert "name: crissp" in head and "description: " in head
-    for tool in ("brief", "backlog", "run", "status", "finding", "decision", "epic", "feature", "item", "dashboard"):
+    for tool in tools():  # every tool the crissp MCP server offers, so a new one cannot be missed (stage, F-130)
         assert f"`{tool}`" in text, tool
     assert "check-all" in text and "{{" not in text
     assert (REPO / ".agents/skills/crissp/SKILL.md").read_text() == text

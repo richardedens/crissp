@@ -16,6 +16,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   `<!-- CRISSP … -->` prompt, Claude and Vibe now say which stage the work is in and offer the next step, for example
   setting up the UX suite when there is none yet. It is a new section of the agreement, *The six stages*; `crissp
   repair --yes` brings it into projects brought in earlier.
+- **Vibe's crissp skill knows the stages too (F-140).** The `crissp` skill and the root `AGENTS.md` name the `stage`
+  tool, so a Vibe session asks where the work is before it starts; `crissp repair --yes` updates the skill.
 - **Decide once, for a whole rule, area or screen (E7-F4-02).** In the review screen's verdict bar, press `s` to give
   your verdict to the advice's screen, its area or its rule instead: it then holds for every piece of advice under it
   that has no verdict of its own (the nearest one wins, and your verdict on one piece of advice always wins). Advice you

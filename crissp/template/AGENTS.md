@@ -2,9 +2,10 @@
 
 This repository works the C.R.I.S.S.P. way. You need no exploring to start: these are the first moves.
 
-1. Call the crissp tool `brief` first: where the work stands. Then `backlog` for exactly the lines you need (an id,
-   a status, the open findings or decisions), never the files in `crissp/backlog/`. In Mistral Vibe the tools are
-   `mcp_crissp.*`; when they are deferred, find them with `search_tool_functions`.
+1. Call the crissp tool `brief` first: where the work stands (`stage`: which of the six stages, and how to
+   help). Then `backlog` for exactly the lines you need (an id, a status, the open findings or decisions), never
+   the files in `crissp/backlog/`. In Mistral Vibe the tools are `mcp_crissp.*`; when they are deferred, find them
+   with `search_tool_functions`.
 2. Work on one item at a time. Every fix starts with a test that fails without it.
 3. Check your work with `run` (`what: check`), then `status` (`wait: true`) until it has ended. `what: check-plan`
    says what it would run and how long.

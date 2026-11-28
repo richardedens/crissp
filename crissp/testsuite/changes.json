@@ -2015,6 +2015,26 @@
     "test_vibesessions::test_a_packed_vibe_session_still_shows_its_prompt_step_and_history",
     "test_vibesessions::test_a_run_typescript_call_names_the_tools_it_used"
    ]
+  },
+  {
+   "id": "skill-names-every-tool",
+   "title": "The crissp skill names every tool the server offers, stage too (F-140)",
+   "problem": "The crissp skill and the root AGENTS.md were written before the stage tool landed: the playbook named every tool but stage, so an agent following it never asked which of the six stages the work is in.",
+   "fix": "The skill's table and session order, and the first moves in AGENTS.md (this repository's and the template's), name stage. The skill's test reads the tool names from crissp/tool/server.py's TOOLS, so a tool added later fails it until the skill names it.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_template.py::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_template.py::test_the_root_agents_file_gives_an_agent_its_first_moves"
+   ]
   }
  ],
  "gaps": [

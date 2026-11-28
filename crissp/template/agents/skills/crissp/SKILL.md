@@ -13,6 +13,7 @@ repository so you do not have to read files for them. Each answer is a few lines
 | You want to know or do | Call | Never instead |
 |---|---|---|
 | Where the work stands (version, certificate, doing, review, next, open decisions) | `brief` | read the backlog files |
+| Which of the six stages the work is in, and how to help with one (Discover … Release) | `stage`, with `stage` for one | guess from the backlog |
 | One finding, decision or item; the items with a status; the open findings | `backlog` with `id`, `status` or `open` | grep `crissp/backlog/` |
 | What a check would run and how long | `run` with `what: check-plan` | guess |
 | Check your work (only what changed since the last green state) | `run` with `what: check`, then `status` | run the test scripts by hand |
@@ -25,7 +26,7 @@ repository so you do not have to read files for them. Each answer is a few lines
 
 ## The order of a session
 
-1. `brief`. If something is in `doing`, that is the work; otherwise ask which item, or take the first `todo`.
+1. `brief`, and `stage` for where the work is in the six stages. If something is in `doing`, that is the work; otherwise ask which item, or take the first `todo`.
 2. `backlog` with that item's id: what it needs and when it is done.
 3. Write a failing test, then the change. Commit what you changed: the checks test what is committed.
 4. `run` `check`, then `status` with `wait: true`. Red: read only the failing lines, fix, commit, check again.
