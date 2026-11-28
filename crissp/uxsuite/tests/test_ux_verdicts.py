@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import PROPOSAL, ROUND, add_shots, finish, product, ux_config, ux_team  # noqa: E402,F401
+from ux_kit import PROPOSAL, ROUND, add_shots, finish, product, ux_config, ux_team  # noqa: F401
 
-import ux_backlog  # noqa: E402
-import ux_verdicts  # noqa: E402
+# isort: split
+import ux_backlog  # ux_kit put the uxsuite on sys.path
+import ux_verdicts
 
 
 @pytest.fixture

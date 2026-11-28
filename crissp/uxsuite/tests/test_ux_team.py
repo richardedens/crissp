@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import PROPOSAL, ROUND, add_shots, finish, make_product, product, ux_config, ux_team  # noqa: E402,F401
+from ux_kit import PROPOSAL, ROUND, add_shots, finish, make_product, product, ux_config, ux_team  # noqa: F401
 
 
 def _conf(suite):

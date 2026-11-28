@@ -26,6 +26,14 @@
    "parallel": true
   },
   {
+   "key": "python-lint",
+   "label": "Lint of crissp's own Python (the pinned ruff, pyproject.toml [tool.ruff])",
+   "dir": ".",
+   "run": "py -m ruff check --no-cache src crissp site",
+   "seconds": 5,
+   "tests": []
+  },
+  {
    "key": "deploy",
    "label": "Deploy template (helm lint and template, Terraform, its tests)",
    "dir": ".",
@@ -65,13 +73,15 @@
   {
    "match": "crissp/testsuite/",
    "steps": [
-    "tools"
+    "tools",
+    "python-lint"
    ]
   },
   {
    "match": "crissp/uxsuite/",
    "steps": [
-    "tools"
+    "tools",
+    "python-lint"
    ]
   },
   {
@@ -83,7 +93,8 @@
   {
    "match": "crissp/tool/",
    "steps": [
-    "tools"
+    "tools",
+    "python-lint"
    ]
   },
   {
@@ -101,13 +112,15 @@
   {
    "match": "site/",
    "steps": [
-    "tools"
+    "tools",
+    "python-lint"
    ]
   },
   {
    "match": "crissp/deploy/",
    "steps": [
-    "deploy"
+    "deploy",
+    "python-lint"
    ]
   },
   {
@@ -119,19 +132,28 @@
   {
    "match": "src/",
    "steps": [
-    "package"
+    "package",
+    "python-lint"
    ]
   },
   {
    "match": "pyproject.toml",
    "steps": [
-    "package"
+    "package",
+    "python-lint"
    ]
   },
   {
    "match": "crissp/testsuite/package_tests/",
    "steps": [
-    "package"
+    "package",
+    "python-lint"
+   ]
+  },
+  {
+   "match": ".githooks/",
+   "steps": [
+    "tools"
    ]
   }
  ],

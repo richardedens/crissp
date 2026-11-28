@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
+import project
 
 DEFAULT_MB = 256
 QUIET_S = 60  # a worker on one test this long is marked quiet: a slow test, or one that hangs

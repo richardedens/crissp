@@ -13,13 +13,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-import place  # noqa: E402
+import place
 
 
 class Stamp(http.server.BaseHTTPRequestHandler):
     answer: bytes = b""
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         if self.path.startswith("/dashboard/stamp") and self.answer:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

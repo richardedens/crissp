@@ -13,9 +13,10 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import PROPOSAL, REPO, ROUND, add_shots, finish, product, ux_config, ux_team  # noqa: E402,F401
+from ux_kit import PROPOSAL, REPO, ROUND, add_shots, finish, product, ux_config, ux_team  # noqa: F401
 
-import api  # noqa: E402
+# isort: split
+import api  # ux_kit put the uxsuite on sys.path
 
 
 @pytest.fixture
@@ -23,10 +24,10 @@ def site(product, monkeypatch):
     monkeypatch.setattr(ux_config, "default_suite", lambda: product)
 
     class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
+        def do_GET(self):
             api.handle(self, "GET")
 
-        def do_POST(self):  # noqa: N802
+        def do_POST(self):
             api.handle(self, "POST")
 
         def log_message(self, *a):

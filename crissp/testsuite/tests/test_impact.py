@@ -94,13 +94,17 @@ def test_a_file_name_rule_matches_the_exact_name_anywhere(shop):
     assert impact.classify("app/frontend/src/NOTES.md", conf) == ("nothing", "")
 
 
+TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python lives there: its lint comes along
+
+
 @pytest.mark.parametrize("path, steps", [
-    ("crissp/testsuite/lib/collect.py", ["tools", "gate"]), ("crissp/testsuite/tests/test_gate.py", ["tools", "gate"]),
-    ("crissp/testsuite/dashboard/app.js", ["tools", "gate"]), ("crissp/testsuite/changes.json", ["tools", "gate"]),
-    ("crissp/uxsuite/ux_team.py", ["tools", "gate"]), ("crissp/uxsuite/web/ux.js", ["tools", "gate"]),
-    ("crissp/ux.sh", ["tools", "gate"]), ("crissp/tool/server.py", ["tools", "gate"]), ("crissp/look/look.css", ["tools", "gate"]),
-    ("crissp/template/crissp/uxsuite/team.json", ["tools", "gate"]), ("crissp/testsuite/accepted-risks.json", ["audit"]),
-    ("crissp/deploy/helm/app/values.yaml", ["deploy"]), ("crissp/deploy/check.sh", ["deploy"]), ("crissp/deploy.sh", ["deploy"]),
+    ("crissp/testsuite/lib/collect.py", LINTED), ("crissp/testsuite/tests/test_gate.py", LINTED),
+    ("crissp/testsuite/dashboard/app.js", LINTED), ("crissp/testsuite/changes.json", LINTED),
+    ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", LINTED),
+    ("crissp/ux.sh", TOOLS), ("crissp/tool/server.py", LINTED), ("crissp/look/look.css", TOOLS),
+    ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
+    ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "python-lint"]),
+    ("crissp/deploy.sh", ["deploy"]), (".githooks/pre-commit", TOOLS),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the audit of its pinned tools."""

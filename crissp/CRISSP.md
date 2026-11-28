@@ -227,6 +227,11 @@ page. A new capability is documented by a journey in the same piece of work.
   (`frontend_lint`): ESLint 9 (typescript-eslint, React hooks, jsx-a11y, `react/no-danger`) and stylelint, pinned
   with their lockfile and configs in the engine, installed once into crissp's cache. The project's `package.json` and
   files stay as they are.
+- **The lint runs before every commit**: `.githooks/pre-commit` runs the lint steps (`lint` and every `*-lint` step)
+  with the crissp `.mcp.json` pins (`crissp hook`), and `core.hooksPath .githooks` turns it on. `crissp init` sets it
+  and `crissp repair --yes` sets it in every clone that lacks it, but never over hooks the repository already has
+  (a `core.hooksPath` of its own, hooks in `.git/hooks`): those are said, not switched off. `git commit --no-verify`
+  skips it once; `crissp check` and CI still run the lint.
 - **The first PBIs build the skeleton**: the two parts and the stack, each with a test, before any screen. Until it
   runs, the UX suite has nothing to walk; a look at a screen before it is built is `crissp ux --propose <walk>` (a
   mockup in `crissp/uxsuite/results/`), never a prototype written into `crissp/uxsuite/`, which holds only its

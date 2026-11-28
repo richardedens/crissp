@@ -45,6 +45,8 @@ This project's steps (`crissp/testsuite/suites.json`):
 - `tools`: the testsuite's, uxsuite's and crissp tool's own tests, held at **100% lines and branches**, spread over
   the workers this machine has (`parallel`: on a 16-CPU Mac 15 workers, about 11 s instead of 37 s).
 - `gate`: the coverage gate (coverage only goes up).
+- `python-lint`: the pinned ruff over this repository's Python (`src/`, `crissp/`, `site/`), configured in `pyproject.toml`
+  (`[tool.ruff]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
@@ -55,13 +57,17 @@ What `crissp/check.sh` runs per change:
 
 - notes and backlog → nothing;
 - `CHANGELOG.md`/`VERSION` → a file check;
-- `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools;
-- `crissp/deploy*` → deploy;
-- `src/`, `pyproject.toml` → package;
+- `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
+  `look/` and `template/`);
+- `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`);
+- `src/`, `pyproject.toml` → package and python-lint;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 
-- Directly: `crissp/testsuite/run.sh --quick tools gate deploy package`. CI (`.github/workflows/ci.yml`) runs the same.
+- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy package`. CI (`.github/workflows/ci.yml`) runs the same.
+- **The lint runs before every commit**: `.githooks/pre-commit` (the template's, the same file) runs the lint steps
+  with the engine in this checkout. Turn it on once per clone: `python3 crissp/testsuite/lib/repair.py --yes` (here
+  it only sets `core.hooksPath .githooks`). Never `--no-verify` to get past a red lint; fix it.
 - **Commit first**: the scripts test what is committed. **One run at a time** (a lock in `crissp/testsuite/results/`).
   Claude may run `crissp/check.sh` for its own work; the full run is the product owner's to start unless they ask.
 - Tests never read a developer's `.env`, never touch a real cluster, registry or PyPI, and never start a real Claude

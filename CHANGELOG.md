@@ -4,6 +4,13 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **git lints before every commit (F-50).** `crissp init` writes `.githooks/pre-commit` and sets
+  `core.hooksPath .githooks`, so a commit runs the project's lint steps first (`lint` and every `*-lint` step, such as
+  `backend-lint` and `frontend-lint`) and a red lint stops it. The hook runs the crissp `.mcp.json` pins (the new
+  `crissp hook` command), without fetching it when that version is installed. For projects brought in earlier, and in
+  every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
+  ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
+  what to do instead. `git commit --no-verify` skips the hook once.
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
   `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint

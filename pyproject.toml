@@ -80,3 +80,17 @@ exclude = [
 [tool.hatch.build.targets.sdist]
 only-include = ["src", "crissp", "LICENSE", "NOTICE", "VERSION", "README.md", "CHANGELOG.md", "pyproject.toml"]
 exclude = ["**/__pycache__", "**/*.pyc", "**/results", "crissp/testsuite/dashboard/data.js", "**/.DS_Store"]
+
+# The lint of crissp's own Python (the `python-lint` step in crissp/testsuite/suites.json, also in CI): the ruff pinned in
+# crissp/testsuite/requirements.txt, over src/, crissp/ and site/. Its default rules, plus the ones the code already
+# names in its `noqa` comments (imports after sys.path, assigned lambdas, test-style function names).
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["E402", "E731", "N802"]
+
+[tool.ruff.lint.per-file-ignores]
+# The uxsuite's tests import the `product` fixture from ux_kit and ask for it by name: pytest's way, not a redefinition.
+"crissp/uxsuite/tests/*" = ["F811"]

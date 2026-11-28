@@ -38,7 +38,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import project  # noqa: E402
+import project
 
 # Set by configure() from the project's suites.json: where it is, and per gated suite what its coverage measures
 # (SOURCES), the folder its coverage runs in (DIRS: coverage.py names files relative to it) and what it leaves out.
@@ -128,7 +128,8 @@ def pragmas(suites: list[str]) -> tuple[list[dict], list[dict]]:
 
 
 def git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(ROOT), "-c", "core.quotePath=false", *args], capture_output=True, text=True)
+    return subprocess.run(["git", "-C", str(ROOT), "-c", "core.quotePath=false", *args], capture_output=True,
+                          text=True, check=False)
 
 
 def head_commit() -> str | None:
@@ -201,8 +202,8 @@ def diff_coverage(base: str | None, suites: list[str] | None = None) -> dict:
                "branches": len(taken) + sum(len(d) for d in missed.values()), "covered_branches": len(taken)}
         if row["lines"] or row["branches"]:
             result["files"][path] = row
-        for name in row:
-            result[name] += row[name]
+        for name, value in row.items():
+            result[name] += value
         for n in sorted(executable & missing):
             result["uncovered"].append({"file": path, "line": n, "what": "changed line not covered"})
         for n, dsts in sorted(missed.items()):

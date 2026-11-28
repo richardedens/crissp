@@ -114,13 +114,14 @@ diff first.
 
 | Command | What it does |
 |---|---|
-| `crissp init` | Brings a folder in: `git init`, the agreement, the backlog, the configuration, the deploy template |
+| `crissp init` | Brings a folder in: `git init`, the agreement, the backlog, the configuration, the deploy template, and the git hook that lints before every commit |
 | `crissp check [--plan]` | Runs only what the changes since the last green state can affect, then moves the certificate to this commit |
 | `crissp check-all` | The full run, with the coverage gate |
 | `crissp deploy [--plan \| --cluster \| --cluster-plan]` | Deploys only behind the release gate; `--cluster-plan` shows what it would do and changes nothing |
 | `crissp dashboard` | The Tests dashboard, the backlog board, the UX team, the workers and what Claude is doing now (`/activity`) on 127.0.0.1 |
 | `crissp ux [--list \| --status \| --shoot \| --round \| --propose]` | The UX team: screenshots of a walk, a round, a design |
-| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe); `--yes` puts it in place, never deleting or committing. Run it after an update: `uvx crissp==<new> repair --yes` |
+| `crissp repair [--yes]` | Says what a project brought in earlier has out of place (old steps, the UX suite's address, files in `crissp/uxsuite/`, missing template files, plain-path sources in `changes.json`, an older crissp pinned in `.mcp.json` or `.vibe/config.toml`, an older sessions section in `crissp/CLAUDE.md`, a missing `.vibe/config.toml` or an untrusted folder for Vibe, a missing `.githooks/pre-commit` or a `core.hooksPath` that is not set); `--yes` puts it in place, never deleting or committing. Run it after an update: `uvx crissp==<new> repair --yes` |
+| `crissp hook` | The project's lint steps (`lint` and every `*-lint` step), as git runs them before every commit from `.githooks/pre-commit`; `git commit --no-verify` skips it once |
 | `crissp mcp` | The crissp MCP server that Claude Code starts from `.mcp.json` |
 
 The framework itself is described in [crissp/CRISSP.md](crissp/CRISSP.md).
