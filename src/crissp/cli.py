@@ -4,7 +4,7 @@
                               bring this folder in: git init when it is no repository yet, then the agreement, the
                               backlog, the configuration and the deploy template; never overwrites, never commits.
                               Also writes .vibe/config.toml (the crissp MCP server for Mistral Vibe, pinned like
-                              .mcp.json) and, when Vibe is installed (VIBE_HOME or ~/.vibe), asks to add this
+                              .mcp.json, naming this folder; not in git, F-100) and, when Vibe is installed (VIBE_HOME or ~/.vibe), asks to add this
                               folder to its trusted_folders.toml (--yes: adds it; F-24, F-28). Writes
                               .githooks/pre-commit and sets core.hooksPath, unless the repository has hooks of its
                               own (F-50)
@@ -83,7 +83,7 @@ def plan_init(root: Path, values: dict, deploy: bool) -> list[tuple[Path, Path, 
     for name in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION"):
         files.append((TEMPLATE / name, root / name, True))
     files.append((TEMPLATE / "mcp.json", root / ".mcp.json", True))
-    files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24: Vibe's MCP pin
+    files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24/F-100: Vibe's MCP
     files.append((TEMPLATE / "githooks" / "pre-commit", root / ".githooks" / "pre-commit", False))  # F-50: the lint
     tree(TEMPLATE / "crissp", root / "crissp")
     files.append((ENGINE / "CRISSP.md", root / "crissp" / "CRISSP.md", False))
@@ -156,6 +156,7 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
     values = {"PRODUCT": args.product or root.name, "OWNER": args.owner or "the product owner",
               "REPOSITORY": root.name, "DATE": datetime.date.today().isoformat(), "VERSION": "0.1.0",
               "CRISSP_VERSION": __version__}
+    values |= vibe.fields(root, *vibe.server(root, __version__))  # F-100: .vibe/config.toml names this folder
     if not args.yes and ask(f"Bring {root} in as {values['PRODUCT']} (C.R.I.S.S.P. {__version__})? [y/N] ").strip().lower() not in ("y", "yes"):
         print("Nothing changed.", file=out)
         return 1

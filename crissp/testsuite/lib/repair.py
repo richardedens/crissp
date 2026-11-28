@@ -24,14 +24,17 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     git-hook   .githooks/pre-commit is not there, or core.hooksPath is not set (F-50): the template's hook, and
                core.hooksPath .githooks, so git runs the lint steps before every commit; never over a core.hooksPath
                or .git/hooks of the project's own (said instead). The framework's own checkout: only turned on
-    vibe       .vibe/config.toml is not there, or the project is not trusted in Vibe's trusted_folders.toml
+    vibe       .vibe/config.toml is not there, does not name this folder (F-100: cwd and CRISSP_ROOT, which Vibe's
+               desktop app needs; only a config that holds crissp's server alone is written anew), or the project is
+               not trusted in Vibe's trusted_folders.toml
                (F-24; VIBE_HOME, else ~/.vibe): the config is made from the template with this crissp's pin, and the
                folder is added to the trusted list (never removed; a folder marked untrusted, or a file crissp does
                not know, is left as it is: lib/vibe.py); with no Vibe home only the config is made
 
 And what needs a person, said but not done: not brought in (no crissp/: crissp init); no commit yet; no docker-compose.yml (nothing runs for the UX suite to walk);
 a move whose place is taken. It never deletes, never overwrites what a project wrote (only the spots named above),
-never changes the backlog's content and never commits. The framework's own repository is left as it is.
+never changes the backlog's content and never commits. The framework's own repository is left as it is, but for
+its git hook and its .vibe/config.toml.
 Exit 0: nothing left to say, or --yes put it in place; 1: something is out of place or needs you; 2: wrong arguments.
 """
 
@@ -326,31 +329,73 @@ def fix_vibe_pin(root: Path, version: str | None) -> Repair | None:
     return Repair("vibe-pin", f".vibe/config.toml: {old} → {new}, the same pin as .mcp.json (Vibe's MCP tools)", do)
 
 
+def only_crissp(text: str) -> bool:
+    """F-100: a .vibe/config.toml that holds nothing but the crissp server, as crissp wrote it: safe to write anew."""
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return False
+    servers = data.get("mcp_servers")
+    return set(data) == {"mcp_servers"} and isinstance(servers, list) and len(servers) == 1 \
+        and isinstance(servers[0], dict) and servers[0].get("name") == "crissp"
+
+
 def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | None:
     """F-24: Vibe onboarding for a project brought in before it: .vibe/config.toml with the MCP pin, and the folder
-    trusted when Vibe is installed (home None or not a folder: only the config)."""
-    if not brought_in(root) or not version:
+    trusted when Vibe is installed (home None or not a folder: only the config). F-100: a config that does not name
+    this folder (cwd and CRISSP_ROOT: Vibe's desktop app needs both) is written anew when it holds only crissp's
+    server; the framework's own checkout gets one that starts its own server."""
+    engine = is_engine(root) and (root / "crissp" / "tool" / "server.py").is_file()
+    if not (engine or brought_in(root) and version):
         return None
     config = root / ".vibe" / "config.toml"
     db = home / vibe.FILE if home is not None and home.is_dir() else None
     trusted = db is None or vibe.state(home, root) != "absent"  # F-26: untrusted or unknown: left as it is
-    if config.is_file() and trusted:
+    text = config.read_text() if config.is_file() else None
+    stale = text is not None and not vibe.pinned(text, root) and only_crissp(text)
+    if (text is not None and not stale) and trusted:
         return None
+    command, args = vibe.server(root, version, engine)
     parts = []
-    if not config.is_file():
-        parts.append(".vibe/config.toml is not there → from the template, uvx "
-                     f"crissp=={version} mcp (the server .mcp.json registers for Claude Code)")
+    if text is None:
+        parts.append(f".vibe/config.toml is not there → {Path(command).name} {' '.join(args[-2:])}, started in this "
+                     "folder (the server .mcp.json registers for Claude Code)")
+    elif stale:
+        parts.append(".vibe/config.toml does not name this folder (cwd, CRISSP_ROOT): Vibe's desktop app starts the "
+                     "server elsewhere and gets no crissp tools → written anew for this folder")
     if not trusted:
         parts.append(f"not trusted in {db} → added (never removed)")
 
     def do() -> None:
-        if not config.is_file():
+        if text is None or stale:
             config.parent.mkdir(parents=True, exist_ok=True)
-            config.write_text((TEMPLATE / "vibe" / "config.toml").read_text().replace("{{CRISSP_VERSION}}", version))
+            config.write_text(vibe.config(root, command, args))
         if not trusted:
             vibe.trust(home, root)
 
     return Repair("vibe", "; ".join(parts), do)
+
+
+def vibe_needs(root: Path) -> list[str]:
+    """F-100: what only a person can do for Vibe: a config with servers of its own that does not name this folder,
+    and a config still in git (it names one machine's folder now)."""
+    config = root / ".vibe" / "config.toml"
+    if not (brought_in(root) or is_engine(root)) or not config.is_file():
+        return []
+    out = []
+    text = config.read_text()
+    if not vibe.pinned(text, root) and not only_crissp(text):
+        out.append(f".vibe/config.toml has servers of its own: give the crissp server cwd = \"{root}\" and "
+                   f"[mcp_servers.env] CRISSP_ROOT = \"{root}\" by hand, so Vibe's desktop app finds it")
+    try:
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", ".vibe/config.toml"],
+                                 capture_output=True, check=False).returncode == 0
+    except OSError:  # no git at all
+        tracked = False
+    if tracked:
+        out.append("`.vibe/config.toml` is in git, but it names this machine's folder now: git rm --cached "
+                   ".vibe/config.toml and commit (each clone's crissp repair --yes writes its own)")
+    return out
 
 
 def fix_hook(root: Path) -> Repair | None:
@@ -400,6 +445,7 @@ def needs(root: Path) -> list[str]:
         out.append("not brought in: no crissp/ here; crissp init brings it in")
     if hook.needs(root):
         out.append(hook.needs(root))
+    out += vibe_needs(root)
     if not committed(root):
         out.append("no commit yet: the checks test what is committed; review the diff and commit")
     if not is_engine(root) and not (root / "docker-compose.yml").exists():

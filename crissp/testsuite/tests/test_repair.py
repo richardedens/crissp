@@ -459,3 +459,59 @@ def test_the_frameworks_own_checkout_gets_the_hook_turned_on_only(tmp_path, monk
     assert fix.key == "git-hook" and "not there" not in fix.what
     fix.do()
     assert repair.hook.state(tmp_path / "eng") == "on" and not (tmp_path / "eng/.githooks").exists()
+
+
+OLD_VIBE = ('[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\n'
+            'args = ["crissp==9.9.9", "mcp"]\n')
+
+
+def test_a_vibe_config_that_does_not_name_the_folder_is_written_anew(tmp_path):
+    """F-100: the config crissp wrote before names no folder, so Vibe's desktop app gets no tools: repair writes it
+    anew, with cwd and CRISSP_ROOT for this folder and the pin it had."""
+    root = tmp_path / "p"
+    bring_in(root)
+    write(root / ".vibe/config.toml", OLD_VIBE)
+    fix = next(r for r in repair.find(root, "9.9.9") if r.key == "vibe")
+    assert "does not name this folder" in fix.what
+    fix.do()
+    server = repair.tomllib.loads((root / ".vibe/config.toml").read_text())["mcp_servers"][0]
+    assert server["cwd"] == str(root) and server["env"] == {"CRISSP_ROOT": str(root)}
+    assert server["args"] == ["crissp==9.9.9", "mcp"]
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+
+
+def test_a_vibe_config_with_servers_of_its_own_is_said_not_written(tmp_path):
+    """F-100: other servers, or anything crissp did not write, stay: what to add by hand is said instead."""
+    root = tmp_path / "p"
+    bring_in(root)
+    write(root / ".vibe/config.toml", OLD_VIBE + '\n[[mcp_servers]]\nname = "other"\ntransport = "stdio"\n'
+                                                  'command = "x"\n')
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+    assert any("servers of its own" in n and str(root) in n for n in repair.needs(root))
+    for text in ("not = [toml", 'model = "x"\n' + OLD_VIBE):  # unreadable, or settings of its own: left alone
+        write(root / ".vibe/config.toml", text)
+        assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+    assert not any("vibe" in n for n in repair.needs(root))
+
+
+def test_a_vibe_config_in_git_is_said(tmp_path):
+    """F-100: the config names one machine's folder now: one that is still in git is to be removed from it."""
+    root = tmp_path / "p"
+    bring_in(root)
+    git(root, "init", "-q")
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+    git(root, "add", "-f", ".vibe/config.toml")
+    assert any("git rm --cached .vibe/config.toml" in n for n in repair.needs(root))
+
+
+def test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server(tmp_path, monkeypatch):
+    """F-100: in the framework's checkout Vibe starts the checkout's server, with the Python that repairs."""
+    monkeypatch.setattr(repair, "ENGINE", tmp_path / "eng" / "crissp")
+    write(tmp_path / "eng/crissp/tool/server.py", "")
+    fix = next(r for r in repair.find(tmp_path / "eng") if r.key == "vibe")
+    fix.do()
+    server = repair.tomllib.loads((tmp_path / "eng/.vibe/config.toml").read_text())["mcp_servers"][0]
+    assert server["command"] == sys.executable
+    assert server["args"] == ["-I", str(tmp_path / "eng/crissp/tool/server.py")]
+    assert not any("vibe" in n for n in repair.needs(tmp_path / "eng"))

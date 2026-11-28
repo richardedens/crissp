@@ -1289,6 +1289,49 @@
     "test_collect::test_a_failed_scan_that_lists_nothing_has_no_count",
     "test_dashboard_page::test_security_has_its_own_tile_and_no_suite_of_zero_tests_is_listed"
    ]
+  },
+  {
+   "id": "vibe-desktop-mcp-tools",
+   "title": "A Vibe desktop session got no crissp tools: the config named no folder (F-100)",
+   "problem": "Vibe's desktop app starts MCP servers from its own app server: the server's working directory is the config's cwd, else the app server's own folder, and its environment only HOME, PATH, SHELL, TERM, USER and LOGNAME plus the config's env. .vibe/config.toml gave a relative server path (this repository) or `uvx crissp==x mcp` without CRISSP_ROOT (a project), so the server was not found or did not know the project, and search_tool_functions showed only Vibe's own tools.",
+   "fix": "lib/vibe.py writes .vibe/config.toml for this machine: cwd and [mcp_servers.env] CRISSP_ROOT name the project's folder, uvx by its full path (the checkout's own server with the Python that repairs, in the framework's repository), startup_timeout_sec 60 for the first uvx download. crissp init and repair write it; repair writes a config anew that does not name the folder when it holds only crissp's server, and says what to do for one with servers of its own or one still in git. The file names one machine's folder, so .vibe/ is git-ignored as a whole (F-29 reversed).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def config("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def server("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_vibe("
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def vibe_needs("
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "def init("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_a_relative_server_path_is_not_found_from_vibes_app_server",
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere",
+    "test_vibe::test_a_windows_path_stays_valid_toml_in_the_config",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew",
+    "test_repair::test_a_vibe_config_with_servers_of_its_own_is_said_not_written",
+    "test_repair::test_a_vibe_config_in_git_is_said",
+    "test_repair::test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server",
+    "test_cli::test_the_vibe_config_names_this_folder_and_stays_out_of_git",
+    "test_vibe_session::test_a_vibe_session_in_a_brought_in_project_finds_brief_and_backlog"
+   ]
   }
  ],
  "gaps": [

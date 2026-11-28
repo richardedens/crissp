@@ -4,6 +4,14 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Vibe's desktop app gets the crissp tools (F-100).** A Vibe desktop session listed only Vibe's own tools: the
+  desktop app starts MCP servers from its own folder with only a few environment variables, so the server was not
+  found (a relative path) or did not know the project. `.vibe/config.toml` now names the project's folder (`cwd` and
+  `CRISSP_ROOT`), starts `uvx` by its full path and gives the first download 60 seconds. `crissp init` writes it, and
+  `crissp repair --yes` writes it anew for a project brought in earlier (when it holds only crissp's server; it says
+  what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
+  of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
+  project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share
