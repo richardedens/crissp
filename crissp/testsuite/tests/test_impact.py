@@ -122,7 +122,7 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
     ("crissp/uxsuite/ux_team.py", LINTED), ("crissp/uxsuite/web/ux.js", ["tools", "gate", "lint"]),
     ("crissp/ux.sh", ["tools", "gate", "lint"]), ("crissp/tool/server.py", LINTED),
     ("crissp/look/look.css", ["tools", "gate", "lint"]),
-    ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
+    ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit", "licenses"]),
     ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "lint"]),
     ("crissp/deploy.sh", ["deploy", "lint"]), ("crissp/testsuite/lint/eslint.config.js", ["lint"]),
     ("crissp/testsuite/frontend-lint/eslint.config.mjs", ["tools", "gate", "lint"]),
@@ -131,10 +131,10 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its
     bash and JavaScript (F-38), the audit of its pinned tools. Every part's change is also scanned for secrets (F-43),
-    and a change to its code for unsafe code (F-44)."""
+    and a change to its code for unsafe code (F-44) and its quality (F-110)."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
-    code = ["sast"] if "tools" in steps else []
+    code = ["sast", "quality"] if "tools" in steps else []
     assert not p["full"] and sorted(p["suites"]) == sorted([*steps, "secrets", *code]), p
 
 

@@ -53,8 +53,8 @@ what Claude is doing now, under one top bar (Tests · Backlog · UX · Workers �
 light theme is one click away). It never runs a test and loads nothing from the internet.
 
 **Ready to release?** The answer comes first: green, or which steps stop the release, each linked to its log. Then the
-tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code),
-line and branch coverage, the coverage gate and every step.
+tests, the lint of the backend and the frontend, the security scans (CVEs, secrets in the git history, unsafe code,
+the running app, licences), line and branch coverage, the coverage gate, the code quality ratchet and every step.
 ![The Tests dashboard](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/dashboard.jpg)
 
 **And when it is not**: the failed steps, and what lint and the scans found in each part.

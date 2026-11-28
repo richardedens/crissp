@@ -4,6 +4,22 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Code quality, held by a ratchet (F-110).** A new `quality` step measures the cyclomatic complexity of every
+  function (lizard, pinned) and the copied blocks (ten lines or more, in any language), in `crissp check` for every
+  change under `app/`. A new complex function (above 15), a more complex one or more duplicated lines fail it; old code
+  does not, and a green run lowers the baseline (`crissp/testsuite/quality-baseline.json`). For an honest reason:
+  `python3 crissp/testsuite/lib/quality.py --accept "why"`. The dashboard has a Code quality tile beside the gate.
+- **The running app is scanned (F-111).** The full run of a project with a `docker-compose.yml` runs the passive OWASP
+  ZAP baseline (the image pinned by digest) against `http://127.0.0.1:8080`: missing security headers, cookie flags,
+  leaking errors. It starts the app with `docker compose` when it is not up, and stops it again. A high risk blocks;
+  the project's own `zap/rules.tsv` can make a rule FAIL or IGNORE it. It needs Docker.
+- **Licences checked and an SBOM (F-112).** The full run checks the licence of every dependency (`package-lock.json`,
+  and the requirements resolved with their transitive packages, licences from PyPI) and writes a CycloneDX SBOM to
+  `crissp/testsuite/results/sbom.cdx.json`. GPL, AGPL, SSPL and other licences a product may not ship block;
+  LGPL, MPL and unknown licences are listed; dev-only packages never block. `audit.licenses.allow` allows a package
+  for good, with why.
+- Projects brought in earlier can copy the `quality`, `licenses` and `dast` steps and the `audit.quality`,
+  `audit.dast` and `audit.licenses` settings from the template's `suites.json`.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

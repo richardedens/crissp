@@ -104,7 +104,9 @@ def test_the_folders_are_the_steps_test_folders():
                          ROOT / "crissp/testsuite/package_tests",
                          ROOT / "crissp/testsuite/tests",  # the secrets step runs from crissp/testsuite
                          ROOT / "crissp/testsuite/tests",  # and the sast step
-                         ROOT / "crissp/testsuite/tests")  # the audit step runs from crissp/testsuite
+                         ROOT / "crissp/testsuite/tests",  # and the quality step (F-110)
+                         ROOT / "crissp/testsuite/tests",  # the audit step runs from crissp/testsuite
+                         ROOT / "crissp/testsuite/tests")  # and the licences step (F-112)
 
 
 def test_a_frontend_test_is_named_by_its_file_and_the_name_given_to_it(tmp_path):

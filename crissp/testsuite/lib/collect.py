@@ -216,7 +216,9 @@ def is_lint(key: str) -> bool:
     return key == "lint" or key.endswith("-lint")
 
 
-SECURITY = ("audit", "secrets", "sast")  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations, secrets, unsafe code)
+SECURITY = ("audit", "secrets", "sast", "dast", "licenses")  # F-73: the scans lib/audit.py runs (CVEs and misconfigurations,
+# secrets, unsafe code, the running app, licences)
+QUALITY = "quality"  # F-110: lib/quality.py, complexity and duplication, on a tile of its own
 BLOCKING_LINE = re.compile(r"^BLOCKING\b", re.MULTILINE)
 
 
@@ -226,7 +228,7 @@ def is_security(key: str) -> bool:
 
 def not_tests(key: str) -> bool:
     """A step that runs no tests (a lint or a scan): the dashboard shows it on its own tile, not as a suite of 0 tests."""
-    return is_lint(key) or is_security(key)
+    return is_lint(key) or is_security(key) or key == QUALITY
 
 
 def blocking_findings(log: str, status: str) -> int | None:
@@ -354,6 +356,7 @@ def main(root: Path | None = None) -> int:
                         "screenshots": [s + ".png" for s in c.get("screenshots", []) if s + ".png" in shots]})
     steps = _steps()
     gate = json.loads((RESULTS / "gate.json").read_text(encoding="utf-8")) if (RESULTS / "gate.json").exists() else None
+    quality = json.loads((RESULTS / "quality.json").read_text(encoding="utf-8")) if (RESULTS / "quality.json").exists() else None
     threats = json.loads((suite / "threats.json").read_text(encoding="utf-8")) if (suite / "threats.json").exists() else {"boundaries": []}
     for boundary in threats["boundaries"]:
         for threat in boundary["threats"]:
@@ -373,7 +376,7 @@ def main(root: Path | None = None) -> int:
     data = {"generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"), "root": str(ROOT), "steps": steps, "suites": {k: summary(k) for k in SUITES if not not_tests(k)},
             "lint": _not_tests(steps, is_lint, lint_problems, "problems"),
             "security": _not_tests(steps, is_security, blocking_findings, "blocking"),
-            "tests": tests, "coverage": {k: coverage(k) for k in COVERAGE}, "changes": changes, "gaps": manifest.get("gaps", []), "gate": gate, "threats": threats, "capabilities": capabilities,
+            "tests": tests, "coverage": {k: coverage(k) for k in COVERAGE}, "changes": changes, "gaps": manifest.get("gaps", []), "gate": gate, "quality": quality, "threats": threats, "capabilities": capabilities,
             "journeys": journeys, "screenshots": shots, "backlog": _backlog(), **_product()}
     RESULTS.mkdir(parents=True, exist_ok=True)
     (RESULTS / "data.js").write_text("window.SUITE = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n", encoding="utf-8")

@@ -60,6 +60,9 @@ This project's steps (`crissp/testsuite/suites.json`):
   clone misses it).
 - `sast`: Semgrep (pinned) with crissp's own rules on `src`, `crissp` and `site`, after the rules' own tests
   (`crissp/testsuite/sast/tests`). An ERROR blocks, a WARNING is listed for review.
+- `quality`: complexity (the pinned lizard) and duplication of `src`, `crissp` and `site`, held by a ratchet
+  (`crissp/testsuite/quality-baseline.json`, written by the step; `lib/quality.py --accept "why"` for an honest reason).
+- `licenses`: the licences of the pinned tools and a CycloneDX SBOM of them (full run only).
 - `audit`: pip-audit and npm audit of the pinned tools, the lint tools too, and trivy config of the deploy chart and
   Terraform (full run only; trivy is pinned and checksum-checked, `crissp/testsuite/lib/tools.py`).
 
@@ -67,7 +70,7 @@ What `crissp/check.sh` runs per change:
 
 - notes and backlog → nothing;
 - `CHANGELOG.md`/`VERSION` → a file check;
-- every part below → also secrets, and its code (everything that runs tools or package) → sast;
+- every part below → also secrets, and its code (everything that runs tools or package) → sast and quality;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
   `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `ux.sh`,
   `site/`, `testsuite/frontend-lint/`) → lint instead of python-lint;
@@ -78,7 +81,7 @@ What `crissp/check.sh` runs per change:
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 
-- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package secrets sast`. CI
+- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package secrets sast quality`. CI
   (`.github/workflows/ci.yml`) runs the same.
 - **The lint runs before every commit**: `.githooks/pre-commit` (the template's, the same file) runs the lint steps
   (`python-lint` and `lint`) with the engine in this checkout. Turn it on once per clone:

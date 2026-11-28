@@ -196,6 +196,7 @@ def test_the_dashboard_data_from_a_whole_run(collect, capsys):
     _world(collect)
     _write(collect.RESULTS / "steps.json", json.dumps([{"name": "api", "status": "failed"}, {"name": "web", "status": "passed"}]))
     _write(collect.RESULTS / "gate.json", json.dumps({"ok": True}))
+    _write(collect.RESULTS / "quality.json", json.dumps({"ok": True, "functions_over": 2}))
     _write(collect.SUITE / "threats.json", json.dumps({"boundaries": [{"threats": [
         {"id": "T1", "tests": ["test_billing::test_prorated"]}, {"id": "T2", "tests": ["test_billing::test_refused"]},
         {"id": "T3", "tests": ["test_nowhere"]}, {"id": "T4", "tests": []}]}]}))
@@ -213,6 +214,7 @@ def test_the_dashboard_data_from_a_whole_run(collect, capsys):
     assert [t["status"] for t in data["threats"]["boundaries"][0]["threats"]] == ["passed", "failed", "missing", "untested"]
     api = data["suites"]["api"]
     assert (api["tests"], api["passed"], api["failed"], api["skipped"]) == (6, 3, 2, 1) and data["suites"]["web"]["tests"] == 0
+    assert data["quality"] == {"ok": True, "functions_over": 2}  # F-110: the Code quality tile
     assert data["gate"] == {"ok": True} and data["gaps"] == ["one known gap"] and data["screenshots"] == ["login.png"]
     assert data["coverage"] == {"api": None, "web": None, "admin": None} and data["capabilities"] == []
     assert data["product"] == "Shop" and data["unitSuites"] == ["api", "web", "admin"] and data["texts"] == {"e2e": "the shop in a browser"}
@@ -224,7 +226,7 @@ def test_the_dashboard_data_from_a_whole_run(collect, capsys):
 def test_a_first_run_without_steps_gate_threats_or_shots(collect, capsys):
     assert collect.main(collect.ROOT) == 0  # no changes.json yet either
     data = json.loads((collect.RESULTS / "data.js").read_text()[len("window.SUITE = "):-2])
-    assert data["steps"] == [] and data["gate"] is None and data["threats"] == {"boundaries": []} and data["screenshots"] == []
+    assert data["steps"] == [] and data["gate"] is None and data["quality"] is None and data["threats"] == {"boundaries": []} and data["screenshots"] == []
     assert data["gaps"] == [] and data["tests"] == [] and "0 tests, 0 changes, 0 failures" in capsys.readouterr().out
 
 
@@ -381,7 +383,10 @@ def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(co
     config = {**SHOP, "steps": SHOP["steps"] + [
         {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "dir": ".", "run": "audit run"},
         {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "dir": ".", "run": "audit secrets"},
-        {"key": "sast", "label": "Unsafe code (Semgrep)", "dir": ".", "run": "audit sast"}]}
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "dir": ".", "run": "audit sast"},
+        {"key": "dast", "label": "The running app (ZAP)", "dir": ".", "run": "audit dast"},
+        {"key": "licenses", "label": "Licences (SBOM)", "dir": ".", "run": "audit licenses"},
+        {"key": "quality", "label": "Code quality", "dir": ".", "run": "quality"}]}
     (collect.ROOT / "crissp/testsuite/suites.json").write_text(json.dumps(config))
     collect.configure(collect.ROOT)
     _write(collect.RESULTS / "steps.json", json.dumps({"audit": "passed", "secrets": "failed"}))
@@ -397,8 +402,11 @@ def test_security_steps_are_shown_as_security_and_not_as_suites_of_zero_tests(co
         {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "status": "passed",
          "blocking": 0, "seconds": 15},
         {"key": "secrets", "label": "Secrets in the git history (gitleaks)", "status": "failed", "blocking": 2, "seconds": 1},
-        {"key": "sast", "label": "Unsafe code (Semgrep)", "status": "not run", "blocking": None, "seconds": None}]
-    assert not {"audit", "secrets", "sast"} & set(data["suites"]) and not {"audit", "secrets", "sast"} & set(data["unitSuites"])
+        {"key": "sast", "label": "Unsafe code (Semgrep)", "status": "not run", "blocking": None, "seconds": None},
+        {"key": "dast", "label": "The running app (ZAP)", "status": "not run", "blocking": None, "seconds": None},
+        {"key": "licenses", "label": "Licences (SBOM)", "status": "not run", "blocking": None, "seconds": None}]
+    scans = {"audit", "secrets", "sast", "dast", "licenses", "quality"}  # quality has a tile of its own (F-110)
+    assert not scans & set(data["suites"]) and not scans & set(data["unitSuites"])
     assert data["lint"] == []
 
 

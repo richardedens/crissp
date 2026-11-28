@@ -85,6 +85,16 @@
       <ul class="parts">${parts.map(x => `<li title="${esc(x.label)}">${stepLink(x.key, `<span>${esc(short(x.label))}</span><b style="color:${tint(x.status)}">${what(x)}</b>`)}</li>`).join("")}</ul></div></div>`;
   }
 
+  // F-110: complexity and duplication, held by a ratchet like coverage (lib/quality.py, results/quality.json)
+  function qualityCard(q) {
+    if (!q) return "";
+    const d = q.duplication || {}, bad = (q.regressions || []).length + (q.problems || []).length;
+    const head = q.problems?.length ? "Not measured" : bad ? plural(q.regressions.length, "regression") : "Holds";
+    return `<div class="card kpi row click" data-go="steps" data-q="step=quality">${ring(100, bad ? "✗" : "✓", bad ? "var(--red)" : "var(--green)")}
+      <div class="kbody"><div class="l">Code quality</div><div class="v">${head}</div>
+      <div class="s">${plural(q.functions_over ?? 0, "complex function")} (above ${esc(q.threshold)}) · ${esc(d.percent ?? 0)}% duplicated · may only get better</div></div></div>`;
+  }
+
   // F-70: the first thing on the page is the answer: may this go out, and if not, what stops it
   function verdict() {
     const ran = S.steps.filter(s => s.status === "passed" || s.status === "failed");
@@ -125,6 +135,7 @@
         ${S.gate ? `<div class="card kpi row click" data-go="coverage">${ring(100, S.gate.ok ? "✓" : "✗", S.gate.ok ? "var(--green)" : "var(--red)")}
           <div class="kbody"><div class="l">Coverage gate</div><div class="v">${S.gate.ok ? "Holds" : plural(S.gate.problems.length, "drop")}</div>
           <div class="s">coverage may only go up${diffLine(S.gate.diff)}</div></div></div>` : ""}
+        ${qualityCard(S.quality)}
         ${e2e.length ? `<div class="card kpi row click" data-go="e2e">${ring(pct(e2e.filter(t => t.status === "passed").length, e2e.length), `${e2e.filter(t => t.status === "passed").length}/${e2e.length}`, "var(--teal)")}
           <div class="kbody"><div class="l">E2E in a browser</div><div class="v">${e2e.length}</div><div class="s">${plural(S.screenshots.length, "screenshot")}</div></div></div>` : ""}
       </div>

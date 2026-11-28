@@ -85,6 +85,19 @@ def test_security_has_its_own_tile_and_no_suite_of_zero_tests_is_listed():
     assert "Deploy template" not in view
 
 
+def test_code_quality_has_a_tile_that_says_whether_the_ratchet_holds():
+    """F-110: complexity and duplication on the overview, beside the coverage gate; a regression says how many."""
+    held = {"ok": True, "functions_over": 3, "threshold": 15, "duplication": {"percent": 1.5}, "regressions": [],
+            "problems": []}
+    view = render(run_data(quality=held))["#view"]
+    assert "Code quality" in view and "Holds" in view and "3 complex functions (above 15) · 1.5% duplicated" in view
+    assert 'data-q="step=quality"' in view
+    worse = {**held, "ok": False, "regressions": ["a.py::f grew more complex"]}
+    assert "1 regression" in render(run_data(quality=worse))["#view"]
+    assert "Not measured" in render(run_data(quality={**held, "problems": ["lizard could not run"]}))["#view"]
+    assert "Code quality" not in render(run_data(quality=None))["#view"]
+
+
 def test_failing_tests_come_first_and_a_long_failure_wraps():
     """F-71: the Tests tab listed failures among 700 passing tests, and one long failure made the table 150,000 px wide."""
     rows = render(run_data(), "#tests")["#rows"]

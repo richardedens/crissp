@@ -58,13 +58,38 @@ Done when  Every rule has a test that matches and one that must not; an ERROR bl
 Tests      tests/test_audit.py, crissp/testsuite/sast/tests (semgrep --test)
 Depends    —
 
-## E6-F4 · Sonar-style metrics and a quality gate                                        [todo]
+## E6-F4 · Sonar-style metrics and a quality gate                                        [review]
 Why        Complexity and duplication are not measured; a quality gate that only lets them get better, like coverage,
            keeps old code from blocking.
 
-## E6-F5 · DAST: the running app scanned                                                 [todo]
+### E6-F4-01 · Complexity and duplication, held by a ratchet                             [review] [M]
+Why        nothing measured how complex or copied the code is (F-110)
+What       lib/quality.py: the pinned lizard's cyclomatic complexity per function, crissp's own copy count across
+           languages, a baseline that only goes down; a quality step in crissp and the template, and a Code quality tile
+Done when  a new complex function, a more complex one or more duplicated lines fail the step; a green run lowers the
+           baseline
+Tests      test_quality, test_dashboard_page, test_collect, test_template
+Depends    —
+
+## E6-F5 · DAST: the running app scanned                                                 [review]
 Why        A passive OWASP ZAP baseline against the app docker-compose starts on localhost finds missing headers, cookie
            flags and leaks the code scans cannot see.
 
-## E6-F6 · SBOM and licences per release                                                 [todo]
+### E6-F5-01 · The passive ZAP baseline against the running app                          [review] [M]
+Why        nothing scanned the running app (F-111)
+What       audit dast: zap-baseline.py in the pinned ZAP image against audit.dast.targets, compose started and stopped
+           when the app is down, the project's rules file; HIGH and FAIL rules block
+Done when  a high risk or a FAIL rule blocks the full run; an app that does not answer is a problem
+Tests      test_dast, test_template
+Depends    —
+
+## E6-F6 · SBOM and licences per release                                                 [review]
 Why        A CycloneDX SBOM with every release and a licence check of the dependencies.
+
+### E6-F6-01 · Licences checked and an SBOM per run                                      [review] [M]
+Why        no licence check, no SBOM (F-112)
+What       audit licenses: npm lock files and resolved pip requirements, licences from the lock file or PyPI, a policy
+           (forbidden and copyleft block, allow and block per project), a CycloneDX 1.6 SBOM
+Done when  a GPL or AGPL dependency the product ships blocks; results/sbom.cdx.json lists every component
+Tests      test_licenses, test_template
+Depends    —

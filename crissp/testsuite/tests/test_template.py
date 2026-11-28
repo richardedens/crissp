@@ -38,13 +38,15 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
     assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
-                                                              "frontend-lint", "audit", "secrets", "sast"]
+                                                              "frontend-lint", "audit", "secrets", "sast", "quality",
+                                                              "licenses"]  # dast: once docker-compose.yml is there
     assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
                                                          "frontend": "app/frontend", "frontend-lint": "app/frontend",
-                                                         "audit": ".", "secrets": ".", "sast": "."}
+                                                         "audit": ".", "secrets": ".", "sast": ".", "quality": ".",
+                                                         "licenses": ".", "dast": "."}
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [
-        ("app/backend/", ["backend", "backend-lint", "secrets", "sast"]),
-        ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast"])]
+        ("app/backend/", ["backend", "backend-lint", "secrets", "sast", "quality"]),
+        ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast", "quality"])]
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
     assert ".githooks/" in [r["match"] for r in conf["shared"]]  # F-50: what git runs before every commit
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
@@ -64,7 +66,22 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
                              "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
                              "own_images": {"values": "crissp/deploy/helm/app/values.yaml",
                                             "parts": ["backend", "frontend"]},
-                             "sast": ["app"], "sast_rules": []}
+                             "sast": ["app"], "sast_rules": [], "quality": {"paths": ["app"], "exclude": []},
+                             "dast": {"targets": ["http://127.0.0.1:8080"], "compose": "docker-compose.yml",
+                                      "rules": "zap/rules.tsv"},
+                             "licenses": {"allow": {}, "block": []}}
+
+
+def test_every_project_measures_its_quality_scans_its_running_app_and_checks_its_licences(tmp_path):
+    """F-110 to F-112: complexity and duplication in every check that touches a part (held by a ratchet), and in the
+    full run the passive ZAP baseline once the app runs together and every dependency's licence with an SBOM."""
+    conf, root = configured(tmp_path, "app/backend", "docker-compose.yml")
+    steps = {s["key"]: s for s in conf["steps"]}
+    assert steps["quality"]["run"] == "quality" and not steps["quality"]["full_only"] and steps["quality"]["when"] == "app"
+    assert steps["licenses"]["run"] == "audit licenses" and steps["licenses"]["full_only"]
+    assert steps["dast"]["run"] == "audit dast" and steps["dast"]["full_only"]
+    assert steps["dast"]["when"] == "docker-compose.yml"
+    assert "dast" in [s["key"] for s in project.steps(conf, root)]
 
 
 def test_every_project_scans_its_git_history_for_secrets(tmp_path):

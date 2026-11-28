@@ -77,11 +77,26 @@
    "seconds": 15
   },
   {
+   "key": "quality",
+   "label": "Code quality: complexity and duplication may only get better (lizard)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/quality.py",
+   "seconds": 5
+  },
+  {
    "key": "audit",
    "label": "CVE audit of the pinned test tools (pip-audit)",
    "dir": "crissp/testsuite",
    "run": "python3 lib/audit.py run",
    "seconds": 60,
+   "full_only": true
+  },
+  {
+   "key": "licenses",
+   "label": "Licences of the pinned tools, and their SBOM (CycloneDX)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py licenses",
+   "seconds": 30,
    "full_only": true
   }
  ],
@@ -90,7 +105,8 @@
    "match": "crissp/testsuite/accepted-risks.json",
    "steps": [
     "audit",
-    "secrets"
+    "secrets",
+    "licenses"
    ]
   },
   {
@@ -106,7 +122,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -115,7 +132,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -124,7 +142,8 @@
     "tools",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -133,7 +152,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -142,7 +162,8 @@
     "tools",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -151,7 +172,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -160,7 +182,8 @@
     "tools",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -169,7 +192,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -178,7 +202,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -186,7 +211,8 @@
    "steps": [
     "tools",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -196,7 +222,8 @@
     "lint",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -229,7 +256,8 @@
     "package",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -238,7 +266,8 @@
     "package",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -247,7 +276,8 @@
     "package",
     "python-lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   },
   {
@@ -256,7 +286,8 @@
     "tools",
     "lint",
     "secrets",
-    "sast"
+    "sast",
+    "quality"
    ]
   }
  ],
@@ -283,7 +314,20 @@
    "src",
    "crissp",
    "site"
-  ]
+  ],
+  "quality": {
+   "paths": [
+    "src",
+    "crissp",
+    "site"
+   ],
+   "exclude": [
+    "*/package_tests/*",
+    "*/sast/tests/*",
+    "*/uxsuite/tests/*",
+    "*/deploy/tests/*"
+   ]
+  }
  },
  "texts": {}
 }
