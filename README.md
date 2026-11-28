@@ -108,7 +108,7 @@ each with its area, how it was found and its gaps: a screen no link reaches, or 
 **The rules**: what every screen must do, checked on each round and edited in the Rules tab.
 ![The UX rules](https://raw.githubusercontent.com/richardedens/crissp/main/docs/images/ux-rules.jpg)
 
-<sub>The pictures show a demo project, a small sample shop made with `crissp init` (0.1.10). Its backlog and its moves,
+<sub>The pictures show a demo project, a small sample shop made with `crissp init` (0.2.0). Its backlog and its moves,
 test runs, workers, screenshots and map are real; the text of the UX rounds, the designs and the discovery round, and
 the Claude session on the Activity page, are samples, because a real round runs on your own Claude login and costs
 tokens.</sub>

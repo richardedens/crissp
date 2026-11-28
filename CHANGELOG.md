@@ -2,7 +2,25 @@
 
 What changed in C.R.I.S.S.P., newest first. One entry per version (the version is in `VERSION`).
 
-## 0.1.10 — 2026-11-26
+## 0.2.0 — 2026-11-28
+
+The first minor release: crissp now lints and secures what it tests, shows where the work is in six stages, works
+with Mistral Vibe as well as Claude Code, and has a UX suite that discovers what users need. In short:
+
+- **Lint:** backend and frontend lint for a product, with crissp's own pinned tools (nothing written into the
+  product's files), and a pre-commit hook that runs them; crissp's own Python has one layout.
+- **Security:** secrets in the git history (gitleaks), unsafe code (Semgrep with crissp's rules), and an audit of the
+  pinned tools, the images and the deploy chart.
+- **Stages:** Discover, Plan, Build, Verify, Review and Release, on a dashboard page and as a crissp tool, with Ask
+  Claude and Ask Vibe per stage.
+- **Vibe:** the crissp tools, the skill and the UX team run on Mistral Vibe too.
+- **UX suite:** a map of every screen, the personas' jobs, discovery rounds, a review screen and designs to approve.
+- **Dashboard:** one top bar, the workers page, the activity page with every Claude and Vibe session, and fresh
+  pictures.
+
+0.1.10 was never released: its changes are in this one.
+
+### Everything in this release
 
 - **crissp's own Python has one layout (F-97).** It was formatted once with `ruff format`, and the `python-lint`
   step now checks the layout (`ruff format --check`) and the line length. `git blame` skips the layout commit
