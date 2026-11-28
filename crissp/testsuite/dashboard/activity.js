@@ -45,6 +45,7 @@
         ${s.history ? `<span class="small ${s.long ? "st-review" : "muted"}" title="what the last request carried: every step resends it">history ${Math.round(s.history / 1000)}k tokens</span>` : ""}
         ${vibe ? "" : `<a class="small" href="${page}">the whole session</a>`}</header>
       ${s.long ? `<p class="long-history">${badge("missing", "long history")} Every step now resends more than 300k tokens. ${FRESH[vibe ? "vibe" : "claude"]}; <code>brief</code>, <code>backlog</code> and git bring back what is needed.</p>` : ""}
+      ${(s.budget || []).length ? `<p class="long-history">${badge("missing", "context budget")} ${s.budget.map(esc).join(" · ")}</p>` : ""}
       ${s.prompt ? `<p class="session-prompt"><span class="muted">Asked:</span> ${esc(s.prompt)}</p>` : ""}
       <div class="orchestrator"><div class="label">Orchestrator · main thread</div><div class="act">${step(s.main, s.busy)}</div></div>
       ${s.agents.length ? `<ul class="agents">${s.agents.map(agent).join("")}</ul>` : ""}

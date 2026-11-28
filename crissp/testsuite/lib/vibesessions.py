@@ -11,7 +11,8 @@ last half hour (a subagent is a session whose meta.json names its parent):
   wrote something in the last two minutes;
 - the history its last request carried (the model's input tokens, else the context breakdown) and whether it is past
   300k tokens (measure.LONG): then it is time for a fresh session;
-- its subagents, running until their meta.json has an end time, each with its own latest step.
+- its subagents, running until their meta.json has an end time, each with its own latest step;
+- F-104: the images in its main context and the big files it read whole, said past measure's lines.
 
 Only what Vibe sent to its tools is shown, never what came back.
 """
@@ -78,11 +79,12 @@ def _when(millis: int | None) -> str | None:
 
 def read(session: Path, repo: sv.Repo) -> dict:
     """The prompts, the latest step and the last request's input tokens of one session's journal."""
-    prompts, latest, history, millis = [], None, 0, None
+    prompts, latest, history, millis, pictures, wholes = [], None, 0, None, 0, []
     for r in journal(session):
         payload = r.get("payload") or {}
         if r.get("type") == "core_input":
             given = payload.get("input") or {}
+            pictures += measure.images(given)  # F-104: what went into the model
             millis = (given.get("determinism") or {}).get("time_unix_ms") or millis
             command = given.get("command") or {}
             if command.get("type") == "user_message":
@@ -92,11 +94,15 @@ def read(session: Path, repo: sv.Repo) -> dict:
             history = (result.get("usage") or {}).get("input_tokens", history)
             for part in result.get("parts", []):
                 if part.get("type") == "tool_call":
-                    latest = step(part.get("name", ""), _json_args(part.get("arguments_json")), repo, _when(millis))
+                    args = _json_args(part.get("arguments_json"))
+                    latest = step(part.get("name", ""), args, repo, _when(millis))
+                    if part.get("name") == "read_file" and (w := measure.whole(repo.rel(args.get("path", "")), args,
+                                                                               repo.root)):
+                        wholes.append(w)
     if not history:
         breakdown = _json(session / "context-breakdown.json") or {}
         history = sum(v for v in breakdown.values() if isinstance(v, int))
-    return {"prompts": prompts, "main": latest, "history": history}
+    return {"prompts": prompts, "main": latest, "history": history, "images": pictures, "whole": sorted(set(wholes))}
 
 
 def _json_args(text: str | None) -> dict:
@@ -129,5 +135,6 @@ def sessions(root: Path, home: Path, now: float) -> list[dict]:
         out.append({"id": meta.get("session_id") or d.name, "source": "vibe", "title": sv.mask(meta.get("title") or ""),
                     "history": seen["history"], "long": seen["history"] > measure.LONG,
                     "prompt": sv.mask(seen["prompts"][-1][:300]) if seen["prompts"] else "", "busy": now - last < QUIET_S,
-                    "updated": last, "main": seen["main"], "agents": agents, "earlier": 0})
+                    "updated": last, "main": seen["main"], "agents": agents, "earlier": 0, "images": seen["images"],
+                    "whole": seen["whole"], "budget": measure.budget(seen["images"], seen["whole"])})
     return out

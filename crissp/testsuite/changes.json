@@ -1378,6 +1378,39 @@
     "test_activity_page::test_vibe_sessions_show_beside_claudes_with_their_own_advice",
     "test_activity_page::test_no_session_at_all_names_both"
    ]
+  },
+  {
+   "id": "context-budget-checks",
+   "title": "The context-budget habits were advice only (F-104)",
+   "problem": "F-18 measured one session whose context was mostly 47 screenshots and re-read files; the agreement asks for browser checks in a subagent and narrow reads, but nothing told a session, Claude's or Vibe's, that it was doing otherwise.",
+   "fix": "measure.py counts the images in a session's main thread and the repository files longer than 800 lines it read whole (no offset or limit); activity.py does so for Claude's transcripts and vibesessions.py for Vibe's journal. Past 10 images, or any whole read of a big file, the session's card on /activity says so (context budget), next to the 300k-token history warning.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def budget("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def images("
+    },
+    {
+     "file": "crissp/testsuite/lib/measure.py",
+     "symbol": "def whole("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def session("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    }
+   ],
+   "tests": [
+    "test_activity::test_screenshots_and_whole_big_files_in_the_main_thread_are_flagged",
+    "test_vibesessions::test_a_vibe_sessions_images_and_whole_big_reads_are_counted",
+    "test_activity_page::test_the_context_budget_warnings_show"
+   ]
   }
  ],
  "gaps": [

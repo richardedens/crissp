@@ -48,3 +48,10 @@ def test_vibe_sessions_show_beside_claudes_with_their_own_advice():
 def test_no_session_at_all_names_both():
     view = render({"sessions": [], "now": 1, "product": "P", "monogram": "P"})
     assert "No Claude or Vibe session" in view
+
+
+def test_the_context_budget_warnings_show():
+    """F-104: what a session spends its context on, said where its history is."""
+    view = render({"sessions": [one("vibe", long=False, budget=["12 images in the main thread"])], "now": 1,
+                   "product": "P", "monogram": "P"})
+    assert "12 images in the main thread" in view and "context budget" in view

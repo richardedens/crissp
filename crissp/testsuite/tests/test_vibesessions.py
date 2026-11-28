@@ -99,3 +99,17 @@ def test_a_session_without_a_journal_or_usage_still_shows(tmp_path):
                              ("ask_user_question", {}, "ask"), ("web_fetch", {}, "other")):
         assert vs.step(name, args, vs.sv.Repo(repo), None)["kind"] == kind
     assert vs.step("edit", {"file_path": str(repo / "b.py")}, vs.sv.Repo(repo), None)["text"] == "b.py"
+
+
+def test_a_vibe_sessions_images_and_whole_big_reads_are_counted(tmp_path):
+    """F-104: the same context-budget checks for a Vibe session: images it put into its main context, big files read
+    whole (read_file without offset or limit)."""
+    repo, home = tmp_path / "repo", tmp_path / "vibe-home"
+    repo.mkdir()
+    (repo / "big.py").write_text("x\n" * (activity.BIG_LINES + 1))
+    session(home, "v3", repo, [said("look", 1, images=activity.IMAGES),
+                               called("read_file", {"path": str(repo / "big.py")}),
+                               called("read_file", {"path": str(repo / "big.py"), "offset": 10, "limit": 20}),
+                               called("read_file", {"path": str(tmp_path / "outside.py")})], NOW - 5)
+    s = vs.sessions(repo, home, NOW)[0]
+    assert s["images"] == activity.IMAGES and s["whole"] == ["big.py"]

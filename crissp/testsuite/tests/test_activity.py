@@ -97,3 +97,26 @@ def test_a_session_whose_last_step_started_an_agent(tmp_path):
     assert s["main"] == {"tool": "Agent", "kind": "agent", "text": "started an agent: Review", "since": T.format(5)}
     assert s["title"] == "" and s["prompt"] == ""
     assert (s["history"], s["long"]) == (12_000, False)
+
+
+def test_screenshots_and_whole_big_files_in_the_main_thread_are_flagged(tmp_path):
+    """F-104 (F-18): the context-budget habits as checks. Images in the main thread (screenshots belong in a subagent
+    that reports text) and big files read whole (offset/limit reads a part) are counted; past IMAGES images, or any
+    whole read of a file past BIG_LINES lines, the session says so."""
+    repo, projects = tmp_path / "repo", tmp_path / "projects"
+    (repo / "big.py").parent.mkdir(parents=True)
+    (repo / "big.py").write_text("x\n" * (activity.BIG_LINES + 1))
+    (repo / "small.py").write_text("x\n")
+    shot = {"type": "user", "timestamp": T.format(5), "message": {"content": [
+        {"type": "tool_result", "tool_use_id": "s", "content": [{"type": "image", "source": {}}]}]}}
+    lines(sv.project_dir(repo, projects) / "s.jsonl", [
+        {"type": "user", "timestamp": T.format(1), "message": {"content": "check the page"}},
+        *[shot] * activity.IMAGES,
+        use("Read", {"file_path": str(repo / "big.py")}, "r1", 6),
+        use("Read", {"file_path": str(repo / "big.py"), "offset": 1, "limit": 50}, "r2", 6),
+        use("Read", {"file_path": str(repo / "small.py")}, "r3", 6),
+        {**use("Read", {"file_path": str(repo / "big.py")}, "r4", 6, sidechain=True)},  # a subagent's: its own context
+    ], NOW - 30)
+    s = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["sessions"][0]
+    assert s["images"] == activity.IMAGES and s["whole"] == ["big.py"]
+    assert activity.budget(s["images"] - 1, []) == [] and len(activity.budget(s["images"], ["big.py"])) == 2
