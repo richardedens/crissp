@@ -29,8 +29,11 @@ import vibe
 from crissp import cli
 
 VIBE = os.environ.get("CRISSP_VIBE") or shutil.which("vibe")
-pytestmark = pytest.mark.skipif(not VIBE, reason="Mistral Vibe is not installed (pip install mistral-vibe, or "
-                                                 "CRISSP_VIBE=<path to vibe>): the real-session test did not run")
+pytestmark = pytest.mark.skipif(
+    not VIBE,
+    reason="Mistral Vibe is not installed (pip install mistral-vibe, or "
+    "CRISSP_VIBE=<path to vibe>): the real-session test did not run",
+)
 
 
 class Model(BaseHTTPRequestHandler):
@@ -48,12 +51,28 @@ class Model(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         Model.seen.append(body)
         first = not any(m.get("role") == "tool" for m in body.get("messages", []))
-        delta = ({"tool_calls": [{"index": 0, "id": "call_1", "type": "function", "function": {
-            "name": "search_tool_functions", "arguments": json.dumps({"query": "crissp brief backlog"})}}]}
-                 if first else {"content": "done"})
-        chunks = [{"choices": [{"index": 0, "delta": {"role": "assistant", **delta}, "finish_reason": None}]},
-                  {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls" if first else "stop"}]},
-                  {"choices": [], "usage": {"prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11}}]
+        delta = (
+            {
+                "tool_calls": [
+                    {
+                        "index": 0,
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "search_tool_functions",
+                            "arguments": json.dumps({"query": "crissp brief backlog"}),
+                        },
+                    }
+                ]
+            }
+            if first
+            else {"content": "done"}
+        )
+        chunks = [
+            {"choices": [{"index": 0, "delta": {"role": "assistant", **delta}, "finish_reason": None}]},
+            {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls" if first else "stop"}]},
+            {"choices": [], "usage": {"prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11}},
+        ]
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
@@ -92,13 +111,21 @@ def test_a_vibe_session_in_a_brought_in_project_finds_brief_and_backlog(tmp_path
     config.write_text(vibe.config(project.resolve(), sys.executable, ["-I", str(REPO / "crissp/tool/server.py")]))
     (home / "config.toml").write_text(
         'active_model = "stand-in"\nenable_telemetry = false\nenable_update_checks = false\n'
-        'enable_auto_update = false\nenable_model_catalog = false\n'
+        "enable_auto_update = false\nenable_model_catalog = false\n"
         f'[[providers]]\nname = "stand-in"\napi_base = "{model}"\napi_key_env_var = "STAND_IN_KEY"\n'
-        '[[models]]\nname = "stand-in"\nprovider = "stand-in"\nalias = "stand-in"\n')
+        '[[models]]\nname = "stand-in"\nprovider = "stand-in"\nalias = "stand-in"\n'
+    )
     env = {k: v for k, v in os.environ.items() if not k.startswith(("CRISSP_", "VIBE_"))}
     env |= {"VIBE_HOME": str(home), "STAND_IN_KEY": "stand-in", "NO_PROXY": "127.0.0.1", "no_proxy": "127.0.0.1"}
-    done = subprocess.run([VIBE, "-p", "Call brief first.", "--output", "json", "--auto-approve"], cwd=project,
-                          env=env, capture_output=True, text=True, timeout=180, check=False)
+    done = subprocess.run(
+        [VIBE, "-p", "Call brief first.", "--output", "json", "--auto-approve"],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr[-2000:]
     answers = [m for body in Model.seen for m in body.get("messages", []) if m.get("role") == "tool"]
     assert answers, f"Vibe never answered the stand-in's tool search: {done.stdout[-2000:]}"

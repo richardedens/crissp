@@ -1,0 +1,5 @@
+# Commits that only change layout: git blame skips them (GitHub reads this file by itself; locally run
+# git config blame.ignoreRevsFile .git-blame-ignore-revs once per clone).
+
+# F-97: ruff format, once, over crissp's own Python (layout only)
+94c512dcb91917039f51c83fadc1f20507f45976

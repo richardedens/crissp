@@ -40,8 +40,14 @@ import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
 
 WEB = HERE / "web"
-TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-         ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp"}
+TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".webp": "image/webp",
+}
 SANDBOX = "sandbox allow-scripts; default-src 'self' 'unsafe-inline' data:"
 MAX_BODY = 20000
 
@@ -59,19 +65,48 @@ def state(suite: ux_config.Suite) -> dict:
         pbis = {}
     walks = []
     for w in conf["walks"].values():
-        designs = [{**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"]), "built": verdicts.get(v["key"] + "/built")}
-                   for v in ux_team.versions(suite, "proposal", w["id"])]
-        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"),
-                      "shot_at": ux_team.shot_at(suite, w["id"]), "shots": ux_team.shots(suite, w["id"]),
-                      "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
+        designs = [
+            {
+                **v,
+                "verdict": verdicts.get(v["key"]),
+                "pbi": pbis.get(v["key"]),
+                "built": verdicts.get(v["key"] + "/built"),
+            }
+            for v in ux_team.versions(suite, "proposal", w["id"])
+        ]
+        walks.append(
+            {
+                "id": w["id"],
+                "title": w["title"],
+                "steps": len(w["steps"]),
+                "need": w.get("need"),
+                "shot_at": ux_team.shot_at(suite, w["id"]),
+                "shots": ux_team.shots(suite, w["id"]),
+                "rounds": ux_team.versions(suite, "round", w["id"]),
+                "proposals": designs,
+            }
+        )
     found, rules = ux_map.load(suite), ux_cards.rules(suite)
     held = ux_review.held(suite, conf, verdicts)
-    return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
-            "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": rules,
-            "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "map": found, "review": ux_review.review(conf, walks, {**held, **verdicts}, found),
-            "held": held, "proposed": ux_review.proposed(suite, conf, verdicts, rules), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
-            "team": ux_team.state(suite, conf)}
+    return {
+        "product": conf["product"],
+        "monogram": conf["monogram"],
+        "about": conf["about"],
+        "url": conf["url"],
+        "personas": conf["personas"],
+        "personas_from": conf["personas_from"],
+        "rules": rules,
+        "rules_from": ux_cards.rules_from(suite),
+        "walks": walks,
+        "map": found,
+        "review": ux_review.review(conf, walks, {**held, **verdicts}, found),
+        "held": held,
+        "proposed": ux_review.proposed(suite, conf, verdicts, rules),
+        "discovery": _discovery(suite, verdicts),
+        "verdicts": verdicts,
+        "queue": ux_team.queue(suite),
+        "team": ux_team.state(suite, conf),
+    }
 
 
 def _discovery(suite: ux_config.Suite, verdicts: dict) -> list[dict]:
@@ -118,9 +153,11 @@ def handle(handler, method: str, suite: ux_config.Suite | None = None) -> None:
     if path == "/ux/api/state":
         return _json(handler, 200, state(suite))
     if path.startswith("/ux/results/"):
-        rest = path[len("/ux/results/"):]
-        return _file(handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals", suite.results / "map"))
-    return _file(handler, WEB / path[len("/ux/"):], (WEB,))
+        rest = path[len("/ux/results/") :]
+        return _file(
+            handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals", suite.results / "map")
+        )
+    return _file(handler, WEB / path[len("/ux/") :], (WEB,))
 
 
 def _post(handler, path: str, suite: ux_config.Suite) -> None:

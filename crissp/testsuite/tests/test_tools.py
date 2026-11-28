@@ -34,9 +34,16 @@ def tarball(name: str, body: bytes) -> bytes:
 def pinned(monkeypatch):
     """A tool pinned to an archive this test makes, for the system the test says it runs on."""
     archive = tarball("scanner", b"#!/bin/sh\necho scanned\n")
-    monkeypatch.setitem(tools.TOOLS, "scanner", {
-        "version": "1.2.3", "binary": "scanner", "url": "https://example.test/v{version}/{asset}",
-        "assets": {"linux-x86_64": ("scanner_1.2.3_linux_x64.tar.gz", hashlib.sha256(archive).hexdigest())}})
+    monkeypatch.setitem(
+        tools.TOOLS,
+        "scanner",
+        {
+            "version": "1.2.3",
+            "binary": "scanner",
+            "url": "https://example.test/v{version}/{asset}",
+            "assets": {"linux-x86_64": ("scanner_1.2.3_linux_x64.tar.gz", hashlib.sha256(archive).hexdigest())},
+        },
+    )
     fetched = []
 
     def fetch(url):
@@ -58,9 +65,16 @@ def test_every_pin_names_a_version_and_a_checksum_for_every_system():
             assert tool["version"] in asset and asset.endswith(".tar.gz") and len(sha) == 64, (name, asset)
 
 
-@pytest.mark.parametrize("platform, machine, system", [
-    ("linux", "x86_64", "linux-x86_64"), ("linux", "aarch64", "linux-arm64"), ("darwin", "arm64", "darwin-arm64"),
-    ("darwin", "x86_64", "darwin-x86_64"), ("linux", "AMD64", "linux-x86_64")])
+@pytest.mark.parametrize(
+    "platform, machine, system",
+    [
+        ("linux", "x86_64", "linux-x86_64"),
+        ("linux", "aarch64", "linux-arm64"),
+        ("darwin", "arm64", "darwin-arm64"),
+        ("darwin", "x86_64", "darwin-x86_64"),
+        ("linux", "AMD64", "linux-x86_64"),
+    ],
+)
 def test_the_system_is_named_the_way_the_pins_are(platform, machine, system):
     assert tools.system(platform, machine) == system
 
@@ -96,9 +110,16 @@ def test_a_download_that_differs_from_the_pin_is_refused_and_nothing_is_kept(pin
 
 def test_an_archive_without_the_binary_is_a_problem(monkeypatch, tmp_path):
     archive = tarball("other", b"x")
-    monkeypatch.setitem(tools.TOOLS, "scanner", {
-        "version": "1", "binary": "scanner", "url": "https://example.test/{asset}",
-        "assets": {"linux-x86_64": ("s.tar.gz", hashlib.sha256(archive).hexdigest())}})
+    monkeypatch.setitem(
+        tools.TOOLS,
+        "scanner",
+        {
+            "version": "1",
+            "binary": "scanner",
+            "url": "https://example.test/{asset}",
+            "assets": {"linux-x86_64": ("s.tar.gz", hashlib.sha256(archive).hexdigest())},
+        },
+    )
     with pytest.raises(tools.ToolError, match=re.escape("no scanner in s.tar.gz")):
         tools.ensure("scanner", env(tmp_path), lambda url: archive, "linux-x86_64")
 
@@ -125,7 +146,9 @@ def test_fetch_reads_the_url(monkeypatch):
             return False
 
     asked = []
-    monkeypatch.setattr(tools.urllib.request, "urlopen", lambda url, timeout: asked.append((url, timeout)) or Answer(b"bytes"))
+    monkeypatch.setattr(
+        tools.urllib.request, "urlopen", lambda url, timeout: asked.append((url, timeout)) or Answer(b"bytes")
+    )
     assert tools.fetch("https://example.test/a") == b"bytes"
     assert asked == [("https://example.test/a", tools.TIMEOUT)]
 

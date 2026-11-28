@@ -19,8 +19,15 @@ spec = importlib.util.spec_from_file_location("setup_plan_under_test", LIB / "se
 sp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sp)
 
-CONF = {"product": "Shop", "steps": [{"key": "unit", "label": "Unit", "run": "true"}],
-        "setup": {"venvs": ["app/backend"], "npm": ["app/frontend"], "needs": [{"command": "initdb", "hint": "brew install postgresql"}]}}
+CONF = {
+    "product": "Shop",
+    "steps": [{"key": "unit", "label": "Unit", "run": "true"}],
+    "setup": {
+        "venvs": ["app/backend"],
+        "npm": ["app/frontend"],
+        "needs": [{"command": "initdb", "hint": "brew install postgresql"}],
+    },
+}
 EVERYTHING = {"uv": "/bin/uv", "initdb": "/bin/initdb", "npm": "/bin/npm"}
 
 
@@ -35,7 +42,9 @@ def shop(tmp_path):
     app.mkdir(parents=True)
     (app / "requirements.txt").write_text("fastapi==1.0\n")
     (app / "requirements-dev.txt").write_text(
-        "-r requirements.txt  # the app\n# a comment\n-r ../../crissp/testsuite/requirements.txt\n--requirement requirements.txt\n")
+        "-r requirements.txt  # the app\n# a comment\n-r ../../crissp/testsuite/requirements.txt\n"
+        "--requirement requirements.txt\n"
+    )
     (root / "app/frontend").mkdir(parents=True)
     (root / "app/frontend/package-lock.json").write_text("{}")
     return root
@@ -71,10 +80,16 @@ def test_requirements_follow_includes_once(shop):
 
 def test_a_product_with_nothing_installed_gets_everything(shop):
     lines = sp.plan(shop, conf(shop), which=which({}), brew=shop / "no-uv")
-    assert lines == ["uv missing", "venv app/backend missing", "npm app/frontend missing",
-                     "need initdb brew install postgresql"]
+    assert lines == [
+        "uv missing",
+        "venv app/backend missing",
+        "npm app/frontend missing",
+        "need initdb brew install postgresql",
+    ]
     assert sp.plan(shop, conf(shop), version=(3, 11), which=which(EVERYTHING))[0] == "python too-old 3.11"
-    assert "uv missing" not in sp.plan(shop, conf(shop), which=which({}), brew=Path(sys.executable))  # Homebrew's uv counts
+    assert "uv missing" not in sp.plan(
+        shop, conf(shop), which=which({}), brew=Path(sys.executable)
+    )  # Homebrew's uv counts
 
 
 def test_everything_in_place_is_nothing_to_do_and_a_change_makes_it_stale(shop):
@@ -117,30 +132,46 @@ class Installer:
 def test_apply_installs_what_is_missing_and_says_what_it_changed(shop, capsys):
     run = Installer()
     assert sp.apply(shop, conf(shop), runner=run, which=which(EVERYTHING), python="/py") == 0
-    assert [c[:3] for c in run.calls] == [["/py", "-m", "venv"], [str(shop / "app/backend/.venv/bin/python"), "-m", "pip"],
-                                          ["npm", "ci", "--no-audit"]]
+    assert [c[:3] for c in run.calls] == [
+        ["/py", "-m", "venv"],
+        [str(shop / "app/backend/.venv/bin/python"), "-m", "pip"],
+        ["npm", "ci", "--no-audit"],
+    ]
     out = capsys.readouterr().out
-    assert "setup: app/backend/.venv made anew (missing)" in out and "app/frontend/node_modules installed (npm ci: missing)" in out
+    assert (
+        "setup: app/backend/.venv made anew (missing)" in out
+        and "app/frontend/node_modules installed (npm ci: missing)" in out
+    )
     assert sp.venv_state(shop / "app/backend", shop) == "ok"  # stamped
     (shop / "crissp/testsuite/requirements.txt").write_text("pytest==9.0.0\n")
     installed_npm(shop)
     run = Installer()
     assert sp.apply(shop, conf(shop), runner=run, which=which(EVERYTHING)) == 0
-    assert len(run.calls) == 1 and "updated (its requirements changed)" in capsys.readouterr().out  # pip only, no new venv
-    assert sp.apply(shop, conf(shop), runner=Installer(), which=which(EVERYTHING)) == 0 and capsys.readouterr().out == ""
+    assert (
+        len(run.calls) == 1 and "updated (its requirements changed)" in capsys.readouterr().out
+    )  # pip only, no new venv
+    assert (
+        sp.apply(shop, conf(shop), runner=Installer(), which=which(EVERYTHING)) == 0 and capsys.readouterr().out == ""
+    )
 
 
-@pytest.mark.parametrize("found, fails, version, message", [
-    ({}, "", (3, 14), "setup: uv is missing. Install it: brew install uv"),
-    (EVERYTHING, "", (3, 11), "this is Python 3.11; the testsuite needs 3.12 or newer"),
-    ({"uv": "/bin/uv", "npm": "/bin/npm"}, "", (3, 14), "setup: initdb is missing: brew install postgresql"),
-    (EVERYTHING, "-m venv", (3, 14), "could not make app/backend/.venv"),
-    (EVERYTHING, "-m pip", (3, 14), "could not install app/backend/requirements-dev.txt"),
-    ({"uv": "/bin/uv", "initdb": "/bin/initdb"}, "", (3, 14), "npm is missing. Install Node.js"),
-    (EVERYTHING, "npm ci", (3, 14), "npm ci failed in app/frontend"),
-])
+@pytest.mark.parametrize(
+    "found, fails, version, message",
+    [
+        ({}, "", (3, 14), "setup: uv is missing. Install it: brew install uv"),
+        (EVERYTHING, "", (3, 11), "this is Python 3.11; the testsuite needs 3.12 or newer"),
+        ({"uv": "/bin/uv", "npm": "/bin/npm"}, "", (3, 14), "setup: initdb is missing: brew install postgresql"),
+        (EVERYTHING, "-m venv", (3, 14), "could not make app/backend/.venv"),
+        (EVERYTHING, "-m pip", (3, 14), "could not install app/backend/requirements-dev.txt"),
+        ({"uv": "/bin/uv", "initdb": "/bin/initdb"}, "", (3, 14), "npm is missing. Install Node.js"),
+        (EVERYTHING, "npm ci", (3, 14), "npm ci failed in app/frontend"),
+    ],
+)
 def test_what_cannot_be_installed_stops_with_how_to_fix_it(shop, capsys, found, fails, version, message):
-    assert sp.apply(shop, conf(shop), runner=Installer(fails), which=which(found), brew=shop / "no-uv", version=version) == 1
+    assert (
+        sp.apply(shop, conf(shop), runner=Installer(fails), which=which(found), brew=shop / "no-uv", version=version)
+        == 1
+    )
     err = capsys.readouterr().err
     assert message in err
     if fails:  # what the installer said is shown
@@ -161,7 +192,10 @@ def test_the_command_line_plans_applies_and_refuses(shop, capsys):
     assert sp.main(["setup_plan.py", "apply"], shop) == (0 if sp.uv_path() else 1)
     assert sp.main(["setup_plan.py"], shop) == 2
     (shop / "crissp/testsuite/suites.json").write_text("{")
-    assert sp.main(["setup_plan.py", "plan"], shop) == 1 and "setup: crissp/testsuite/suites.json is not valid JSON" in capsys.readouterr().err
+    assert (
+        sp.main(["setup_plan.py", "plan"], shop) == 1
+        and "setup: crissp/testsuite/suites.json is not valid JSON" in capsys.readouterr().err
+    )
 
 
 def test_setup_sh_is_a_door_to_setup_plan():

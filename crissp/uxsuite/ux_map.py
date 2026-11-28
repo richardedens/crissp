@@ -33,7 +33,9 @@ from ux_config import Suite
 HERE = Path(__file__).resolve().parent
 PICTURES = (".png", ".jpg", ".jpeg", ".webp")
 ID = re.compile(r"\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{12,}")
-NEVER = re.compile(r"log-?out|sign-?out|delete|remove|destroy", re.IGNORECASE)  # the crawl only looks: it never follows these
+NEVER = re.compile(
+    r"log-?out|sign-?out|delete|remove|destroy", re.IGNORECASE
+)  # the crawl only looks: it never follows these
 FILES = re.compile(r"\.(?!html?$)[a-z0-9]{2,5}$", re.IGNORECASE)  # a download (.pdf, .zip, .csv), not a page
 SOURCES = ("crawl", "test", "walk")
 REACH = ("no link reaches it", "the crawl could not open it")
@@ -70,8 +72,13 @@ def _gotos(walk: dict) -> list[str]:
 def plan(suite: Suite, conf: dict) -> dict:
     """What the browser does: where it starts (home, then every walk's pages), on which devices, how far."""
     start = list(dict.fromkeys(["/", *(p for w in conf["walks"].values() for p in _gotos(w))]))
-    return {"url": conf["url"], "out": str(suite.results / "map" / "crawl"), "start": start, "max": conf["map"]["max"],
-            "devices": {d: ux_shoot.VIEWPORTS[d] for d in ux_shoot.devices(conf) or ux_shoot.VIEWPORTS}}
+    return {
+        "url": conf["url"],
+        "out": str(suite.results / "map" / "crawl"),
+        "start": start,
+        "max": conf["map"]["max"],
+        "devices": {d: ux_shoot.VIEWPORTS[d] for d in ux_shoot.devices(conf) or ux_shoot.VIEWPORTS},
+    }
 
 
 def crawl(suite: Suite, conf: dict, run=subprocess.run) -> tuple[int, str]:
@@ -82,11 +89,26 @@ def crawl(suite: Suite, conf: dict, run=subprocess.run) -> tuple[int, str]:
     shutil.rmtree(new, ignore_errors=True)
     new.mkdir(parents=True)
     (new / "plan.json").write_text(json.dumps({**p, "out": str(new)}, indent=1) + "\n")
-    done = run(["uv", "run", "--quiet", "--no-project", "--with", ux_shoot.PLAYWRIGHT, "python", str(HERE / "ux_map.py"),
-                str(new / "plan.json")], capture_output=True, text=True)
+    done = run(
+        [
+            "uv",
+            "run",
+            "--quiet",
+            "--no-project",
+            "--with",
+            ux_shoot.PLAYWRIGHT,
+            "python",
+            str(HERE / "ux_map.py"),
+            str(new / "plan.json"),
+        ],
+        capture_output=True,
+        text=True,
+    )
     if done.returncode:
-        return 1, (f"The product could not be crawled ({conf['url']} must be running): {(done.stderr or done.stdout).strip()[-600:]}\n"
-                   f"The browser comes once from: uv run --no-project --with {ux_shoot.PLAYWRIGHT} playwright install chromium")
+        return 1, (
+            f"The product could not be crawled ({conf['url']} must be running): {(done.stderr or done.stdout).strip()[-600:]}\n"
+            f"The browser comes once from: uv run --no-project --with {ux_shoot.PLAYWRIGHT} playwright install chromium"
+        )
     if not (new / "crawl.json").is_file():
         return 1, "The browser ended without a list of pages (crawl.json)."
     shutil.rmtree(done_dir, ignore_errors=True)
@@ -130,8 +152,15 @@ def _tests(suite: Suite, conf: dict) -> tuple[list[dict], list[str]]:
         target.mkdir(parents=True, exist_ok=True)
         name = f"{len(out) + 1:02d}{src.suffix.lower()}"
         shutil.copyfile(src, target / name)
-        out.append({"path": e["path"], "title": str(e.get("title") or ""), "device": str(e.get("device") or "laptop"),
-                    "test": str(e.get("test") or ""), "url": f"/ux/results/map/tests/{name}"})
+        out.append(
+            {
+                "path": e["path"],
+                "title": str(e.get("title") or ""),
+                "device": str(e.get("device") or "laptop"),
+                "test": str(e.get("test") or ""),
+                "url": f"/ux/results/map/tests/{name}",
+            }
+        )
     return out, skipped
 
 
@@ -141,8 +170,20 @@ def build(suite: Suite, conf: dict) -> dict:
 
     def screen(path: str) -> dict:
         k = screen_key(path)
-        return screens.setdefault(k, {"key": k, "title": "", "area": area(k), "found_by": [], "tests": [], "walks": [],
-                                      "linked_from": [], "shots": [], "errors": []})
+        return screens.setdefault(
+            k,
+            {
+                "key": k,
+                "title": "",
+                "area": area(k),
+                "found_by": [],
+                "tests": [],
+                "walks": [],
+                "linked_from": [],
+                "shots": [],
+                "errors": [],
+            },
+        )
 
     def found(s: dict, how: str, walk: str = "") -> None:
         if how not in s["found_by"]:
@@ -161,8 +202,14 @@ def build(suite: Suite, conf: dict) -> dict:
         if pg.get("error"):
             s["errors"].append(pg["error"])
         elif pg.get("file"):
-            s["shots"].append({"device": pg["device"], "url": f"/ux/results/map/crawl/{pg['file']}", "source": "crawl",
-                               "title": pg.get("title", "")})
+            s["shots"].append(
+                {
+                    "device": pg["device"],
+                    "url": f"/ux/results/map/crawl/{pg['file']}",
+                    "source": "crawl",
+                    "title": pg.get("title", ""),
+                }
+            )
     shots, skipped = _tests(suite, conf)
     for t in shots:
         s = screen(t["path"])
@@ -187,14 +234,22 @@ def build(suite: Suite, conf: dict) -> dict:
         s["found_by"] = [x for x in SOURCES if x in s["found_by"]]
         s["title"] = s["title"] or k
         errors = s.pop("errors")
-        s["gaps"] = ([f"{REACH[1]} ({errors[0]})"] if errors else
-                     [REACH[0]] if crawled and "crawl" not in s["found_by"] else []) + ([] if s["walks"] else ["no walk looks at it"])
+        s["gaps"] = (
+            [f"{REACH[1]} ({errors[0]})"] if errors else [REACH[0]] if crawled and "crawl" not in s["found_by"] else []
+        ) + ([] if s["walks"] else ["no walk looks at it"])
         out.append(s)
     areas: dict[str, int] = {}
     for s in out:
         areas[s["area"]] = areas.get(s["area"], 0) + 1
-    m = {"at": ux_team.now(), "url": conf["url"], "crawled": crawled, "screens": out, "areas": dict(sorted(areas.items())),
-         "gaps": sum(any(g.startswith(REACH) for g in s["gaps"]) for s in out), "skipped": skipped}
+    m = {
+        "at": ux_team.now(),
+        "url": conf["url"],
+        "crawled": crawled,
+        "screens": out,
+        "areas": dict(sorted(areas.items())),
+        "gaps": sum(any(g.startswith(REACH) for g in s["gaps"]) for s in out),
+        "skipped": skipped,
+    }
     (suite.results / "map").mkdir(parents=True, exist_ok=True)
     (suite.results / "map" / "screens.json").write_text(json.dumps(m, ensure_ascii=False, indent=1) + "\n")
     return m
@@ -205,7 +260,9 @@ def load(suite: Suite) -> dict | None:
     return _json(suite.results / "map" / "screens.json")
 
 
-def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real browser; plan(), follow() and build() are tested
+def capture(
+    plan_file: Path,
+) -> None:  # pragma: no cover — drives a real browser; plan(), follow() and build() are tested
     from playwright.sync_api import sync_playwright
 
     p = json.loads(plan_file.read_text())
@@ -214,9 +271,7 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
         browser = pw.chromium.launch()
         found: list[tuple[str, str | None]] = []  # the laptop finds the pages; every other device opens the same ones
         for device, vp in p["devices"].items():
-            (out / device).mkdir(parents=True, exist_ok=True)
-            ctx = browser.new_context(viewport={"width": vp["width"], "height": vp["height"]}, has_touch=vp["touch"],
-                                      is_mobile=vp["touch"], reduced_motion="reduce")
+            ctx = ux_shoot.device_context(browser, out, device, vp)
             page = ctx.new_page()
             todo = list(found) if found else [(s, None) for s in p["start"]]
             seen = {screen_key(t[0]) for t in todo}
@@ -230,7 +285,9 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                     entry["title"] = page.title()
                     entry["file"] = f"{device}/{n:02d}.png"
                     page.screenshot(path=str(out / entry["file"]))
-                    entry["links"] = follow(p["url"], page.eval_on_selector_all("a[href]", "els => els.map(a => a.href)"))
+                    entry["links"] = follow(
+                        p["url"], page.eval_on_selector_all("a[href]", "els => els.map(a => a.href)")
+                    )
                 except Exception as e:  # a page that does not open is a gap on the map
                     entry["error"] = str(e).splitlines()[0][:200]
                 pages.append(entry)

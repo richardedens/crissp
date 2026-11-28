@@ -14,9 +14,12 @@ import repair
 
 OLD_STEPS = [
     {"key": "unit", "label": "Unit tests", "dir": ".", "run": "covered tests", "gate": True, "sources": ["src"]},
-    {"key": "lint", "label": "Lint", "dir": ".", "run": "py -m ruff check --no-cache .", "seconds": 3}]
-OLD_AGREEMENT = ("ask the crissp tools (`brief`, `backlog`; `crissp/tool`, registered\nin `.mcp.json`) instead of reading "
-                 "the backlog files")
+    {"key": "lint", "label": "Lint", "dir": ".", "run": "py -m ruff check --no-cache .", "seconds": 3},
+]
+OLD_AGREEMENT = (
+    "ask the crissp tools (`brief`, `backlog`; `crissp/tool`, registered\nin `.mcp.json`) instead of reading "
+    "the backlog files"
+)
 
 
 def write(path: Path, text: str) -> None:
@@ -32,7 +35,10 @@ def bring_in(root: Path) -> None:
     """Everything crissp init makes in crissp/ (filled in), the framework's text and its ignore rules."""
     for src in (repair.TEMPLATE / "crissp").rglob("*"):
         if src.is_file():
-            write(root / "crissp" / src.relative_to(repair.TEMPLATE / "crissp"), src.read_text().replace("{{PRODUCT}}", "x"))
+            write(
+                root / "crissp" / src.relative_to(repair.TEMPLATE / "crissp"),
+                src.read_text().replace("{{PRODUCT}}", "x"),
+            )
     write(root / "crissp/CRISSP.md", (repair.ENGINE / "CRISSP.md").read_text())
     write(root / repair.SKILL, (repair.TEMPLATE / "agents/skills/crissp/SKILL.md").read_text())
     write(root / ".gitignore", (repair.TEMPLATE / "gitignore.crissp").read_text())
@@ -41,26 +47,49 @@ def bring_in(root: Path) -> None:
 
 
 def git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True,
-                   env={"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.org", "GIT_COMMITTER_NAME": "t",
-                        "GIT_COMMITTER_EMAIL": "t@example.org", "HOME": str(root), "PATH": "/usr/bin:/bin"})
+    subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True,
+        capture_output=True,
+        env={
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@example.org",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@example.org",
+            "HOME": str(root),
+            "PATH": "/usr/bin:/bin",
+        },
+    )
 
 
 @pytest.fixture
 def old(tmp_path) -> Path:
     """A project as the template made it before D-02, with what a first session then did."""
     root = tmp_path / "shop"
-    write(root / "crissp/testsuite/suites.json", json.dumps(
-        {"product": "shop", "steps": OLD_STEPS, "paths": [{"match": "src/", "steps": ["unit", "lint"]},
-                                                          {"match": "tests/", "steps": ["unit"]},
-                                                          {"match": "docs/api/", "steps": ["lint"]}],
-         "shared": [{"match": "*/Dockerfile", "why": "what goes into an image"}], "notes": ["notes/"]}))
+    write(
+        root / "crissp/testsuite/suites.json",
+        json.dumps(
+            {
+                "product": "shop",
+                "steps": OLD_STEPS,
+                "paths": [
+                    {"match": "src/", "steps": ["unit", "lint"]},
+                    {"match": "tests/", "steps": ["unit"]},
+                    {"match": "docs/api/", "steps": ["lint"]},
+                ],
+                "shared": [{"match": "*/Dockerfile", "why": "what goes into an image"}],
+                "notes": ["notes/"],
+            }
+        ),
+    )
     write(root / "crissp/uxsuite/team.json", json.dumps({"product": "shop", "url": "http://127.0.0.1:5173"}))
     write(root / "crissp/uxsuite/walks/first-visit.json", "{}")
     write(root / "crissp/uxsuite/prototype/index.html", "<!doctype html>")
     write(root / "crissp/uxsuite/notes.txt", "ideas")
-    write(root / "crissp/deploy/deploy.json", json.dumps({"compose": {"url": "http://127.0.0.1:{port}",
-                                                                      "port": {"setting": "APP_PORT", "default": 9090}}}))
+    write(
+        root / "crissp/deploy/deploy.json",
+        json.dumps({"compose": {"url": "http://127.0.0.1:{port}", "port": {"setting": "APP_PORT", "default": 9090}}}),
+    )
     write(root / "crissp/CLAUDE.md", f"# shop\n\nWhere the work stands: {OLD_AGREEMENT}.\n")
     write(root / "crissp/backlog/FINDINGS.md", "| F-01 | here | kept as it is | E1 |\n")
     return root
@@ -73,7 +102,9 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
     assert {p: p.read_bytes() for p in old.rglob("*") if p.is_file()} == before
     for key in ("steps", "ux-url", "ux-extra", "agreement"):
         assert f"  {key} " in out, key
-    assert "crissp/uxsuite/prototype → docs/ux/prototype" in out and "crissp/uxsuite/notes.txt → docs/ux/notes.txt" in out
+    assert (
+        "crissp/uxsuite/prototype → docs/ux/prototype" in out and "crissp/uxsuite/notes.txt → docs/ux/notes.txt" in out
+    )
     assert "http://127.0.0.1:5173 → http://127.0.0.1:9090" in out
     assert "Needs you:" in out and "no commit yet" in out and "no docker-compose.yml" in out
     assert out.rstrip().endswith("crissp repair --yes puts them in place. Nothing is committed.")
@@ -88,9 +119,13 @@ def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, caps
     assert conf["steps"] == template["steps"]
     assert [r["match"] for r in conf["paths"]] == ["app/backend/", "app/frontend/", "docs/api/"]  # its own rule kept
     assert conf["shared"][0]["match"] == "*/Dockerfile" and "docker-compose.yml" in [
-        r["match"] for r in conf["shared"]]  # its own shared ground first, the template's added once
+        r["match"] for r in conf["shared"]
+    ]  # its own shared ground first, the template's added once
     assert conf["product"] == "shop" and conf["notes"] == ["notes/"]
-    assert json.loads((old / "crissp/uxsuite/team.json").read_text()) == {"product": "shop", "url": "http://127.0.0.1:9090"}
+    assert json.loads((old / "crissp/uxsuite/team.json").read_text()) == {
+        "product": "shop",
+        "url": "http://127.0.0.1:9090",
+    }
     assert (old / "docs/ux/prototype/index.html").read_text() == "<!doctype html>"
     assert (old / "docs/ux/notes.txt").read_text() == "ideas" and not (old / "crissp/uxsuite/prototype").exists()
     assert (old / "crissp/uxsuite/walks/first-visit.json").is_file()  # its configuration stays
@@ -100,7 +135,9 @@ def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, caps
     assert repair.STAGES in agreement  # F-130
     assert (old / "crissp/backlog/FINDINGS.md").read_text() == "| F-01 | here | kept as it is | E1 |\n"
     # the crissp/ folder: what the template has and it lacked is made, filled in; the framework's text is this crissp's
-    assert (old / "crissp/uxsuite/.gitignore").read_text() == (repair.TEMPLATE / "crissp/uxsuite/.gitignore").read_text()
+    assert (old / "crissp/uxsuite/.gitignore").read_text() == (
+        repair.TEMPLATE / "crissp/uxsuite/.gitignore"
+    ).read_text()
     assert "{{PRODUCT}}" not in (old / "crissp/uxsuite/README.md").read_text()
     assert "shop" in (old / "crissp/uxsuite/README.md").read_text()
     assert (old / "crissp/CRISSP.md").read_text() == (repair.ENGINE / "CRISSP.md").read_text()
@@ -140,7 +177,14 @@ def test_old_steps_stay_while_src_is_really_there_and_an_empty_list_gets_the_def
     assert "no steps" in fix.what
     fix.do()
     assert [s["key"] for s in json.loads((root / "crissp/testsuite/suites.json").read_text())["steps"]] == [
-        "backend", "backend-lint", "frontend", "frontend-lint", "audit", "secrets", "sast"]
+        "backend",
+        "backend-lint",
+        "frontend",
+        "frontend-lint",
+        "audit",
+        "secrets",
+        "sast",
+    ]
 
 
 def test_no_configuration_and_broken_json_are_not_repaired(tmp_path):
@@ -193,14 +237,20 @@ def test_the_root_is_crissp_root_else_the_current_directory(tmp_path, monkeypatc
 
 
 def test_it_runs_as_a_script(old):
-    done = subprocess.run([sys.executable, str(REPO / "crissp/testsuite/lib/repair.py")], capture_output=True, text=True,
-                          env={"CRISSP_ROOT": str(old), "PATH": "/usr/bin:/bin"}, check=False)
+    done = subprocess.run(
+        [sys.executable, str(REPO / "crissp/testsuite/lib/repair.py")],
+        capture_output=True,
+        text=True,
+        env={"CRISSP_ROOT": str(old), "PATH": "/usr/bin:/bin"},
+        check=False,
+    )
     assert done.returncode == 1 and "crissp repair:" in done.stdout
 
 
 def test_without_git_there_is_no_commit(tmp_path, monkeypatch):
     def gone(*args, **kwargs):
         raise FileNotFoundError("git")
+
     monkeypatch.setattr(repair.subprocess, "run", gone)
     assert any(line.startswith("no commit yet") for line in repair.needs(tmp_path))
 
@@ -236,7 +286,11 @@ def test_a_gitignore_without_a_last_newline_gets_one_before_the_rules(tmp_path):
     (fix,) = repair.find(root)
     assert fix.what == ".gitignore lacks 1 of the framework's rules (.DS_Store) → added"
     fix.do()
-    assert (root / ".gitignore").read_text().endswith("!*.tfvars.example\n# --- C.R.I.S.S.P.: added by crissp repair\n.DS_Store\n")
+    assert (
+        (root / ".gitignore")
+        .read_text()
+        .endswith("!*.tfvars.example\n# --- C.R.I.S.S.P.: added by crissp repair\n.DS_Store\n")
+    )
 
 
 def test_a_folder_never_brought_in_is_told_to_run_init(tmp_path):
@@ -247,15 +301,24 @@ def test_plain_path_sources_in_changes_json_become_file_and_symbol(tmp_path, cap
     """F-20: the dashboard reads a source as {file, symbol}; a plain path becomes the file from the top."""
     root = tmp_path / "shop"
     bring_in(root)
-    changes = {"changes": [{"id": "a", "sources": ["app/x.py", {"file": "app/y.py", "symbol": "def y"}]},
-                           {"id": "b", "sources": ["app/z/"]}, "not an entry"], "gaps": ["kept"]}
+    changes = {
+        "changes": [
+            {"id": "a", "sources": ["app/x.py", {"file": "app/y.py", "symbol": "def y"}]},
+            {"id": "b", "sources": ["app/z/"]},
+            "not an entry",
+        ],
+        "gaps": ["kept"],
+    }
     write(root / "crissp/testsuite/changes.json", json.dumps(changes))
     assert "changes" in keys(root)
     repair.main([], {"CRISSP_ROOT": str(root)})
     assert "2 sources are plain paths" in capsys.readouterr().out
     repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
     fixed = json.loads((root / "crissp/testsuite/changes.json").read_text())
-    assert fixed["changes"][0]["sources"] == [{"file": "app/x.py", "symbol": ""}, {"file": "app/y.py", "symbol": "def y"}]
+    assert fixed["changes"][0]["sources"] == [
+        {"file": "app/x.py", "symbol": ""},
+        {"file": "app/y.py", "symbol": "def y"},
+    ]
     assert fixed["changes"][1]["sources"] == [{"file": "app/z/", "symbol": ""}] and fixed["gaps"] == ["kept"]
     assert fixed["changes"][2] == "not an entry"  # what it does not understand, it leaves as it is
     assert "changes" not in keys(root)
@@ -265,16 +328,25 @@ def test_the_mcp_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
     """F-20: .mcp.json pins crissp; a newer crissp's repair moves the pin to itself, never anything else in the file."""
     root = tmp_path / "shop"
     bring_in(root)
-    mcp = {"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp==0.1.2", "mcp"], "env": {"PYTHONUTF8": "1"}},
-                          "other": {"command": "x", "args": ["crissp==0.1.2"]}}}
+    mcp = {
+        "mcpServers": {
+            "crissp": {"command": "uvx", "args": ["crissp==0.1.2", "mcp"], "env": {"PYTHONUTF8": "1"}},
+            "other": {"command": "x", "args": ["crissp==0.1.2"]},
+        }
+    }
     write(root / ".mcp.json", json.dumps(mcp))
     assert "mcp-pin" not in [r.key for r in repair.find(root)]  # no version known (not run as the crissp command)
     assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.2")]
-    repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5",
-                            "VIBE_HOME": str(tmp_path / "vibe-home")})  # F-24: keep the trust file out of a real ~/.vibe
+    repair.main(
+        ["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5", "VIBE_HOME": str(tmp_path / "vibe-home")}
+    )  # F-24: keep the trust file out of a real ~/.vibe
     assert "crissp==0.1.2 → crissp==0.1.5" in capsys.readouterr().out
     fixed = json.loads((root / ".mcp.json").read_text())
-    assert fixed["mcpServers"]["crissp"] == {"command": "uvx", "args": ["crissp==0.1.5", "mcp"], "env": {"PYTHONUTF8": "1"}}
+    assert fixed["mcpServers"]["crissp"] == {
+        "command": "uvx",
+        "args": ["crissp==0.1.5", "mcp"],
+        "env": {"PYTHONUTF8": "1"},
+    }
     assert fixed["mcpServers"]["other"] == mcp["mcpServers"]["other"]
     write(root / ".mcp.json", json.dumps({"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp", "mcp"]}}}))
     assert "mcp-pin" not in [r.key for r in repair.find(root, "0.1.5")]  # not pinned: left as it is
@@ -293,8 +365,9 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
     repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
     assert "sessions" in capsys.readouterr().out
     stages = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.STAGES)  # F-130 lands too
-    assert agreement.read_text() == ("# shop\n\n## Own rules\n\nkept\n\n" + stages + section
-                                     + "## Working with the product owner\n\n- ask\n")
+    assert agreement.read_text() == (
+        "# shop\n\n## Own rules\n\nkept\n\n" + stages + section + "## Working with the product owner\n\n- ask\n"
+    )
     assert "sessions" not in keys(root)
 
     write(agreement, f"# shop\n\n{repair.SESSIONS}\n\nan old text\n\n## After\n\nkept\n")
@@ -353,7 +426,7 @@ def test_vibe_config_and_trust_are_put_in_place(tmp_path):
     fix = next(r for r in repair.find(root, "9.9.9", home) if r.key == "vibe")
     assert "crissp==9.9.9" in fix.what and "trusted" in fix.what
     fix.do()
-    assert 'crissp==9.9.9' in (root / ".vibe" / "config.toml").read_text()
+    assert "crissp==9.9.9" in (root / ".vibe" / "config.toml").read_text()
     db = (home / "trusted_folders.toml").read_text()
     assert f'"{root}"' in db and '"/elsewhere"' in db
     assert "vibe" not in [r.key for r in repair.find(root, "9.9.9", home)]  # in place now
@@ -408,25 +481,28 @@ def test_vibe_trust_alone_when_the_config_is_already_there(tmp_path):
     assert f'"{root}"' in (home / "trusted_folders.toml").read_text()
 
 
-
 def test_the_vibe_pin_follows_the_crissp_that_repairs(tmp_path, capsys):
     """F-27: .vibe/config.toml pins crissp like .mcp.json; repair moves both, keeping the file's comments and other
     servers; an unpinned, unknown or ambiguous config is left as it is."""
     root = tmp_path / "shop"
     bring_in(root)
     config = root / ".vibe/config.toml"
-    text = ('# ours\n[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\n'
-            'args = ["crissp==0.1.2", "mcp"]\n\n[[mcp_servers]]\nname = "other"\nargs = ["x"]\n')
+    text = (
+        '# ours\n[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\n'
+        'args = ["crissp==0.1.2", "mcp"]\n\n[[mcp_servers]]\nname = "other"\nargs = ["x"]\n'
+    )
     write(config, text)
     assert "vibe-pin" not in [r.key for r in repair.find(root)]  # no version known
     assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.2")]  # already this crissp
     repair.main(["--yes"], {"CRISSP_ROOT": str(root), "CRISSP_VERSION": "0.1.5", "VIBE_HOME": str(tmp_path / "none")})
     assert ".vibe/config.toml: crissp==0.1.2 → crissp==0.1.5" in capsys.readouterr().out
     assert config.read_text() == text.replace("crissp==0.1.2", "crissp==0.1.5")
-    for other in ('[[mcp_servers]]\nname = "crissp"\nargs = ["crissp", "mcp"]\n',  # not pinned
-                  "not toml [\n",  # not TOML
-                  'mcp_servers = "x"\n',  # not a list of servers
-                  '# "crissp==0.1.2"\n[[mcp_servers]]\nname = "crissp"\nargs = ["crissp==0.1.2"]\n'):  # twice in the text
+    for other in (
+        '[[mcp_servers]]\nname = "crissp"\nargs = ["crissp", "mcp"]\n',  # not pinned
+        "not toml [\n",  # not TOML
+        'mcp_servers = "x"\n',  # not a list of servers
+        '# "crissp==0.1.2"\n[[mcp_servers]]\nname = "crissp"\nargs = ["crissp==0.1.2"]\n',
+    ):  # twice in the text
         write(config, other)
         assert "vibe-pin" not in [r.key for r in repair.find(root, "0.1.5")]
     config.unlink()
@@ -494,8 +570,7 @@ def test_the_frameworks_own_checkout_gets_the_hook_turned_on_only(tmp_path, monk
     assert repair.hook.state(tmp_path / "eng") == "on" and not (tmp_path / "eng/.githooks").exists()
 
 
-OLD_VIBE = ('[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\n'
-            'args = ["crissp==9.9.9", "mcp"]\n')
+OLD_VIBE = '[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\nargs = ["crissp==9.9.9", "mcp"]\n'
 
 
 def test_a_vibe_config_that_does_not_name_the_folder_is_written_anew(tmp_path):
@@ -517,8 +592,9 @@ def test_a_vibe_config_with_servers_of_its_own_is_said_not_written(tmp_path):
     """F-100: other servers, or anything crissp did not write, stay: what to add by hand is said instead."""
     root = tmp_path / "p"
     bring_in(root)
-    write(root / ".vibe/config.toml", OLD_VIBE + '\n[[mcp_servers]]\nname = "other"\ntransport = "stdio"\n'
-                                                  'command = "x"\n')
+    write(
+        root / ".vibe/config.toml", OLD_VIBE + '\n[[mcp_servers]]\nname = "other"\ntransport = "stdio"\ncommand = "x"\n'
+    )
     assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
     assert any("servers of its own" in n and str(root) in n for n in repair.needs(root))
     for text in ("not = [toml", 'model = "x"\n' + OLD_VIBE):  # unreadable, or settings of its own: left alone
@@ -557,14 +633,19 @@ def test_without_git_a_vibe_config_is_not_said_to_be_in_git(tmp_path, monkeypatc
 
     def no_git(*args, **kwargs):
         raise OSError("no git")
+
     monkeypatch.setattr(repair.subprocess, "run", no_git)
     assert repair.vibe_needs(root) == []
 
 
-OLD_AGENTS = ("# shop — for agents\n\nRead `crissp/AGENTS.md` (what an agent next to the main session must know) and "
-              "`crissp/CLAUDE.md` (the agreement).\n")
-OLD_INTRO = ("The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
-             "specific to\nworking as an agent next to the main session.\n")
+OLD_AGENTS = (
+    "# shop — for agents\n\nRead `crissp/AGENTS.md` (what an agent next to the main session must know) and "
+    "`crissp/CLAUDE.md` (the agreement).\n"
+)
+OLD_INTRO = (
+    "The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
+    "specific to\nworking as an agent next to the main session.\n"
+)
 
 
 def test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill(tmp_path):

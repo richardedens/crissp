@@ -111,7 +111,6 @@ select = [
 ]
 ignore = [
   "S603", "S607",  # the guards run git, bash and helm by design, as argument lists; a shell (S602) stays forbidden
-  "E501",  # line length: comes with the one layout pass (ruff format), which waits until the open pull requests are in
 ]
 # crissp's messages use typographic dashes and the multiplication sign on purpose
 allowed-confusables = ["–", "×"]

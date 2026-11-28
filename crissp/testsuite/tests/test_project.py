@@ -17,13 +17,34 @@ spec = importlib.util.spec_from_file_location("project_under_test", LIB / "proje
 project = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(project)
 
-SHOP = {"product": "Shop", "steps": [
-    {"key": "backend", "label": "Backend", "dir": "app/backend", "run": "covered -q", "gate": True, "sources": ["app/backend/shop"],
-     "omit": ["*/tests/*"], "fail_under": 90},
-    {"key": "lint", "label": "Lint", "run": "ruff check ."},
-    {"key": "e2e", "label": "Browser", "run": "pytest e2e", "full_only": True, "when": "e2e/run.sh", "tests": ["e2e"]}],
-    "paths": [{"match": "app/backend/", "steps": ["backend", "lint"]}], "shared": [{"match": "*/Dockerfile", "why": "an image"}],
-    "notes": ["design/"], "setup": {"venvs": ["app/backend"], "needs": [{"command": "initdb", "hint": "brew install postgresql"}]}}
+SHOP = {
+    "product": "Shop",
+    "steps": [
+        {
+            "key": "backend",
+            "label": "Backend",
+            "dir": "app/backend",
+            "run": "covered -q",
+            "gate": True,
+            "sources": ["app/backend/shop"],
+            "omit": ["*/tests/*"],
+            "fail_under": 90,
+        },
+        {"key": "lint", "label": "Lint", "run": "ruff check ."},
+        {
+            "key": "e2e",
+            "label": "Browser",
+            "run": "pytest e2e",
+            "full_only": True,
+            "when": "e2e/run.sh",
+            "tests": ["e2e"],
+        },
+    ],
+    "paths": [{"match": "app/backend/", "steps": ["backend", "lint"]}],
+    "shared": [{"match": "*/Dockerfile", "why": "an image"}],
+    "notes": ["design/"],
+    "setup": {"venvs": ["app/backend"], "needs": [{"command": "initdb", "hint": "brew install postgresql"}]},
+}
 
 
 def shop(tmp_path: Path, conf: dict | None = None) -> Path:
@@ -44,14 +65,31 @@ def test_the_project_is_crissp_root_or_the_current_directory(tmp_path, monkeypat
 def test_a_configuration_with_every_default_filled_in(tmp_path):
     conf = project.load(shop(tmp_path))
     backend, lint, e2e = conf["steps"]
-    assert backend == {"key": "backend", "label": "Backend", "dir": "app/backend", "run": "covered -q", "seconds": 10,
-                       "gate": True, "coverage": True, "full_only": False, "sources": ["app/backend/shop"],
-                       "omit": ["*/tests/*"], "fail_under": 90, "when": None, "tests": ["app/backend/tests"],
-                       "parallel": False, "memory_mb": 256}
+    assert backend == {
+        "key": "backend",
+        "label": "Backend",
+        "dir": "app/backend",
+        "run": "covered -q",
+        "seconds": 10,
+        "gate": True,
+        "coverage": True,
+        "full_only": False,
+        "sources": ["app/backend/shop"],
+        "omit": ["*/tests/*"],
+        "fail_under": 90,
+        "when": None,
+        "tests": ["app/backend/tests"],
+        "parallel": False,
+        "memory_mb": 256,
+    }
     assert lint["dir"] == "." and lint["tests"] == ["./tests"] and not lint["coverage"] and lint["fail_under"] is None
     assert e2e["tests"] == ["e2e"] and e2e["full_only"] and e2e["when"] == "e2e/run.sh"
     assert conf["product"] == "Shop" and conf["monogram"] == "S" and conf["notes"] == ["design/"]
-    assert conf["setup"] == {"venvs": ["app/backend"], "npm": [], "needs": [{"command": "initdb", "hint": "brew install postgresql"}]}
+    assert conf["setup"] == {
+        "venvs": ["app/backend"],
+        "npm": [],
+        "needs": [{"command": "initdb", "hint": "brew install postgresql"}],
+    }
     assert conf["audit"] is None and conf["texts"] == {}
     unnamed = project.load(shop(tmp_path / "x", {"steps": []}))
     assert unnamed["product"] == "shop" and unnamed["monogram"] == "S"  # named after its folder
@@ -69,38 +107,47 @@ def test_the_gate_follows_the_last_gated_step_and_a_step_exists_while_its_path_d
     assert [s["key"] for s in project.steps(plain, tmp_path)] == ["lint"]  # nothing gated: no gate
 
 
-@pytest.mark.parametrize("conf, message", [
-    ([], "suites.json must hold one JSON object"),
-    ({"stpes": []}, "unknown field(s) stpes"),
-    ({"steps": {}}, "steps must be a list"),
-    ({"steps": [1]}, "steps[0] must be an object"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "colour": 1}]}, "steps[0]: unknown field(s) colour"),
-    ({"steps": [{"key": "Big Step", "label": "A", "run": "x"}]}, "key must be a short name"),
-    ({"steps": [{"key": "gate", "label": "A", "run": "x"}]}, "(not 'gate')"),
-    ({"steps": [{"key": "a", "run": "x"}]}, "step a: label must be a text"),
-    ({"steps": [{"key": "a", "label": "A", "run": " "}]}, "step a: run must be a text"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "seconds": 0}]}, "seconds must be a whole number"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "seconds": True}]}, "seconds must be a whole number"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": 101}]}, "fail_under must be a percentage"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": False}]}, "fail_under must be a percentage"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": "yes"}]}, "gate must be true or false"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "parallel": 1}]}, "parallel must be true or false"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": 0}]}, "memory_mb must be a whole number of at least 1"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": True}]}, "memory_mb must be a whole number"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": True}]}, "names its sources"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x", "sources": "src"}]}, "sources must be a list of texts"),
-    ({"steps": [{"key": "a", "label": "A", "run": "x"}, {"key": "a", "label": "B", "run": "y"}]}, "step a is named twice"),
-    ({"paths": {}}, "paths must be a list"),
-    ({"paths": [{"steps": ["a"]}]}, "paths[0] needs a match"),
-    ({"paths": [{"match": "src/", "steps": []}]}, "paths src/: steps must name at least one step"),
-    ({"paths": [{"match": "src/", "steps": ["nope"]}]}, "paths src/: unknown step nope"),
-    ({"shared": [{"match": "x"}]}, "shared x: why must say why"),
-    ({"setup": []}, "setup must be an object"),
-    ({"setup": {"needs": [{"command": "helm"}]}}, "setup.needs must be a list of {command, hint}"),
-    ({"setup": {"venvs": [""]}}, "setup.venvs must be a list of texts"),
-    ({"audit": []}, "audit must be an object"),
-    ({"texts": []}, "texts must be an object"),
-])
+@pytest.mark.parametrize(
+    "conf, message",
+    [
+        ([], "suites.json must hold one JSON object"),
+        ({"stpes": []}, "unknown field(s) stpes"),
+        ({"steps": {}}, "steps must be a list"),
+        ({"steps": [1]}, "steps[0] must be an object"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "colour": 1}]}, "steps[0]: unknown field(s) colour"),
+        ({"steps": [{"key": "Big Step", "label": "A", "run": "x"}]}, "key must be a short name"),
+        ({"steps": [{"key": "gate", "label": "A", "run": "x"}]}, "(not 'gate')"),
+        ({"steps": [{"key": "a", "run": "x"}]}, "step a: label must be a text"),
+        ({"steps": [{"key": "a", "label": "A", "run": " "}]}, "step a: run must be a text"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "seconds": 0}]}, "seconds must be a whole number"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "seconds": True}]}, "seconds must be a whole number"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": 101}]}, "fail_under must be a percentage"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "fail_under": False}]}, "fail_under must be a percentage"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": "yes"}]}, "gate must be true or false"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "parallel": 1}]}, "parallel must be true or false"),
+        (
+            {"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": 0}]},
+            "memory_mb must be a whole number of at least 1",
+        ),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "memory_mb": True}]}, "memory_mb must be a whole number"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "gate": True}]}, "names its sources"),
+        ({"steps": [{"key": "a", "label": "A", "run": "x", "sources": "src"}]}, "sources must be a list of texts"),
+        (
+            {"steps": [{"key": "a", "label": "A", "run": "x"}, {"key": "a", "label": "B", "run": "y"}]},
+            "step a is named twice",
+        ),
+        ({"paths": {}}, "paths must be a list"),
+        ({"paths": [{"steps": ["a"]}]}, "paths[0] needs a match"),
+        ({"paths": [{"match": "src/", "steps": []}]}, "paths src/: steps must name at least one step"),
+        ({"paths": [{"match": "src/", "steps": ["nope"]}]}, "paths src/: unknown step nope"),
+        ({"shared": [{"match": "x"}]}, "shared x: why must say why"),
+        ({"setup": []}, "setup must be an object"),
+        ({"setup": {"needs": [{"command": "helm"}]}}, "setup.needs must be a list of {command, hint}"),
+        ({"setup": {"venvs": [""]}}, "setup.venvs must be a list of texts"),
+        ({"audit": []}, "audit must be an object"),
+        ({"texts": []}, "texts must be an object"),
+    ],
+)
 def test_a_mistake_says_where_and_what(conf, message):
     with pytest.raises(project.ConfigError) as wrong:
         project.parse(conf)
@@ -108,7 +155,9 @@ def test_a_mistake_says_where_and_what(conf, message):
 
 
 def test_a_missing_or_broken_file_says_how_to_start(tmp_path):
-    with pytest.raises(project.ConfigError, match=re.escape("suites.json is missing: describe the product's parts there")):
+    with pytest.raises(
+        project.ConfigError, match=re.escape("suites.json is missing: describe the product's parts there")
+    ):
         project.load(tmp_path)
     (tmp_path / "crissp" / "testsuite").mkdir(parents=True)
     (tmp_path / "crissp" / "testsuite" / "suites.json").write_text("{")
@@ -121,7 +170,9 @@ def test_this_repository_is_a_product_of_its_own():
     template's check when it is there, the CVE audit of the pinned tools."""
     conf = project.load(REPO)
     tools = conf["steps"][0]
-    assert conf["product"] == "C.R.I.S.S.P." and tools["key"] == "tools" and tools["gate"] and tools["fail_under"] == 100
+    assert (
+        conf["product"] == "C.R.I.S.S.P." and tools["key"] == "tools" and tools["gate"] and tools["fail_under"] == 100
+    )
     assert tools["sources"] == ["crissp/testsuite/lib", "crissp/tool", "crissp/uxsuite", "crissp/testsuite/lint"]
     assert tools["omit"] == ["*/tests/*"]
     deploy = next(s for s in conf["steps"] if s["key"] == "deploy")
@@ -146,18 +197,53 @@ def test_run_as_a_script_it_says_how_to_use_it(monkeypatch):
 def test_the_guards_speak_the_crissp_command_when_they_run_as_it():
     """F-04: run by the `crissp` command (CRISSP_COMMAND), a guard names `crissp check-all`, not a script path."""
     import io
-    said = "Run crissp/check-all.sh, then crissp/check.sh; crissp/deploy.sh --cluster; crissp/ux.sh --shoot w; crissp/test.sh --dashboard"
+
+    said = (
+        "Run crissp/check-all.sh, then crissp/check.sh; crissp/deploy.sh --cluster; crissp/ux.sh --shoot w; "
+        "crissp/test.sh --dashboard"
+    )
     assert project.speak(said, {}) == said  # in a repository that carries the scripts: as it is
     assert project.speak(said, {"CRISSP_COMMAND": "crissp"}) == (
-        "Run crissp check-all, then crissp check; crissp deploy --cluster; crissp ux --shoot w; crissp dashboard")
+        "Run crissp check-all, then crissp check; crissp deploy --cluster; crissp ux --shoot w; crissp dashboard"
+    )
     out = io.StringIO()
     stream = project.Speaking(out, {"CRISSP_COMMAND": "crissp"})
     assert stream.write("Green: crissp/deploy.sh may go.\n") == len("Green: crissp/deploy.sh may go.\n")
     stream.flush()
-    assert out.getvalue() == "Green: crissp deploy may go.\n" and stream.getvalue() == out.getvalue()  # the rest passes through
+    assert (
+        out.getvalue() == "Green: crissp deploy may go.\n" and stream.getvalue() == out.getvalue()
+    )  # the rest passes through
+
+
+def test_a_guard_runs_as_a_script_speaking_and_exits_with_mains_answer(monkeypatch):
+    """F-97: four guards (check, release, deploy_plan, cluster_plan) carried the same three lines to run as a script;
+    project.script() is that block, once."""
+    import io
+
+    out, err, seen = io.StringIO(), io.StringIO(), []
+    monkeypatch.setattr(sys, "stdout", out)
+    monkeypatch.setattr(sys, "stderr", err)
+    monkeypatch.setattr(sys, "argv", ["guard.py", "plan"])
+    monkeypatch.setenv("CRISSP_COMMAND", "crissp")
+
+    def main(argv):
+        seen.append(argv)
+        print("Run crissp/check-all.sh")
+        return 3
+
+    with pytest.raises(SystemExit) as stop:
+        project.script(main)
+    assert stop.value.code == 3 and seen == [["guard.py", "plan"]]
+    assert out.getvalue() == "Run crissp check-all\n" and isinstance(sys.stderr, project.Speaking)
 
 
 def test_a_step_runs_in_one_process_unless_it_says_parallel():  # E1-F1-02
-    one, many = project.parse({"steps": [{"key": "a", "label": "A", "run": "x"},
-                                         {"key": "b", "label": "B", "run": "y", "parallel": True, "memory_mb": 512}]})["steps"]
+    one, many = project.parse(
+        {
+            "steps": [
+                {"key": "a", "label": "A", "run": "x"},
+                {"key": "b", "label": "B", "run": "y", "parallel": True, "memory_mb": 512},
+            ]
+        }
+    )["steps"]
     assert (one["parallel"], one["memory_mb"]) == (False, 256) and (many["parallel"], many["memory_mb"]) == (True, 512)

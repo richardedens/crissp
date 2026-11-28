@@ -15,9 +15,18 @@ sys.path.insert(0, str(LIB))
 import frontend_lint
 
 KIT = LIB.parent / "frontend-lint"
-PINS = {"eslint": "9.39.5", "@eslint/js": "9.39.5", "typescript-eslint": "8.72.2", "typescript": "6.0.3",
-        "globals": "17.14.0", "eslint-plugin-react-hooks": "7.1.1", "eslint-plugin-jsx-a11y": "6.10.2",
-        "eslint-plugin-react": "7.37.5", "stylelint": "17.16.0", "stylelint-config-standard": "40.0.0"}
+PINS = {
+    "eslint": "9.39.5",
+    "@eslint/js": "9.39.5",
+    "typescript-eslint": "8.72.2",
+    "typescript": "6.0.3",
+    "globals": "17.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "stylelint": "17.16.0",
+    "stylelint-config-standard": "40.0.0",
+}
 
 
 def test_the_toolkit_pins_every_tool_at_one_exact_version_and_its_lockfile_agrees():
@@ -49,8 +58,13 @@ class Npm:
 
 
 def lint(tmp_path: Path, npm: Npm, argv: list[str] | None = None, which=lambda name: f"/usr/bin/{name}") -> int:
-    return frontend_lint.main(["app/frontend"] if argv is None else argv,
-                              {"CRISSP_CACHE": str(tmp_path / "cache")}, run=npm, which=which, cwd=tmp_path)
+    return frontend_lint.main(
+        ["app/frontend"] if argv is None else argv,
+        {"CRISSP_CACHE": str(tmp_path / "cache")},
+        run=npm,
+        which=which,
+        cwd=tmp_path,
+    )
 
 
 @pytest.fixture
@@ -69,8 +83,19 @@ def test_the_tools_are_installed_once_then_both_run_on_the_frontend_with_crissps
     assert npm.calls == [
         ("npm", ["ci", "--no-audit", "--no-fund", "--loglevel=error"], place),
         ("eslint", ["--config", str(place / "eslint.config.mjs"), "--max-warnings", "0", "."], frontend),
-        ("stylelint", ["--config", str(place / "stylelint.config.mjs"), "--config-basedir", str(place),
-                       "--allow-empty-input", "**/*.css"], frontend)]
+        (
+            "stylelint",
+            [
+                "--config",
+                str(place / "stylelint.config.mjs"),
+                "--config-basedir",
+                str(place),
+                "--allow-empty-input",
+                "**/*.css",
+            ],
+            frontend,
+        ),
+    ]
     for name in ("package.json", "package-lock.json", "eslint.config.mjs", "stylelint.config.mjs"):
         assert (place / name).read_text() == (KIT / name).read_text()
     assert "crissp's lint tools installed" in capsys.readouterr().out
@@ -125,8 +150,9 @@ def test_without_npm_or_a_frontend_it_says_so(tmp_path, frontend, capsys):
 
 def test_with_no_folder_it_lints_the_current_one(tmp_path, frontend):
     npm = Npm()
-    assert frontend_lint.main([], {"CRISSP_CACHE": str(tmp_path / "cache")}, run=npm, which=lambda n: n,
-                              cwd=frontend) == 0
+    assert (
+        frontend_lint.main([], {"CRISSP_CACHE": str(tmp_path / "cache")}, run=npm, which=lambda n: n, cwd=frontend) == 0
+    )
     assert npm.calls[-1][2] == frontend
 
 
@@ -140,6 +166,11 @@ def test_the_step_helper_runs_it_with_the_pinned_python(tmp_path):
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $*"\n')
     (bin_ / "py").chmod(0o755)
-    done = subprocess.run(["bash", "-c", "frontend_lint"], capture_output=True, text=True, check=False,
-                          env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")})
+    done = subprocess.run(
+        ["bash", "-c", "frontend_lint"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")},
+    )
     assert done.stdout == f"py {LIB / 'frontend_lint.py'}\n"

@@ -54,7 +54,7 @@ def test_an_untrusted_folder_stays_untrusted(tmp_path):
 
 
 def test_a_file_it_does_not_know_is_left_alone(tmp_path):
-    for text in ("trusted = [\n", 'trusted = "/a"\n', 'trusted = []\nother = 1\n', "trusted = [1]\n"):
+    for text in ("trusted = [\n", 'trusted = "/a"\n', "trusted = []\nother = 1\n", "trusted = [1]\n"):
         db(tmp_path).write_text(text)
         assert vibe.state(tmp_path, Path("/a")) == "unreadable"
         assert "left alone" in vibe.trust(tmp_path, Path("/a"))
@@ -88,13 +88,22 @@ def start_like_vibe(text: str, elsewhere: Path) -> list[dict]:
 
     server = next(s for s in tomllib.loads(text)["mcp_servers"] if s["name"] == "crissp")
     env = {k: os.environ[k] for k in SAFE if k in os.environ} | server.get("env", {})
-    calls = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
-             {"jsonrpc": "2.0", "method": "notifications/initialized"},
-             {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
-             {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "brief", "arguments": {}}}]
-    done = subprocess.run([server["command"], *server.get("args", [])], cwd=server.get("cwd") or elsewhere, env=env,
-                          input="".join(json.dumps(c) + "\n" for c in calls), capture_output=True, text=True,
-                          timeout=server.get("startup_timeout_sec", 10), check=False)
+    calls = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "brief", "arguments": {}}},
+    ]
+    done = subprocess.run(
+        [server["command"], *server.get("args", [])],
+        cwd=server.get("cwd") or elsewhere,
+        env=env,
+        input="".join(json.dumps(c) + "\n" for c in calls),
+        capture_output=True,
+        text=True,
+        timeout=server.get("startup_timeout_sec", 10),
+        check=False,
+    )
     return [json.loads(line) for line in done.stdout.splitlines() if line.strip()]
 
 
@@ -105,8 +114,10 @@ def listed(answers: list[dict]) -> set[str]:
 def test_a_relative_server_path_is_not_found_from_vibes_app_server(tmp_path):
     """F-100: the config crissp wrote before (a relative path, no cwd, no CRISSP_ROOT) gives a desktop session no
     tools: started from the app server's folder, python finds no crissp/tool/server.py."""
-    old = '[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "python3"\n' \
-          'args = ["-I", "crissp/tool/server.py"]\n'
+    old = (
+        '[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "python3"\n'
+        'args = ["-I", "crissp/tool/server.py"]\n'
+    )
     assert listed(start_like_vibe(old, tmp_path)) == set()
 
 

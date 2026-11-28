@@ -33,21 +33,34 @@ Measured by the browser: tap-targets, focus-visible.
 No jargon.
 """
 
-FOUND = [{"check": "overflow", "rule": "06-no-text-overflows", "where": {"x": 10, "y": 20, "w": 300, "h": 18},
-          "detail": '"A very long name" is cut off'},
-         {"check": "below-fold", "rule": "01-nothing", "where": None, "detail": '"Pay" starts 40 px below the first screen'}]
+FOUND = [
+    {
+        "check": "overflow",
+        "rule": "06-no-text-overflows",
+        "where": {"x": 10, "y": 20, "w": 300, "h": 18},
+        "detail": '"A very long name" is cut off',
+    },
+    {"check": "below-fold", "rule": "01-nothing", "where": None, "detail": '"Pay" starts 40 px below the first screen'},
+]
 
 
 def test_a_principle_says_what_the_browser_measures(tmp_path):
     suite = make_product(tmp_path)
     (suite.here / "PRINCIPLES.md").write_text(PRINCIPLES)
     found = ux_cards.rules(suite)
-    assert found[0] == {"id": "01-nothing-important-behind-a-scroll", "title": "Nothing important behind a scroll",
-                        "severity": "should", "on": True, "measure": ["below-fold"],
-                        "text": "The primary action is visible without scrolling."}
+    assert found[0] == {
+        "id": "01-nothing-important-behind-a-scroll",
+        "title": "Nothing important behind a scroll",
+        "severity": "should",
+        "on": True,
+        "measure": ["below-fold"],
+        "text": "The primary action is visible without scrolling.",
+    }
     assert found[1]["measure"] == ["tap-targets", "focus-visible"] and "measure" not in found[2]
-    assert "## 08-accessible-by-default · Accessible by default (should, measured by the browser: tap-targets, " \
-           "focus-visible)" in ux_cards.rules_for_a_run(found)
+    assert (
+        "## 08-accessible-by-default · Accessible by default (should, measured by the browser: tap-targets, "
+        "focus-visible)" in ux_cards.rules_for_a_run(found)
+    )
     # the first write keeps it, now as a field of the rule's file
     ux_cards.save_rule(suite, {"title": "Plain words", "text": "No jargon."})
     file = (suite.here / "rules" / "08-accessible-by-default.md").read_text()
@@ -63,10 +76,17 @@ def test_the_page_sets_and_clears_what_a_rule_measures(tmp_path):
     assert "measure" not in out["rules"][0] and "measure" not in (suite.here / "rules" / "solid.md").read_text()
 
 
-@pytest.mark.parametrize(("measure", "says"), [
-    (["colour"], "measure: colour is not a check the browser runs (overflow, tap-targets, below-fold, dialog-opaque, focus-visible)"),
-    ("overflow", "measure must be a list of checks"),
-    ([1], "measure must be a list of checks")])
+@pytest.mark.parametrize(
+    ("measure", "says"),
+    [
+        (
+            ["colour"],
+            "measure: colour is not a check the browser runs (overflow, tap-targets, below-fold, dialog-opaque, focus-visible)",
+        ),
+        ("overflow", "measure must be a list of checks"),
+        ([1], "measure must be a list of checks"),
+    ],
+)
 def test_a_check_the_browser_does_not_run_is_refused(tmp_path, measure, says):
     suite = make_product(tmp_path)
     with pytest.raises(ValueError, match=re.escape(says)):
@@ -85,12 +105,15 @@ def test_the_shoot_hands_the_checks_of_the_rules_that_hold_to_the_browser(tmp_pa
     suite = make_product(tmp_path)
     (suite.here / "PRINCIPLES.md").write_text(PRINCIPLES)
     p = ux_shoot.plan(suite, ux_config.load(suite), "first-visit")
-    assert p["measure"] == [{"check": "below-fold", "rule": "01-nothing-important-behind-a-scroll"},
-                            {"check": "tap-targets", "rule": "08-accessible-by-default"},
-                            {"check": "focus-visible", "rule": "08-accessible-by-default"}]
+    assert p["measure"] == [
+        {"check": "below-fold", "rule": "01-nothing-important-behind-a-scroll"},
+        {"check": "tap-targets", "rule": "08-accessible-by-default"},
+        {"check": "focus-visible", "rule": "08-accessible-by-default"},
+    ]
     assert p["measure_js"] == str(ux_shoot.HERE / "measure.js") and Path(p["measure_js"]).is_file()
-    ux_cards.save_rule(suite, {"id": "08-accessible-by-default", "title": "A", "text": "x", "on": False,
-                               "measure": ["tap-targets"]})
+    ux_cards.save_rule(
+        suite, {"id": "08-accessible-by-default", "title": "A", "text": "x", "on": False, "measure": ["tap-targets"]}
+    )
     assert [m["check"] for m in ux_shoot.plan(suite, ux_config.load(suite), "first-visit")["measure"]] == ["below-fold"]
 
 
@@ -98,10 +121,16 @@ def test_the_shoot_says_how_much_was_measured(tmp_path):
     suite = make_product(tmp_path)
 
     def run(cmd, **kw):
-        (Path(cmd[-1]).parent / "shots.json").write_text(json.dumps([
-            {"device": "laptop", "n": 1, "title": "a", "file": "laptop/01-a.png", "measured": FOUND},
-            {"device": "phone", "n": 1, "title": "a", "file": "phone/01-a.png", "measured": []}]))
+        (Path(cmd[-1]).parent / "shots.json").write_text(
+            json.dumps(
+                [
+                    {"device": "laptop", "n": 1, "title": "a", "file": "laptop/01-a.png", "measured": FOUND},
+                    {"device": "phone", "n": 1, "title": "a", "file": "phone/01-a.png", "measured": []},
+                ]
+            )
+        )
         return type("Done", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
     code, text = ux_shoot.shoot(suite, ux_config.load(suite), "first-visit", run)
     assert code == 0 and text.endswith("\n  measured by the browser: 2 finding(s) on 1 shot(s)")
 

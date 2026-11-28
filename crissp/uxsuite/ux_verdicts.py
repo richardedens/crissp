@@ -15,7 +15,8 @@ A verdict on a rule, an area or a screen ("rule/<id>", "area/<area>", "screen/<w
 for its advice that has none of its own (ux_review.held); a proposed rule ("proposed/<theme>": approve · reject),
 approved, becomes a rule file.
 
-Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>", what was built "<walk>#v<version>/built".
+Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>", what was
+built "<walk>#v<version>/built".
 """
 
 from __future__ import annotations
@@ -92,7 +93,7 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
     reason = str(body.get("reason") or "").strip()
     if len(reason) > 4000:
         raise ValueError("the reason is too long (at most 4000 characters)")
-    if (m := ADVICE_ID.fullmatch(item)):
+    if m := ADVICE_ID.fullmatch(item):
         found = _result(suite, "round", m.group(1), int(m.group(2))) if m.group(1) in conf["walks"] else None
         advice = (found or {}).get("advice", [])
         if int(m.group(3)) >= len(advice):
@@ -100,23 +101,23 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         if verdict not in ADVICE:
             raise ValueError("a verdict on advice is agree, disagree or later")
         level, title = "advice", advice[int(m.group(3))].get("title", "")
-    elif (m := BUILT_ID.fullmatch(item)):
+    elif m := BUILT_ID.fullmatch(item):
         level, title = "built", _built(suite, conf, m.group(1), int(m.group(2)), verdict)
-    elif (m := NEED_ID.fullmatch(item)):
+    elif m := NEED_ID.fullmatch(item):
         needs = (_result(suite, "discovery", ux_team.PRODUCT, int(m.group(1))) or {}).get("needs", [])
         if int(m.group(2)) >= len(needs):
             raise ValueError("unknown need")
         if verdict not in NEED:
             raise ValueError("a verdict on a need is approve or reject")
         level, title = "need", needs[int(m.group(2))].get("title", "")
-    elif (m := DESIGN_ID.fullmatch(item)):
+    elif m := DESIGN_ID.fullmatch(item):
         found = _result(suite, "proposal", m.group(1), int(m.group(2))) if m.group(1) in conf["walks"] else None
         if not found:
             raise ValueError("unknown design")
         if verdict not in DESIGN:
             raise ValueError("a verdict on a design is approve, redo or reject")
         level, title = "design", found.get("title", "")
-    elif (m := TREE_ID.fullmatch(item)):
+    elif m := TREE_ID.fullmatch(item):
         level, title = m.group(1), _node(suite, conf, m.group(1), m.group(2))
         if verdict not in ADVICE:
             raise ValueError("a verdict on a rule, an area or a screen is agree, disagree or later")
@@ -131,7 +132,14 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         raise ValueError("unknown item")
     if verdict in NEEDS_A_REASON and not reason:
         raise ValueError("say why (for a redo: what the team should do differently)")
-    line = {"id": item, "level": level, "verdict": verdict, "reason": reason, "title": str(title)[:300], "at": ux_team.now()}
+    line = {
+        "id": item,
+        "level": level,
+        "verdict": verdict,
+        "reason": reason,
+        "title": str(title)[:300],
+        "at": ux_team.now(),
+    }
     suite.results.mkdir(parents=True, exist_ok=True)
     with (suite.results / "decisions.jsonl").open("a") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")
@@ -151,8 +159,14 @@ def _move(suite: Suite, line: dict) -> dict:
         return {"pbi": pbi, "not_moved": str(why)}
     out = {"pbi": pbi, "moved": moved}
     if line["verdict"] == "send-back":
-        said = crissp.finding(suite.root, {"seen": f"UX suite, built design {key} ({pbi})",
-                                           "observation": ux_backlog._flat(line["reason"]), "goes_to": pbi})
+        said = crissp.finding(
+            suite.root,
+            {
+                "seen": f"UX suite, built design {key} ({pbi})",
+                "observation": ux_backlog._flat(line["reason"]),
+                "goes_to": pbi,
+            },
+        )
         out["finding"] = said.split()[0]
     return out
 
@@ -177,7 +191,11 @@ def after(suite: Suite, conf: dict, line: dict) -> dict:
         return ux_discovery.approved(suite, conf, line["id"], need)
     walk, _, n = line["id"].partition("#v")
     if line["verdict"] == "approve":
-        return {"pbi": ux_backlog.file_pbi(suite, conf, walk, int(n), _result(suite, "proposal", walk, int(n)), remark=line["reason"])}
+        return {
+            "pbi": ux_backlog.file_pbi(
+                suite, conf, walk, int(n), _result(suite, "proposal", walk, int(n)), remark=line["reason"]
+            )
+        }
     try:
         return ux_team.request(suite, conf, "proposal", walk, line["reason"])
     except ValueError as why:  # the team works on it already, or the walk lost its screenshots: the verdict stands

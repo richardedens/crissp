@@ -47,16 +47,21 @@ def run(root: Path, env: dict, runner=subprocess.run) -> int:
         return 0
     red = []
     for step in steps:
-        done = runner(["bash", "-c", step["run"]], cwd=root / step["dir"], check=False,
-                      env={**env, "CRISSP_ROOT": str(root), "STEP": step["key"], "TOOLS": str(TOOLS),
-                           "BASH_ENV": str(HELPERS)})
+        done = runner(
+            ["bash", "-c", step["run"]],
+            cwd=root / step["dir"],
+            check=False,
+            env={**env, "CRISSP_ROOT": str(root), "STEP": step["key"], "TOOLS": str(TOOLS), "BASH_ENV": str(HELPERS)},
+        )
         status = "passed" if done.returncode == 0 else "failed"
         print(f"crissp hook: {step['label']} {status}")
         if status == "failed":
             red.append(step["label"])
     if red:
-        print(f"crissp hook: not committed, the lint is red ({', '.join(red)}). Fix it, or commit once without it: "
-              "git commit --no-verify (crissp check and CI still run it).")
+        print(
+            f"crissp hook: not committed, the lint is red ({', '.join(red)}). Fix it, or commit once without it: "
+            "git commit --no-verify (crissp check and CI still run it)."
+        )
         return 1
     return 0
 
@@ -94,11 +99,15 @@ def needs(root: Path) -> str:
     """What a person has to do for the hook to run, or "" (said by init and repair, never done)."""
     now = state(root)
     if now == "other":
-        return (f"core.hooksPath is {hooks_path(root)}: crissp's lint hook ({HOOKS}/pre-commit) does not run; call it "
-                f"from your own pre-commit, or set core.hooksPath {HOOKS}")
+        return (
+            f"core.hooksPath is {hooks_path(root)}: crissp's lint hook ({HOOKS}/pre-commit) does not run; call it "
+            f"from your own pre-commit, or set core.hooksPath {HOOKS}"
+        )
     if now == "local-hooks":
-        return (f".git/hooks has hooks of its own: core.hooksPath {HOOKS} would switch them off; move them to "
-                f"{HOOKS}/, then crissp repair --yes turns the lint hook on")
+        return (
+            f".git/hooks has hooks of its own: core.hooksPath {HOOKS} would switch them off; move them to "
+            f"{HOOKS}/, then crissp repair --yes turns the lint hook on"
+        )
     return ""
 
 

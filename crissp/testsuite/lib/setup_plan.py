@@ -57,7 +57,9 @@ def requirement_files(path: Path, seen: set[Path] | None = None) -> list[Path]:
 def fingerprint(app: Path, root: Path) -> str:
     digest = hashlib.sha256()
     for f in requirement_files(app / "requirements-dev.txt"):
-        digest.update(str(f.relative_to(root) if f.is_relative_to(root) else f).encode() + b"\0" + f.read_bytes() + b"\0")
+        digest.update(
+            str(f.relative_to(root) if f.is_relative_to(root) else f).encode() + b"\0" + f.read_bytes() + b"\0"
+        )
     return digest.hexdigest()
 
 
@@ -93,8 +95,9 @@ def uv_path(which=shutil.which, brew: Path = BREW_UV) -> str | None:
     return which("uv") or (str(brew) if brew.is_file() else None)
 
 
-def plan(root: Path, conf: dict, version: tuple = tuple(sys.version_info[:2]), which=shutil.which,
-         brew: Path = BREW_UV) -> list[str]:
+def plan(
+    root: Path, conf: dict, version: tuple = tuple(sys.version_info[:2]), which=shutil.which, brew: Path = BREW_UV
+) -> list[str]:
     """What to do, one line each; empty: everything is in place."""
     out = []
     if version < MIN_PYTHON:
@@ -119,8 +122,17 @@ def stamp(app: Path, root: Path) -> None:
     (app / ".venv" / STAMP).write_text(fingerprint(app, root) + "\n")
 
 
-def apply(root: Path, conf: dict, runner=subprocess.run, which=shutil.which, brew: Path = BREW_UV,
-          version: tuple = tuple(sys.version_info[:2]), python: str | None = None, out=None, err=None) -> int:
+def apply(
+    root: Path,
+    conf: dict,
+    runner=subprocess.run,
+    which=shutil.which,
+    brew: Path = BREW_UV,
+    version: tuple = tuple(sys.version_info[:2]),
+    python: str | None = None,
+    out=None,
+    err=None,
+) -> int:
     """Install what plan() says is missing; 0 when everything is in place now, 1 with how to fix it when not."""
     out, err = out or sys.stdout, err or sys.stderr
     python = python or os.environ.get("CRISSP_PYTHON") or sys.executable
@@ -142,10 +154,14 @@ def apply(root: Path, conf: dict, runner=subprocess.run, which=shutil.which, bre
     for line in plan(root, conf, version, which, brew):
         what, target, state = ([*line.split(" ", 2), "", ""])[:3]
         if what == "python":
-            return fail(f"this is Python {state}; the testsuite needs {'.'.join(map(str, MIN_PYTHON))} or newer "
-                        "(set CRISSP_PYTHON, or run it with a newer python3)")
+            return fail(
+                f"this is Python {state}; the testsuite needs {'.'.join(map(str, MIN_PYTHON))} or newer "
+                "(set CRISSP_PYTHON, or run it with a newer python3)"
+            )
         if what == "uv":
-            return fail("uv is missing. Install it: brew install uv   (or: curl -LsSf https://astral.sh/uv/install.sh | sh)")
+            return fail(
+                "uv is missing. Install it: brew install uv   (or: curl -LsSf https://astral.sh/uv/install.sh | sh)"
+            )
         if what == "need":
             return fail(f"{target} is missing: {state}")
         app = root / target
@@ -154,13 +170,29 @@ def apply(root: Path, conf: dict, runner=subprocess.run, which=shutil.which, bre
                 shutil.rmtree(app / ".venv", ignore_errors=True)
                 if not sh([python, "-m", "venv", str(app / ".venv")], app):
                     return fail(f"could not make {target}/.venv ({python} -m venv)")
-            if not sh([str(app / ".venv" / "bin" / "python"), "-m", "pip", "install", "-q", "--disable-pip-version-check",
-                       "-r", "requirements-dev.txt"], app):
-                return fail(f"could not install {target}/requirements-dev.txt (network? try: cd {target} && "
-                            ".venv/bin/pip install -r requirements-dev.txt)")
+            if not sh(
+                [
+                    str(app / ".venv" / "bin" / "python"),
+                    "-m",
+                    "pip",
+                    "install",
+                    "-q",
+                    "--disable-pip-version-check",
+                    "-r",
+                    "requirements-dev.txt",
+                ],
+                app,
+            ):
+                return fail(
+                    f"could not install {target}/requirements-dev.txt (network? try: cd {target} && "
+                    ".venv/bin/pip install -r requirements-dev.txt)"
+                )
             stamp(app, root)
-            print(f"setup: {target}/.venv " + ("updated (its requirements changed)" if state == "stale" else f"made anew ({state})"),
-                  file=out)
+            print(
+                f"setup: {target}/.venv "
+                + ("updated (its requirements changed)" if state == "stale" else f"made anew ({state})"),
+                file=out,
+            )
         else:  # npm
             if which("npm") is None:
                 return fail("npm is missing. Install Node.js: brew install node")

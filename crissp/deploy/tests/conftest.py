@@ -11,7 +11,9 @@ import yaml
 
 ENGINE = Path(__file__).resolve().parents[1]
 _PROJECT = Path(os.environ.get("CRISSP_ROOT") or os.getcwd()) / "crissp" / "deploy"
-DEPLOY = _PROJECT if (_PROJECT / "helm").is_dir() else ENGINE  # the project's own chart and Terraform, else the template
+DEPLOY = (
+    _PROJECT if (_PROJECT / "helm").is_dir() else ENGINE
+)  # the project's own chart and Terraform, else the template
 CHART = DEPLOY / "helm" / "app"
 TERRAFORM = DEPLOY / "terraform"
 HELM = shutil.which("helm")
@@ -41,6 +43,8 @@ def pods(docs: list[dict]):
     """(document, pod spec) for every workload."""
     for d in docs:
         spec = d.get("spec", {})
-        pod = spec.get("template", {}).get("spec") or spec.get("jobTemplate", {}).get("spec", {}).get("template", {}).get("spec")
+        pod = spec.get("template", {}).get("spec") or spec.get("jobTemplate", {}).get("spec", {}).get(
+            "template", {}
+        ).get("spec")
         if pod:
             yield d, pod

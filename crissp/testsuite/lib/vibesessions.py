@@ -30,9 +30,19 @@ import sessionview as sv
 
 WINDOW_S = 30 * 60  # as the Activity page: a session written longer ago than this is not activity any more
 QUIET_S = 120
-KIND = {"read_file": "read", "grep": "read", "glob": "read", "list_dir": "read", "search_tool_functions": "read",
-        "write_file": "change", "edit": "change", "search_replace": "change", "bash": "run",
-        "ask_user_question": "ask", "task": "agent"}
+KIND = {
+    "read_file": "read",
+    "grep": "read",
+    "glob": "read",
+    "list_dir": "read",
+    "search_tool_functions": "read",
+    "write_file": "change",
+    "edit": "change",
+    "search_replace": "change",
+    "bash": "run",
+    "ask_user_question": "ask",
+    "task": "agent",
+}
 CALLS = re.compile(r"\btools\.(\w+)\.(\w+)\(")  # F-109: a tool a run_typescript program calls
 
 
@@ -136,7 +146,9 @@ def read(session: Path, repo: sv.Repo) -> dict:
             millis = (given.get("determinism") or {}).get("time_unix_ms") or millis
             command = given.get("command") or {}
             if command.get("type") == "user_message":
-                prompts.append(" ".join(c.get("text", "") for c in command.get("content", []) if c.get("type") == "text"))
+                prompts.append(
+                    " ".join(c.get("text", "") for c in command.get("content", []) if c.get("type") == "text")
+                )
         elif r.get("type") == "action_result":
             result = (payload.get("result") or {}).get("result") or {}
             history = (result.get("usage") or {}).get("input_tokens", history)
@@ -162,8 +174,9 @@ def _json_args(text: str | None) -> dict:
 def sessions(root: Path, home: Path, now: float) -> list[dict]:
     """This repository's Vibe sessions written in the last half hour, in the Activity page's shape."""
     base = folder(home)
-    metas = {d: m for d in (sorted(base.iterdir()) if base.is_dir() else [])
-             if isinstance(m := _json(d / "meta.json"), dict)}
+    metas = {
+        d: m for d in (sorted(base.iterdir()) if base.is_dir() else []) if isinstance(m := _json(d / "meta.json"), dict)
+    }
     repo = sv.Repo(root)
     out = []
     for d, meta in metas.items():
@@ -173,14 +186,32 @@ def sessions(root: Path, home: Path, now: float) -> list[dict]:
         agents = []
         for child, cm in metas.items():
             if cm.get("parent_session_id") == meta.get("session_id"):
-                agents.append({"name": cm.get("title") or "agent", "type": cm.get("agent") or "subagent",
-                               "running": not cm.get("end_time"),
-                               **(read(child, repo)["main"] or {"tool": "", "kind": "", "text": "", "since": None})})
+                agents.append(
+                    {
+                        "name": cm.get("title") or "agent",
+                        "type": cm.get("agent") or "subagent",
+                        "running": not cm.get("end_time"),
+                        **(read(child, repo)["main"] or {"tool": "", "kind": "", "text": "", "since": None}),
+                    }
+                )
         agents.sort(key=lambda a: not a["running"])
         last = updated(d)
-        out.append({"id": meta.get("session_id") or d.name, "source": "vibe", "title": sv.mask(meta.get("title") or ""),
-                    "history": seen["history"], "long": seen["history"] > measure.LONG,
-                    "prompt": sv.mask(seen["prompts"][-1][:300]) if seen["prompts"] else "", "busy": now - last < QUIET_S,
-                    "updated": last, "main": seen["main"], "agents": agents, "earlier": 0, "images": seen["images"],
-                    "whole": seen["whole"], "budget": measure.budget(seen["images"], seen["whole"])})
+        out.append(
+            {
+                "id": meta.get("session_id") or d.name,
+                "source": "vibe",
+                "title": sv.mask(meta.get("title") or ""),
+                "history": seen["history"],
+                "long": seen["history"] > measure.LONG,
+                "prompt": sv.mask(seen["prompts"][-1][:300]) if seen["prompts"] else "",
+                "busy": now - last < QUIET_S,
+                "updated": last,
+                "main": seen["main"],
+                "agents": agents,
+                "earlier": 0,
+                "images": seen["images"],
+                "whole": seen["whole"],
+                "budget": measure.budget(seen["images"], seen["whole"]),
+            }
+        )
     return out
