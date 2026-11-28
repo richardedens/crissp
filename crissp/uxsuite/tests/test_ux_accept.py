@@ -47,12 +47,17 @@ def test_the_walk_knows_when_it_was_last_shot(product):
 
 def test_a_built_screen_is_judged_only_after_the_walk_was_shot_again(approved):
     conf = ux_config.load(approved)
-    with pytest.raises(ValueError, match=re.escape("shoot the walk again once it is built: crissp/ux.sh --shoot first-visit")):
+    with pytest.raises(
+        ValueError, match=re.escape("shoot the walk again once it is built: crissp/ux.sh --shoot first-visit")
+    ):
         ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "accept"})
     _shoot_again(approved)
     line = ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "accept"})
     assert line["level"] == "built" and line["title"] == "Calmer start"
-    assert ux_verdicts.after(approved, conf, line) == {"pbi": "E1-F1-01", "moved": "E1-F1-01 [todo] → [review], in crissp/backlog/E1-ux-approved-designs.md"}
+    assert ux_verdicts.after(approved, conf, line) == {
+        "pbi": "E1-F1-01",
+        "moved": "E1-F1-01 [todo] → [review], in crissp/backlog/E1-ux-approved-designs.md",
+    }
     assert _status(approved) == "review"
 
 
@@ -61,19 +66,29 @@ def test_not_good_sends_the_pbi_back_with_the_reason(approved):
     _shoot_again(approved)
     with pytest.raises(ValueError, match="say why"):
         ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "send-back"})
-    line = ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "send-back",
-                                                "reason": "The button | is still grey on a phone."})
+    line = ux_verdicts.record(
+        approved,
+        conf,
+        {"id": "first-visit#v1/built", "verdict": "send-back", "reason": "The button | is still grey on a phone."},
+    )
     out = ux_verdicts.after(approved, conf, line)
     assert out["pbi"] == "E1-F1-01" and out["moved"].endswith("[doing], in crissp/backlog/E1-ux-approved-designs.md")
     assert out["finding"].startswith("F-")
     findings = (approved.root / "crissp" / "backlog" / "FINDINGS.md").read_text()
-    assert "UX suite, built design first-visit#v1 (E1-F1-01)" in findings and "The button / is still grey on a phone." in findings
+    assert (
+        "UX suite, built design first-visit#v1 (E1-F1-01)" in findings
+        and "The button / is still grey on a phone." in findings
+    )
     assert _status(approved) == "doing"
 
 
-@pytest.mark.parametrize(("item", "verdict", "says"), [
-    ("first-visit#v2/built", "accept", "unknown design"),
-    ("first-visit#v1/built", "approve", "a verdict on a built design is accept or send-back")])
+@pytest.mark.parametrize(
+    ("item", "verdict", "says"),
+    [
+        ("first-visit#v2/built", "accept", "unknown design"),
+        ("first-visit#v1/built", "approve", "a verdict on a built design is accept or send-back"),
+    ],
+)
 def test_a_wrong_verdict_on_a_built_design_is_refused(approved, item, verdict, says):
     _shoot_again(approved)
     with pytest.raises(ValueError, match=says):
@@ -96,5 +111,8 @@ def test_a_pbi_that_cannot_move_is_told_and_the_verdict_stands(approved):
     epic.write_text(epic.read_text().replace("UX proposal `first-visit#v1`", "nothing"))
     assert ux_verdicts.after(approved, conf, line) == {"not_moved": "first-visit#v1 has no PBI in the backlog"}
     epic.write_text(epic.read_text().replace("nothing", "UX proposal `first-visit#v1`").replace("[todo]", "[done]"))
-    assert ux_verdicts.after(approved, conf, line) == {"pbi": "E1-F1-01", "not_moved": "E1-F1-01 is done; it does not move back"}
+    assert ux_verdicts.after(approved, conf, line) == {
+        "pbi": "E1-F1-01",
+        "not_moved": "E1-F1-01 is done; it does not move back",
+    }
     assert json.loads((approved.results / "decisions.jsonl").read_text().splitlines()[-1])["verdict"] == "accept"

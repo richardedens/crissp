@@ -39,8 +39,12 @@ IMAGES, BIG_LINES, budget = measure.IMAGES, measure.BIG_LINES, measure.budget  #
 def _step(record: dict, block: dict, repo: sv.Repo) -> dict:
     if block.get("name") == "Agent":
         given = block.get("input") or {}
-        return {"tool": "Agent", "kind": "agent", "text": f"started an agent: {given.get('description', '')}",
-                "since": record.get("timestamp")}
+        return {
+            "tool": "Agent",
+            "kind": "agent",
+            "text": f"started an agent: {given.get('description', '')}",
+            "since": record.get("timestamp"),
+        }
     act = sv.action(block, repo, record.get("cwd"))
     return {"tool": block.get("name", ""), "kind": act["kind"], "text": act["text"], "since": record.get("timestamp")}
 
@@ -71,8 +75,12 @@ def session(path: Path, root: Path, now: float) -> dict:
     main = [r for r in records if not r.get("isSidechain")]
     prompts = [p for r in main if (p := sv.prompt(r)) and not p.startswith("<task-notification>")]
     titles = [r["aiTitle"] for r in records if r.get("type") == "ai-title" and r.get("aiTitle")]
-    answered = {b.get("tool_use_id") for r in main for b in ((r.get("message") or {}).get("content") or [])
-                if isinstance(b, dict) and b.get("type") == "tool_result"}
+    answered = {
+        b.get("tool_use_id")
+        for r in main
+        for b in ((r.get("message") or {}).get("content") or [])
+        if isinstance(b, dict) and b.get("type") == "tool_result"
+    }
     own = _subagents(path)
     updated = path.stat().st_mtime
     agents = []
@@ -85,23 +93,53 @@ def session(path: Path, root: Path, now: float) -> dict:
             mine = list(sv.records(transcript)) if transcript and transcript.is_file() else []
             if mine:
                 updated = max(updated, transcript.stat().st_mtime)
-            step = _latest(mine, repo, skip=b.get("id")) or {"tool": "", "kind": "", "text": "", "since": r.get("timestamp")}
+            step = _latest(mine, repo, skip=b.get("id")) or {
+                "tool": "",
+                "kind": "",
+                "text": "",
+                "since": r.get("timestamp"),
+            }
             running = not info["finished"] if "finished" in info else b.get("id") not in answered
-            agents.append({"name": info.get("description") or given.get("description", "agent"),
-                           "type": info.get("agentType") or given.get("subagent_type", "agent"), "running": running,
-                           **step})
-    old = [a for a in agents if not a["running"] and a["since"]
-           and now - datetime.fromisoformat(a["since"]).timestamp() > FINISHED_S]
+            agents.append(
+                {
+                    "name": info.get("description") or given.get("description", "agent"),
+                    "type": info.get("agentType") or given.get("subagent_type", "agent"),
+                    "running": running,
+                    **step,
+                }
+            )
+    old = [
+        a
+        for a in agents
+        if not a["running"] and a["since"] and now - datetime.fromisoformat(a["since"]).timestamp() > FINISHED_S
+    ]
     agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
     sized = [r for r in main if r.get("type") == "assistant" and (r.get("message") or {}).get("usage")]
     history = measure.history(sized[-1]) if sized else 0
     pictures = sum(measure.images((r.get("message") or {}).get("content")) for r in main if r.get("type") == "user")
-    wholes = [w for r in main for b in sv.tool_uses(r) if b.get("name") == "Read"
-              if (w := measure.whole(repo.rel((b.get("input") or {}).get("file_path", "")), b.get("input") or {}, root))]
-    return {"images": pictures, "whole": sorted(set(wholes)), "budget": budget(pictures, wholes),"id": path.stem, "source": "claude", "title": sv.mask(titles[-1]) if titles else "", "history": history,
-            "long": history > measure.LONG,
-            "prompt": sv.mask(prompts[-1][:300]) if prompts else "", "busy": now - updated < QUIET_S,
-            "updated": updated, "main": _latest(main, repo), "agents": agents, "earlier": len(old)}
+    wholes = [
+        w
+        for r in main
+        for b in sv.tool_uses(r)
+        if b.get("name") == "Read"
+        if (w := measure.whole(repo.rel((b.get("input") or {}).get("file_path", "")), b.get("input") or {}, root))
+    ]
+    return {
+        "images": pictures,
+        "whole": sorted(set(wholes)),
+        "budget": budget(pictures, wholes),
+        "id": path.stem,
+        "source": "claude",
+        "title": sv.mask(titles[-1]) if titles else "",
+        "history": history,
+        "long": history > measure.LONG,
+        "prompt": sv.mask(prompts[-1][:300]) if prompts else "",
+        "busy": now - updated < QUIET_S,
+        "updated": updated,
+        "main": _latest(main, repo),
+        "agents": agents,
+        "earlier": len(old),
+    }
 
 
 def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None, vibe_home: Path | None = None) -> dict:
@@ -116,5 +154,9 @@ def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None, vi
         conf = project.load(root)
     except project.ConfigError:
         conf = {"product": root.name, "monogram": root.name[:1].upper()}
-    return {"sessions": sorted(found, key=lambda s: s["updated"], reverse=True), "now": now, "product": conf["product"],
-            "monogram": conf["monogram"]}
+    return {
+        "sessions": sorted(found, key=lambda s: s["updated"], reverse=True),
+        "now": now,
+        "product": conf["product"],
+        "monogram": conf["monogram"],
+    }

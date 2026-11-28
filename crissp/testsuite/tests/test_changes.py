@@ -17,6 +17,7 @@ def _test_dirs(root: Path) -> tuple[Path, ...]:
     """Where a change's tests may be: every step's test folders (crissp/testsuite/suites.json)."""
     sys.path.insert(0, str(ROOT / "crissp/testsuite/lib"))
     import project
+
     return tuple(root / t for s in project.load(root)["steps"] for t in s["tests"])
 
 
@@ -26,7 +27,11 @@ FRONTEND_TEST = (".test.ts", ".test.tsx")  # vitest's file names (a frontend's t
 
 def _test_functions(path: Path) -> set[str]:
     tree = ast.parse(path.read_text())
-    return {n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name.startswith("test")}
+    return {
+        n.name
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name.startswith("test")
+    }
 
 
 def _vitest_names(path: Path) -> set[str]:
@@ -80,8 +85,11 @@ def test_the_check_finds_what_is_missing(tmp_path):
     (tmp_path / "test_x.py").write_text("def test_one():\n    pass\n\nasync def test_two():\n    pass\n")
     good = {"id": "a", "title": "t", "problem": "p", "fix": "f", "tests": ["test_x", "test_x.py::test_two"]}
     assert problems({"changes": [good], "gaps": ["g"]}, [tmp_path]) == []
-    bad = [{"id": "a", "title": "", "problem": "p", "fix": "f", "tests": ["test_x::test_three", "test_y"]},
-           {"title": "t", "problem": "p", "fix": "f"}, {**good}]
+    bad = [
+        {"id": "a", "title": "", "problem": "p", "fix": "f", "tests": ["test_x::test_three", "test_y"]},
+        {"title": "t", "problem": "p", "fix": "f"},
+        {**good},
+    ]
     assert problems({"changes": bad, "gaps": [""], "other": 1}, [tmp_path]) == [
         "changes.json has ['changes', 'gaps', 'other'], expected ['changes', 'gaps']",
         "a: 'title' is missing or empty",
@@ -100,19 +108,28 @@ def test_the_testsuite_s_own_tests_can_be_named(ref):
 
 
 def test_the_folders_are_the_steps_test_folders():
-    assert TEST_DIRS == (ROOT / "crissp/testsuite/tests", ROOT / "crissp/uxsuite/tests", ROOT / "crissp/deploy/tests",
-                         ROOT / "crissp/testsuite/package_tests",
-                         ROOT / "crissp/testsuite/tests",  # the secrets step runs from crissp/testsuite
-                         ROOT / "crissp/testsuite/tests",  # and the sast step
-                         ROOT / "crissp/testsuite/tests")  # the audit step runs from crissp/testsuite
+    assert TEST_DIRS == (
+        ROOT / "crissp/testsuite/tests",
+        ROOT / "crissp/uxsuite/tests",
+        ROOT / "crissp/deploy/tests",
+        ROOT / "crissp/testsuite/package_tests",
+        ROOT / "crissp/testsuite/tests",  # the secrets step runs from crissp/testsuite
+        ROOT / "crissp/testsuite/tests",  # and the sast step
+        ROOT / "crissp/testsuite/tests",
+    )  # the audit step runs from crissp/testsuite
 
 
 def test_a_frontend_test_is_named_by_its_file_and_the_name_given_to_it(tmp_path):
     (tmp_path / "layout.test.ts").write_text(
         "describe('the wall', () => {\n  it(\"keeps a gap of 4 cm\", () => {});\n  test.each([1])(`fits ${1}`, () => {});\n"
-        "  it.skip('later', () => {});\n});\n")
-    for ref in ("layout.test.ts", "layout.test.ts::keeps a gap of 4 cm", "layout.test.ts::the wall",
-                "layout.test.ts::later"):
+        "  it.skip('later', () => {});\n});\n"
+    )
+    for ref in (
+        "layout.test.ts",
+        "layout.test.ts::keeps a gap of 4 cm",
+        "layout.test.ts::the wall",
+        "layout.test.ts::later",
+    ):
         assert find_test(ref, [tmp_path]), ref
     assert not find_test("layout.test.ts::a gap of 5 cm", [tmp_path])
     assert not find_test("room.test.tsx", [tmp_path])
@@ -135,10 +152,15 @@ def unreported(root: Path, data: dict) -> list[str]:
     """The tests a change names that no step writing JUnit runs: the dashboard can never see them pass."""
     sys.path.insert(0, str(root / "crissp/testsuite/lib"))
     import project
+
     steps = project.load(root)["steps"]
     refs = sorted({ref for c in data.get("changes", []) for ref in c.get("tests", [])})
-    return [ref for ref in refs if find_test(ref, [root / t for s in steps for t in s["tests"]])
-            and not any(_writes_junit(s) and find_test(ref, [root / t for t in s["tests"]]) for s in steps)]
+    return [
+        ref
+        for ref in refs
+        if find_test(ref, [root / t for s in steps for t in s["tests"]])
+        and not any(_writes_junit(s) and find_test(ref, [root / t for t in s["tests"]]) for s in steps)
+    ]
 
 
 def test_every_test_that_proves_a_change_is_reported_to_the_dashboard():
@@ -152,8 +174,28 @@ def test_a_step_without_junit_leaves_its_tests_unreported(tmp_path):
     (tmp_path / "crissp/testsuite/b").mkdir()
     (tmp_path / "crissp/testsuite/a/test_a.py").write_text("def test_one(): pass\n")
     (tmp_path / "crissp/testsuite/b/test_b.py").write_text("def test_two(): pass\n")
-    (tmp_path / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "P", "steps": [
-        {"key": "a", "label": "A", "dir": ".", "run": "covered crissp/testsuite/a", "tests": ["crissp/testsuite/a"]},
-        {"key": "b", "label": "B", "dir": ".", "run": "pytest crissp/testsuite/b", "tests": ["crissp/testsuite/b"]}]}))
+    (tmp_path / "crissp/testsuite/suites.json").write_text(
+        json.dumps(
+            {
+                "product": "P",
+                "steps": [
+                    {
+                        "key": "a",
+                        "label": "A",
+                        "dir": ".",
+                        "run": "covered crissp/testsuite/a",
+                        "tests": ["crissp/testsuite/a"],
+                    },
+                    {
+                        "key": "b",
+                        "label": "B",
+                        "dir": ".",
+                        "run": "pytest crissp/testsuite/b",
+                        "tests": ["crissp/testsuite/b"],
+                    },
+                ],
+            }
+        )
+    )
     data = {"changes": [{"tests": ["test_a::test_one", "test_b::test_two", "test_c"]}]}
     assert unreported(tmp_path, data) == ["test_b::test_two"]

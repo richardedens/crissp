@@ -17,14 +17,26 @@ spec = importlib.util.spec_from_file_location("run_under_test", LIB / "run.py")
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-CONF = {"product": "Shop", "steps": [
-    {"key": "unit", "label": "Unit tests", "dir": "app", "seconds": 3, "gate": True, "sources": ["app/shop"],
-     "omit": ["*/tests/*"], "fail_under": 100,
-     "run": 'echo "in $(basename "$PWD") for $STEP"; echo "$COVERAGE_SOURCES|$COVERAGE_OMIT|$COVERAGE_FAIL_UNDER"; '
-            'echo "$JUNIT $COVERAGE_JSON"; type covered | head -1; [ -z "${UNIT_FAILS:-}" ]'},
-    {"key": "lint", "label": "Lint", "run": 'echo "lint: ${COVERAGE_SOURCES:-none}"'},
-    {"key": "build", "label": "Build", "run": "echo built", "full_only": True},
-    {"key": "elsewhere", "label": "In a folder that is gone", "dir": "gone", "run": "true", "full_only": True}]}
+CONF = {
+    "product": "Shop",
+    "steps": [
+        {
+            "key": "unit",
+            "label": "Unit tests",
+            "dir": "app",
+            "seconds": 3,
+            "gate": True,
+            "sources": ["app/shop"],
+            "omit": ["*/tests/*"],
+            "fail_under": 100,
+            "run": 'echo "in $(basename "$PWD") for $STEP"; echo "$COVERAGE_SOURCES|$COVERAGE_OMIT|$COVERAGE_FAIL_UNDER"; '
+            'echo "$JUNIT $COVERAGE_JSON"; type covered | head -1; [ -z "${UNIT_FAILS:-}" ]',
+        },
+        {"key": "lint", "label": "Lint", "run": 'echo "lint: ${COVERAGE_SOURCES:-none}"'},
+        {"key": "build", "label": "Build", "run": "echo built", "full_only": True},
+        {"key": "elsewhere", "label": "In a folder that is gone", "dir": "gone", "run": "true", "full_only": True},
+    ],
+}
 
 
 @pytest.fixture
@@ -55,10 +67,17 @@ def test_the_full_run_runs_every_step_in_its_folder_and_writes_what_it_proved(sh
     out = capsys.readouterr().out
     assert "▸ Unit tests" in out and "passed (" in out and "▸ In a folder that is gone" in out and "failed (" in out
     r = results(shop)
-    assert json.loads((r / "steps.json").read_text()) == {"unit": "passed", "gate": "passed", "lint": "passed",
-                                                          "build": "passed", "elsewhere": "failed"}
+    assert json.loads((r / "steps.json").read_text()) == {
+        "unit": "passed",
+        "gate": "passed",
+        "lint": "passed",
+        "build": "passed",
+        "elsewhere": "failed",
+    }
     rows = [json.loads(line) for line in (r / "steps.jsonl").read_text().splitlines()]
-    assert [x["key"] for x in rows] == ["unit", "gate", "lint", "build", "elsewhere"] and rows[0]["label"] == "Unit tests"
+    assert [x["key"] for x in rows] == ["unit", "gate", "lint", "build", "elsewhere"] and rows[0][
+        "label"
+    ] == "Unit tests"
     unit = (r / "unit.log").read_text().splitlines()
     assert unit[0] == "in app for unit"
     assert unit[1] == f"{shop / 'app/shop'}|*/tests/*|100"  # what coverage measures, from the configuration
@@ -71,7 +90,11 @@ def test_the_full_run_runs_every_step_in_its_folder_and_writes_what_it_proved(sh
 def test_a_quick_run_leaves_out_the_full_run_only_steps_and_a_red_step_is_red(shop, monkeypatch, capsys):
     monkeypatch.setenv("UNIT_FAILS", "1")
     assert run.main(["run.py", "--quick"], shop, gate_stand_in) == 1
-    assert json.loads((results(shop) / "steps.json").read_text()) == {"unit": "failed", "gate": "passed", "lint": "passed"}
+    assert json.loads((results(shop) / "steps.json").read_text()) == {
+        "unit": "failed",
+        "gate": "passed",
+        "lint": "passed",
+    }
 
 
 def test_the_steps_a_change_touches_and_only_those(shop, capsys):
@@ -81,7 +104,9 @@ def test_the_steps_a_change_touches_and_only_those(shop, capsys):
     assert run.main(["run.py", "--quick", "lint"], shop, gate_stand_in) == 0
     r = results(shop)
     assert json.loads((r / "steps.json").read_text()) == {"lint": "passed"}
-    assert (r / "unit.log").read_text() == "old" and (r / "gate.json").read_text() == "old"  # another step's results stay
+    assert (r / "unit.log").read_text() == "old" and (
+        r / "gate.json"
+    ).read_text() == "old"  # another step's results stay
     assert run.main(["run.py", "--quick", "unit", "gate", "build"], shop, gate_stand_in) == 0
     assert list(json.loads((r / "steps.json").read_text())) == ["unit", "gate", "build"]  # run order, not asked order
     assert not (r / "coverage-unit.json").exists() and not (r / "gate.json").exists()  # cleared before the step ran
@@ -107,25 +132,43 @@ def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $*" >> "$RESULTS/calls"\n[ "$*" != "${FAIL_ON:-}" ]\n')
     (bin_ / "py").chmod(0o755)
-    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
-           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s", "COVERAGE_OMIT": "*/t/*",
-           "COVERAGE_FAIL_UNDER": "100"}
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "PY": str(bin_ / "py"),
+        "RESULTS": str(tmp_path),
+        "STEP": "unit",
+        "JUNIT": "J.xml",
+        "COVERAGE_JSON": "C.json",
+        "COVERAGE_SOURCES": "/s",
+        "COVERAGE_OMIT": "*/t/*",
+        "COVERAGE_FAIL_UNDER": "100",
+    }
     rc = tmp_path / "coverage-unit.rc"
     assert subprocess.run(["bash", "-c", "covered tests -k x"], env=env, check=False).returncode == 0
     assert (tmp_path / "calls").read_text().splitlines() == [
         f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests -k x",
-        f"py -m coverage combine --rcfile={rc} -q", f"py -m coverage json --rcfile={rc} -q -o C.json",
-        f"py -m coverage report --rcfile={rc} --show-missing --fail-under=100"]
-    assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
-                              "disable_warnings = no-data-collected\nsource = /s\nomit = */t/*\n")
+        f"py -m coverage combine --rcfile={rc} -q",
+        f"py -m coverage json --rcfile={rc} -q -o C.json",
+        f"py -m coverage report --rcfile={rc} --show-missing --fail-under=100",
+    ]
+    assert rc.read_text() == (
+        "[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
+        "disable_warnings = no-data-collected\nsource = /s\nomit = */t/*\n"
+    )
     below = {**env, "FAIL_ON": f"-m coverage report --rcfile={rc} --show-missing --fail-under=100"}
-    assert subprocess.run(["bash", "-c", "covered tests"], env=below, check=False).returncode == 1  # under fail_under: red
+    assert (
+        subprocess.run(["bash", "-c", "covered tests"], env=below, check=False).returncode == 1
+    )  # under fail_under: red
     red = {**env, "FAIL_ON": f"-m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml"}
     assert subprocess.run(["bash", "-c", "covered"], env=red, check=False).returncode == 1  # a red test is red
     plain = {k: v for k, v in env.items() if not k.startswith("COVERAGE_") or k == "COVERAGE_JSON"}
     (tmp_path / "calls").unlink()
     assert subprocess.run(["bash", "-c", "covered"], env=plain, check=False).returncode == 0
-    assert rc.read_text() == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
+    assert (
+        rc.read_text()
+        == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
+    )
 
 
 def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
@@ -133,9 +176,14 @@ def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
     (tmp_path / "crissp/testsuite").mkdir(parents=True)
     (tmp_path / "crissp/testsuite/suites.json").write_text('{"audit": {"missing": "skip", "fs": ["app/backend"]}}')
     # F-106: the python running the tests first, as a terminal with crissp has it: a Mac's /usr/bin/python3 is 3.9
-    env = {"PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"),
-           "CRISSP_ROOT": str(tmp_path)}
-    done = subprocess.run(["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path, check=False)
+    env = {
+        "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "CRISSP_ROOT": str(tmp_path),
+    }
+    done = subprocess.run(
+        ["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path, check=False
+    )
     assert done.returncode == 0, done.stdout + done.stderr
     assert "not there yet, not scanned: app/backend" in done.stdout
     assert (tmp_path / "crissp/testsuite/results/audit.json").is_file()
@@ -148,8 +196,13 @@ def test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwor
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n')
     (bin_ / "py").chmod(0o755)
-    done = subprocess.run(["bash", "-c", "ruff_check ."], capture_output=True, text=True, check=False,
-                          env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")})
+    done = subprocess.run(
+        ["bash", "-c", "ruff_check ."],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")},
+    )
     argv = done.stdout.splitlines()
     assert argv[:5] == ["-m", "ruff", "check", "--no-cache", "--extend-select"] and argv[5] == "S" and argv[-1] == "."
     ignores = {argv[i + 1] for i, a in enumerate(argv) if a == "--extend-per-file-ignores"}
@@ -162,8 +215,13 @@ def test_without_py_it_runs_the_pinned_tools_with_uv(tmp_path):
     bin_.mkdir()
     (bin_ / "uv").write_text('#!/usr/bin/env bash\necho "uv $*"\n')
     (bin_ / "uv").chmod(0o755)
-    done = subprocess.run(["bash", "-c", "py -m coverage --version"], capture_output=True, text=True, check=False,
-                          env={"PATH": f"{bin_}:/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "TOOLS": "/t/req.txt"})
+    done = subprocess.run(
+        ["bash", "-c", "py -m coverage --version"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": f"{bin_}:/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "TOOLS": "/t/req.txt"},
+    )
     assert done.stdout == "uv run --quiet --no-project --with-requirements /t/req.txt python -m coverage --version\n"
 
 
@@ -188,9 +246,19 @@ def test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so(shop, cap
     monkeypatch.setattr(run.workers, "machine", lambda: MACHINE)
     monkeypatch.setenv("WORKERS", "99")  # never inherited from the shell
     monkeypatch.delenv("CRISSP_WORKERS", raising=False)
-    conf = {"steps": [{"key": "unit", "label": "Unit tests", "dir": "app", "parallel": True, "tests": ["app/tests"],
-                       "run": 'echo "workers=$WORKERS ($WORKERS_WHY)"'},
-                      {"key": "lint", "label": "Lint", "run": 'echo "workers=${WORKERS:-none}"'}]}
+    conf = {
+        "steps": [
+            {
+                "key": "unit",
+                "label": "Unit tests",
+                "dir": "app",
+                "parallel": True,
+                "tests": ["app/tests"],
+                "run": 'echo "workers=$WORKERS ($WORKERS_WHY)"',
+            },
+            {"key": "lint", "label": "Lint", "run": 'echo "workers=${WORKERS:-none}"'},
+        ]
+    }
     (shop / "crissp/testsuite/suites.json").write_text(json.dumps(conf))
     for name in ("test_a.py", "test_b.py", "test_c.py"):
         (shop / "app" / "tests").mkdir(exist_ok=True)
@@ -204,7 +272,9 @@ def test_a_parallel_step_gets_the_workers_this_machine_has_and_says_so(shop, cap
     out = capsys.readouterr().out
     assert ", 3 workers)" in out and out.count("workers)") == 1  # only the parallel step names its workers
     r = results(shop)
-    assert (r / "unit.log").read_text() == "workers=3 (3 test files)\n" and (r / "lint.log").read_text() == "workers=none\n"
+    assert (r / "unit.log").read_text() == "workers=3 (3 test files)\n" and (
+        r / "lint.log"
+    ).read_text() == "workers=none\n"
     rows = [json.loads(line) for line in (r / "steps.jsonl").read_text().splitlines()]
     assert rows[0]["workers"] == 3 and rows[0]["workers_why"] == "3 test files" and "workers" not in rows[1]
     monkeypatch.setenv("CRISSP_WORKERS", "1")
@@ -216,22 +286,36 @@ def test_covered_spreads_a_parallel_step_over_its_workers_and_combines_their_cov
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $*" >> "$RESULTS/calls"\n')
     (bin_ / "py").chmod(0o755)
-    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
-           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "COVERAGE_SOURCES": "/s,/t",
-           "COVERAGE_OMIT": "*/t/*", "WORKERS": "3"}
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "PY": str(bin_ / "py"),
+        "RESULTS": str(tmp_path),
+        "STEP": "unit",
+        "JUNIT": "J.xml",
+        "COVERAGE_JSON": "C.json",
+        "COVERAGE_SOURCES": "/s,/t",
+        "COVERAGE_OMIT": "*/t/*",
+        "WORKERS": "3",
+    }
     assert subprocess.run(["bash", "-c", "covered tests"], env=env, check=False).returncode == 0
     rc = tmp_path / "coverage-unit.rc"
     assert (tmp_path / "calls").read_text().splitlines() == [
         f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider -n 3 --dist loadfile --junitxml=J.xml tests",
-        f"py -m coverage combine --rcfile={rc} -q", f"py -m coverage json --rcfile={rc} -q -o C.json",
-        f"py -m coverage report --rcfile={rc} --show-missing"]
-    assert rc.read_text() == ("[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
-                              "disable_warnings = no-data-collected\nsource = /s,/t\nomit = */t/*\n")
+        f"py -m coverage combine --rcfile={rc} -q",
+        f"py -m coverage json --rcfile={rc} -q -o C.json",
+        f"py -m coverage report --rcfile={rc} --show-missing",
+    ]
+    assert rc.read_text() == (
+        "[run]\nbranch = true\nparallel = true\npatch = subprocess\n"
+        "disable_warnings = no-data-collected\nsource = /s,/t\nomit = */t/*\n"
+    )
     (tmp_path / "calls").unlink()
     one = {**env, "WORKERS": "1"}  # one worker: no xdist, coverage measured the same way
     assert subprocess.run(["bash", "-c", "covered tests"], env=one, check=False).returncode == 0
-    assert (tmp_path / "calls").read_text().splitlines()[0] == \
-        f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
+    assert (tmp_path / "calls").read_text().splitlines()[
+        0
+    ] == f"py -m coverage run --rcfile={rc} -m pytest -q -p no:cacheprovider --junitxml=J.xml tests"
 
 
 def test_the_pinned_tools_carry_pytest_xdist():
@@ -257,9 +341,17 @@ def test_covered_loads_the_timing_plugin_when_the_run_names_it(tmp_path):  # E1-
     bin_.mkdir()
     (bin_ / "py").write_text('#!/usr/bin/env bash\necho "py $* PYTHONPATH=$PYTHONPATH" >> "$RESULTS/calls"\n')
     (bin_ / "py").chmod(0o755)
-    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py"), "RESULTS": str(tmp_path),
-           "STEP": "unit", "JUNIT": "J.xml", "COVERAGE_JSON": "C.json", "CRISSP_PLUGINS": "/engine/plugins",
-           "PYTHONPATH": "/theirs"}
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "PY": str(bin_ / "py"),
+        "RESULTS": str(tmp_path),
+        "STEP": "unit",
+        "JUNIT": "J.xml",
+        "COVERAGE_JSON": "C.json",
+        "CRISSP_PLUGINS": "/engine/plugins",
+        "PYTHONPATH": "/theirs",
+    }
     assert subprocess.run(["bash", "-c", "covered tests"], env=env, check=False).returncode == 0
     first = (tmp_path / "calls").read_text().splitlines()[0]
     assert "-m pytest -q -p no:cacheprovider -p crissp_timing --junitxml=J.xml tests" in first

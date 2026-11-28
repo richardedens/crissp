@@ -2,8 +2,8 @@
 
     python3 crissp/testsuite/lib/gate.py                      check the last run against the baseline; raise the baseline where
                                                        coverage went up (the ratchet); exit 1 on any drop
-    python3 crissp/testsuite/lib/gate.py --suites backend     only the suites that ran (crissp/check.sh runs what a change touches);
-                                                       the others keep their baseline as it is
+    python3 crissp/testsuite/lib/gate.py --suites backend     only the suites that ran (crissp/check.sh runs what a
+                                                       change touches); the others keep their baseline as it is
     python3 crissp/testsuite/lib/gate.py --accept "reason"    accept the current numbers as the new baseline, also where they went
                                                        down (e.g. tested code removed); the reason is kept in the baseline
 
@@ -24,7 +24,8 @@ Rules
   The changed lines come from `git diff -U0 -M <commit>` against the checked-out tree, the code coverage measured (in
   crissp/check.sh and crissp/check-all.sh that is exactly HEAD: they only run on committed code).
 - Only a green run (or --accept with a reason) moves the baseline: its numbers, and (when every suite was checked) its
-  commit; a run that moves no number leaves the file as it is. A run of some suites keeps the commit, so the next diff rule looks back at least as far: stricter, never laxer.
+  commit; a run that moves no number leaves the file as it is. A run of some suites keeps the commit, so the next diff
+  rule looks back at least as far: stricter, never laxer.
 
 Writes results/gate.json (everything above, for whoever reads it) and results/gate.log (what it printed).
 """
@@ -76,7 +77,7 @@ def files_of(key: str) -> list[Path]:
     """The Python files a suite measures, without what it leaves out."""
     out = []
     for src in SOURCES[key]:
-        for path in ([src] if src.is_file() else sorted(src.rglob("*.py"))):
+        for path in [src] if src.is_file() else sorted(src.rglob("*.py")):
             if not any(fnmatch.fnmatch(str(path), pattern) for pattern in OMIT.get(key, [])):
                 out.append(path)
     return out
@@ -103,11 +104,16 @@ def measure(key: str) -> dict | None:
     files = {}
     for name, f in data["files"].items():
         s = f["summary"]
-        files[name] = {"line": pct(s["covered_lines"], s["num_statements"]),
-                       "branch": pct(s.get("covered_branches", 0), s.get("num_branches", 0))}
+        files[name] = {
+            "line": pct(s["covered_lines"], s["num_statements"]),
+            "branch": pct(s.get("covered_branches", 0), s.get("num_branches", 0)),
+        }
     t = data["totals"]
-    return {"line": pct(t["covered_lines"], t["num_statements"]),
-            "branch": pct(t.get("covered_branches", 0), t.get("num_branches", 0)), "files": files}
+    return {
+        "line": pct(t["covered_lines"], t["num_statements"]),
+        "branch": pct(t.get("covered_branches", 0), t.get("num_branches", 0)),
+        "files": files,
+    }
 
 
 def pragmas(suites: list[str]) -> tuple[list[dict], list[dict]]:
@@ -128,8 +134,9 @@ def pragmas(suites: list[str]) -> tuple[list[dict], list[dict]]:
 
 
 def git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(ROOT), "-c", "core.quotePath=false", *args], capture_output=True,
-                          text=True, check=False)
+    return subprocess.run(
+        ["git", "-C", str(ROOT), "-c", "core.quotePath=false", *args], capture_output=True, text=True, check=False
+    )
 
 
 def head_commit() -> str | None:
@@ -165,16 +172,29 @@ def changed_lines(base: str, suites: list[str]) -> dict[str, set[int]]:
 def diff_coverage(base: str | None, suites: list[str] | None = None) -> dict:
     """Coverage of the lines (and the branches starting on them) changed since the baseline's commit."""
     suites = list(SOURCES) if suites is None else suites
-    result: dict = {"base": base, "skipped": None, "lines": 0, "covered_lines": 0, "branches": 0, "covered_branches": 0,
-                    "percent": 100.0, "uncovered": [], "files": {}}
+    result: dict = {
+        "base": base,
+        "skipped": None,
+        "lines": 0,
+        "covered_lines": 0,
+        "branches": 0,
+        "covered_branches": 0,
+        "percent": 100.0,
+        "uncovered": [],
+        "files": {},
+    }
     if not base:
-        result["skipped"] = "no baseline commit recorded yet (first run): the rule starts from the commit a green run records"
+        result["skipped"] = (
+            "no baseline commit recorded yet (first run): the rule starts from the commit a green run records"
+        )
         return result
     if head_commit() is None:
         result["skipped"] = "not a git checkout with a commit: the changed lines cannot be found"
         return result
     if git("cat-file", "-e", f"{base}^{{commit}}").returncode:
-        result["skipped"] = f"the baseline commit {base[:10]} is not in this checkout (history rewritten?): the rule cannot run"
+        result["skipped"] = (
+            f"the baseline commit {base[:10]} is not in this checkout (history rewritten?): the rule cannot run"
+        )
         return result
     try:
         changed = changed_lines(base, suites)
@@ -183,13 +203,19 @@ def diff_coverage(base: str | None, suites: list[str] | None = None) -> dict:
         return result
     reports = {key: report(key) for key in suites}
     for path, numbers in sorted(changed.items()):
-        key = next(k for k in suites for src in SOURCES[k]
-                   if path == str(src.relative_to(ROOT)) or path.startswith(str(src.relative_to(ROOT)) + "/"))
+        key = next(
+            k
+            for k in suites
+            for src in SOURCES[k]
+            if path == str(src.relative_to(ROOT)) or path.startswith(str(src.relative_to(ROOT)) + "/")
+        )
         if not path.endswith(".py") or reports[key] is None or (ROOT / path) not in files_of(key):
             continue  # not Python, left out (tests), or that suite measured nothing (the gate already says so)
         f = reports[key]["files"].get(path)
         if f is None:
-            result["uncovered"].append({"file": path, "line": min(numbers), "what": "changed, but not measured by coverage"})
+            result["uncovered"].append(
+                {"file": path, "line": min(numbers), "what": "changed, but not measured by coverage"}
+            )
             continue
         missing = set(f.get("missing_lines", []))
         executable = numbers & (set(f.get("executed_lines", [])) | missing)
@@ -198,8 +224,12 @@ def diff_coverage(base: str | None, suites: list[str] | None = None) -> dict:
         for src, dst in f.get("missing_branches", []):
             if src in numbers and src not in missing:  # an uncovered line is reported once, as a line
                 missed.setdefault(src, []).append(dst)
-        row = {"lines": len(executable), "covered_lines": len(executable - missing),
-               "branches": len(taken) + sum(len(d) for d in missed.values()), "covered_branches": len(taken)}
+        row = {
+            "lines": len(executable),
+            "covered_lines": len(executable - missing),
+            "branches": len(taken) + sum(len(d) for d in missed.values()),
+            "covered_branches": len(taken),
+        }
         if row["lines"] or row["branches"]:
             result["files"][path] = row
         for name, value in row.items():
@@ -208,7 +238,9 @@ def diff_coverage(base: str | None, suites: list[str] | None = None) -> dict:
             result["uncovered"].append({"file": path, "line": n, "what": "changed line not covered"})
         for n, dsts in sorted(missed.items()):
             to = ", ".join("the exit" if d < 0 else f"line {d}" for d in dsts)
-            result["uncovered"].append({"file": path, "line": n, "what": f"changed line: its branch to {to} is never taken"})
+            result["uncovered"].append(
+                {"file": path, "line": n, "what": f"changed line: its branch to {to} is never taken"}
+            )
     result["percent"] = pct(result["covered_lines"] + result["covered_branches"], result["lines"] + result["branches"])
     return result
 
@@ -237,25 +269,36 @@ def check(accept_reason: str | None = None, suites: list[str] | None = None) -> 
             old = before["files"].get(name)
             if old is None:
                 if cov["line"] < 100 or cov["branch"] < 100:
-                    problems.append(f"{key}: new file {name} is at {cov['line']:.1f}% lines / {cov['branch']:.1f}% branches "
-                                    "(new code: 100%)")
+                    problems.append(
+                        f"{key}: new file {name} is at {cov['line']:.1f}% lines / {cov['branch']:.1f}% branches "
+                        "(new code: 100%)"
+                    )
                 files[name] = cov
                 continue
             for metric in ("line", "branch"):
                 if cov[metric] + EPSILON < old[metric]:
                     problems.append(f"{key}: {name} {metric} coverage dropped {old[metric]:.1f}% → {cov[metric]:.1f}%")
             if cov["line"] > old["line"] + EPSILON or cov["branch"] > old["branch"] + EPSILON:
-                raised.append(f"{key}: {name} {old['line']:.1f}/{old['branch']:.1f} → {cov['line']:.1f}/{cov['branch']:.1f}")
+                raised.append(
+                    f"{key}: {name} {old['line']:.1f}/{old['branch']:.1f} → {cov['line']:.1f}/{cov['branch']:.1f}"
+                )
             files[name] = {m: max(cov[m], old[m]) for m in ("line", "branch")}
         for name in set(before["files"]) - set(now["files"]):
             files.pop(name, None)  # a removed file leaves the baseline
-        new_suites[key] = {"line": max(now["line"], before["line"]), "branch": max(now["branch"], before["branch"]),
-                           "files": files}
+        new_suites[key] = {
+            "line": max(now["line"], before["line"]),
+            "branch": max(now["branch"], before["branch"]),
+            "files": files,
+        }
     exceptions, bare = pragmas(suites)
-    problems += [f"{b['file']}:{b['line']}: '# pragma: no {b['kind']}' without a reason (write: # pragma: no {b['kind']} — why)"
-                 for b in bare]
+    problems += [
+        f"{b['file']}:{b['line']}: '# pragma: no {b['kind']}' without a reason (write: # pragma: no {b['kind']} — why)"
+        for b in bare
+    ]
     diff = diff_coverage(baseline.get("commit"), suites)
-    problems += [f"{u['file']}:{u['line']}: {u['what']} (new and changed code is fully covered)" for u in diff["uncovered"]]
+    problems += [
+        f"{u['file']}:{u['line']}: {u['what']} (new and changed code is fully covered)" for u in diff["uncovered"]
+    ]
     ok = not problems
     if ok or accept_reason:  # only a green run (or an explicit acceptance) moves the baseline
         history = baseline.get("accepted", [])
@@ -266,10 +309,15 @@ def check(accept_reason: str | None = None, suites: list[str] | None = None) -> 
         if commit:
             moved["commit"] = commit  # the diff rule of the next run starts here
         # Only what moves is written: no baseline yet, an acceptance, a number that changed, or a commit the diff rule
-        # needs (none recorded yet, or one this checkout no longer knows). A run that moves no number keeps the file as it is (its older commit makes the next diff rule look back
-        # further: stricter, never laxer), so a green run never asks for a commit that only records a hash.
-        if (not BASELINE.exists() or accept_reason or new_suites != baseline.get("suites", {})
-                or (commit and diff["skipped"] and commit != baseline.get("commit"))):  # none recorded, or one git lost
+        # needs (none recorded yet, or one this checkout no longer knows). A run that moves no number keeps the file as
+        # it is (its older commit makes the next diff rule look back further: stricter, never laxer), so a green run
+        # never asks for a commit that only records a hash.
+        if (
+            not BASELINE.exists()
+            or accept_reason
+            or new_suites != baseline.get("suites", {})
+            or (commit and diff["skipped"] and commit != baseline.get("commit"))
+        ):  # none recorded, or one git lost
             BASELINE.write_text(json.dumps(moved, indent=1, sort_keys=True) + "\n")
     out: list[str] = [f"✗ {p}" for p in problems]
     if raised:
@@ -277,13 +325,26 @@ def check(accept_reason: str | None = None, suites: list[str] | None = None) -> 
     if diff["skipped"]:
         out.append(f"diff coverage: skipped: {diff['skipped']}")
     else:
-        out.append(f"diff coverage since {diff['base'][:10]}: {diff['covered_lines']}/{diff['lines']} changed lines and "
-                   f"{diff['covered_branches']}/{diff['branches']} branches covered ({diff['percent']:.1f}%)")
+        out.append(
+            f"diff coverage since {diff['base'][:10]}: {diff['covered_lines']}/{diff['lines']} changed lines and "
+            f"{diff['covered_branches']}/{diff['branches']} branches covered ({diff['percent']:.1f}%)"
+        )
     out.append("coverage gate: " + ("accepted: " + accept_reason if accept_reason else ("green" if ok else "RED")))
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / "gate.json").write_text(json.dumps({"ok": ok or bool(accept_reason), "suites": suites, "problems": problems,
-                                                     "raised": raised, "exceptions": exceptions,
-                                                     "accepted": baseline.get("accepted", []), "diff": diff}, indent=1))
+    (RESULTS / "gate.json").write_text(
+        json.dumps(
+            {
+                "ok": ok or bool(accept_reason),
+                "suites": suites,
+                "problems": problems,
+                "raised": raised,
+                "exceptions": exceptions,
+                "accepted": baseline.get("accepted", []),
+                "diff": diff,
+            },
+            indent=1,
+        )
+    )
     (RESULTS / "gate.log").write_text("\n".join(out) + "\n")
     print("\n".join(out))
     return 0 if ok or accept_reason else 1

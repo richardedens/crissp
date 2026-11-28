@@ -29,19 +29,36 @@ setTimeout(() => console.log(JSON.stringify({view: els["#view"].innerHTML, stamp
 def render(data, ok: bool = True) -> dict:
     if not shutil.which("node"):
         pytest.skip("no node on this machine")
-    done = subprocess.run(["node", "-e", STAND_IN % ("true" if ok else "false", json.dumps(json.dumps(data)),
-                                                     json.dumps(str(PAGE)))],
-                          capture_output=True, text=True, timeout=30, check=False)
+    done = subprocess.run(
+        ["node", "-e", STAND_IN % ("true" if ok else "false", json.dumps(json.dumps(data)), json.dumps(str(PAGE)))],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout)
 
 
 def data() -> dict:
-    found = [stages.stage("discover", "work", "Not looked at yet.", ["Walk home: no round yet"],
-                           [{"label": "Start a round on “Home”", "kind": "round", "walk": "home"}]),
-             stages.stage("plan", "yours", "1 open decision waits for you.", [f"F-{n} <b>x</b>" for n in range(8)]),
-             *(stages.stage(k, "clear", "Nothing.") for k in ("build", "verify", "review", "release"))]
-    return {"product": "Shop", "monogram": "S", "current": "plan", "why": "1 open decision waits for you.", "stages": found}
+    found = [
+        stages.stage(
+            "discover",
+            "work",
+            "Not looked at yet.",
+            ["Walk home: no round yet"],
+            [{"label": "Start a round on “Home”", "kind": "round", "walk": "home"}],
+        ),
+        stages.stage("plan", "yours", "1 open decision waits for you.", [f"F-{n} <b>x</b>" for n in range(8)]),
+        *(stages.stage(k, "clear", "Nothing.") for k in ("build", "verify", "review", "release")),
+    ]
+    return {
+        "product": "Shop",
+        "monogram": "S",
+        "current": "plan",
+        "why": "1 open decision waits for you.",
+        "stages": found,
+    }
 
 
 def test_the_page_says_where_the_work_is_and_every_stage_with_whose_move_it_is():
@@ -52,7 +69,9 @@ def test_the_page_says_where_the_work_is_and_every_stage_with_whose_move_it_is()
     names = ["Discover", "Plan", "Build", "Verify", "Review", "Release"]
     assert [view.index(f"<h3>{n}</h3>") for n in names] == sorted(view.index(f"<h3>{n}</h3>") for n in names)
     assert view.count('class="card stage on"') == 1 and 'id="plan"' in view.split('class="card stage on"')[1][:20]
-    assert '<span class="badge yours">waits for you</span>' in view and '<span class="badge passed">clear</span>' in view
+    assert (
+        '<span class="badge yours">waits for you</span>' in view and '<span class="badge passed">clear</span>' in view
+    )
     assert "&lt;b&gt;x&lt;/b&gt;" in view and "<b>x</b>" not in view  # what the backlog says is text, never markup
     assert "and 2 more" in view  # eight findings: six shown
 

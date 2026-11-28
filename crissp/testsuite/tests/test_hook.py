@@ -12,21 +12,32 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
 import hook
 
-GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.org", "GIT_COMMITTER_NAME": "t",
-           "GIT_COMMITTER_EMAIL": "t@example.org", "PATH": "/usr/bin:/bin"}
+GIT_ENV = {
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@example.org",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@example.org",
+    "PATH": "/usr/bin:/bin",
+}
 STEPS = [
     {"key": "backend", "label": "Backend", "dir": ".", "run": "echo backend-ran"},
     {"key": "backend-lint", "label": "Backend lint", "dir": ".", "run": "echo backend-lint-ran"},
     {"key": "lint", "label": "Lint", "dir": ".", "run": "echo lint-ran; ${LINT_FAILS:+false}"},
-    {"key": "frontend-lint", "label": "Frontend lint", "dir": "app/frontend", "run": "echo never",
-     "when": "app/frontend/package.json"},
+    {
+        "key": "frontend-lint",
+        "label": "Frontend lint",
+        "dir": "app/frontend",
+        "run": "echo never",
+        "when": "app/frontend/package.json",
+    },
     {"key": "linter-tests", "label": "Not a lint step", "dir": ".", "run": "echo linter-tests-ran"},
 ]
 
 
 def git(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False,
-                          env={**GIT_ENV, "HOME": str(root)})
+    return subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True, check=False, env={**GIT_ENV, "HOME": str(root)}
+    )
 
 
 @pytest.fixture
@@ -56,8 +67,11 @@ def test_a_red_lint_step_stops_the_commit_and_says_how_to_skip_it_once(shop, cap
 
 def test_the_step_helpers_and_pinned_tools_are_at_hand(shop):
     seen = {}
-    hook.run(shop, env={"PATH": "/usr/bin:/bin"}, runner=lambda cmd, cwd, env, check: seen.update(env=env, cwd=cwd)
-             or subprocess.CompletedProcess(cmd, 0))
+    hook.run(
+        shop,
+        env={"PATH": "/usr/bin:/bin"},
+        runner=lambda cmd, cwd, env, check: seen.update(env=env, cwd=cwd) or subprocess.CompletedProcess(cmd, 0),
+    )
     assert seen["env"]["BASH_ENV"] == str(hook.ENGINE / "steps.sh") and seen["env"]["TOOLS"] == str(hook.TOOLS)
     assert seen["env"]["CRISSP_ROOT"] == str(shop) and seen["cwd"] == shop
 
@@ -96,6 +110,7 @@ def test_hooks_a_project_already_has_are_never_switched_off(tmp_path):
 def test_without_git_installed_there_is_no_git(tmp_path, monkeypatch):
     def gone(*a, **k):
         raise FileNotFoundError("git")
+
     monkeypatch.setattr(hook.subprocess, "run", gone)
     assert hook.state(tmp_path) == "no-git"
 
@@ -114,16 +129,22 @@ def test_the_pre_commit_hook_runs_the_lint_and_blocks_a_red_commit(shop):
     (shop / ".githooks/pre-commit").chmod(0o755)
     engine = shop / "crissp/testsuite/lib"  # as in the framework's checkout: the engine is at hand
     engine.mkdir()
-    (engine / "hook.py").write_text("import sys\nprint('the engine hook ran')\nsys.exit(int(__import__('os').environ"
-                                    ".get('LINT_FAILS', '0')))\n")
+    (engine / "hook.py").write_text(
+        "import sys\nprint('the engine hook ran')\nsys.exit(int(__import__('os').environ.get('LINT_FAILS', '0')))\n"
+    )
     hook.turn_on(shop)
     git(shop, "add", "-A")
     done = git(shop, "commit", "-qm", "green")
     assert done.returncode == 0 and "the engine hook ran" in done.stdout + done.stderr
     (shop / "x").write_text("x")
     git(shop, "add", "x")
-    red = subprocess.run(["git", "-C", str(shop), "commit", "-qm", "red"], capture_output=True, text=True, check=False,
-                         env={**GIT_ENV, "HOME": str(shop), "LINT_FAILS": "1"})
+    red = subprocess.run(
+        ["git", "-C", str(shop), "commit", "-qm", "red"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**GIT_ENV, "HOME": str(shop), "LINT_FAILS": "1"},
+    )
     assert red.returncode != 0 and git(shop, "log", "--oneline").stdout.count("\n") == 1
 
 
@@ -137,16 +158,23 @@ def test_this_repository_has_the_templates_hook():
 def _hook_in(shop: Path, tmp_path: Path, tools: dict[str, str]) -> subprocess.CompletedProcess:
     """The template's hook in a project without the engine, with stand-ins for uvx and crissp on PATH."""
     git(shop, "init", "-q")
-    (shop / ".mcp.json").write_text(json.dumps({"mcpServers": {"crissp": {"command": "uvx",
-                                                                           "args": ["crissp==1.2.3", "mcp"]}}}))
+    (shop / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"crissp": {"command": "uvx", "args": ["crissp==1.2.3", "mcp"]}}})
+    )
     bin_ = tmp_path / "bin"
     bin_.mkdir()
     (bin_ / "python3").symlink_to(sys.executable)
     for name, body in tools.items():
         (bin_ / name).write_text(f"#!/bin/sh\n{body}\n")
         (bin_ / name).chmod(0o755)
-    return subprocess.run(["bash", str(hook.TEMPLATE / "githooks/pre-commit")], cwd=shop, capture_output=True,
-                          text=True, check=False, env={**GIT_ENV, "HOME": str(shop), "PATH": f"{bin_}:/usr/bin:/bin"})
+    return subprocess.run(
+        ["bash", str(hook.TEMPLATE / "githooks/pre-commit")],
+        cwd=shop,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**GIT_ENV, "HOME": str(shop), "PATH": f"{bin_}:/usr/bin:/bin"},
+    )
 
 
 def test_a_project_s_hook_runs_the_crissp_that_mcp_json_pins(shop, tmp_path):

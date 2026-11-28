@@ -40,8 +40,14 @@ def javascript() -> list[str]:
 
 
 def listed(kind: str) -> list[str]:
-    run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", kind], cwd=REPO, capture_output=True, text=True,
-                         check=False, env={"PATH": "/usr/bin:/bin", "CRISSP_ROOT": str(REPO)})
+    run = subprocess.run(
+        ["bash", str(LINT / "lint.sh"), "--list", kind],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": "/usr/bin:/bin", "CRISSP_ROOT": str(REPO)},
+    )
     assert run.returncode == 0, run.stderr
     return sorted(run.stdout.split())
 
@@ -52,11 +58,22 @@ def test_this_repository_has_a_lint_step_with_its_own_dev_only_tools():
     assert lint["run"] == "crissp/testsuite/lint/lint.sh" and not lint["full_only"] and lint["tests"] == []
     package = json.loads((LINT / "package.json").read_text())
     assert package["private"] is True
-    assert set(package["devDependencies"]) == {"eslint", "@eslint/js", "globals", "stylelint", "stylelint-config-recommended"}
+    assert set(package["devDependencies"]) == {
+        "eslint",
+        "@eslint/js",
+        "globals",
+        "stylelint",
+        "stylelint-config-recommended",
+    }
     assert all(v[0].isdigit() for v in package["devDependencies"].values()), "pinned, exact versions"
     assert (LINT / "package-lock.json").is_file() and (LINT / "eslint.config.js").is_file()
-    assert [line for line in (LINT / "requirements.txt").read_text().splitlines() if line and not line.startswith("#")] \
-        and all("==" in line for line in (LINT / "requirements.txt").read_text().splitlines() if line and not line.startswith("#"))
+    assert [
+        line for line in (LINT / "requirements.txt").read_text().splitlines() if line and not line.startswith("#")
+    ] and all(
+        "==" in line
+        for line in (LINT / "requirements.txt").read_text().splitlines()
+        if line and not line.startswith("#")
+    )
 
 
 def test_the_lint_tools_are_never_in_the_wheel_and_their_versions_are_audited():
@@ -73,15 +90,23 @@ def test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repo
 
 def test_a_change_to_a_linted_file_runs_the_lint_step():
     conf = project.load(REPO)
-    for f in shell_scripts() + javascript() + ["crissp/testsuite/lint/eslint.config.js",
-                                               "crissp/testsuite/lint/package-lock.json"]:
+    for f in (
+        shell_scripts()
+        + javascript()
+        + ["crissp/testsuite/lint/eslint.config.js", "crissp/testsuite/lint/package-lock.json"]
+    ):
         kind, detail = impact.classify(f, conf)
         assert kind == "full" or (kind == "suites" and "lint" in detail), (f, kind, detail)
     # every part's change is also scanned for secrets, and its code for unsafe code (F-43, F-44)
-    assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == ("suites", ("tools", "lint", "secrets", "sast"))
+    assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == (
+        "suites",
+        ("tools", "lint", "secrets", "sast"),
+    )
     assert impact.classify("crissp/testsuite/lint/eslint.config.js", conf) == ("suites", ("lint", "secrets"))
-    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == ("suites",
-                                                                       ("tools", "python-lint", "secrets", "sast"))
+    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == (
+        "suites",
+        ("tools", "python-lint", "secrets", "sast"),
+    )
 
 
 def test_ci_sets_up_node_and_runs_the_lint_step():
@@ -92,8 +117,9 @@ def test_ci_sets_up_node_and_runs_the_lint_step():
 
 
 def test_the_lint_script_says_how_to_use_it():
-    run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True,
-                         check=False)
+    run = subprocess.run(
+        ["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True, check=False
+    )
     assert run.returncode == 2 and "usage" in run.stderr
 
 
@@ -101,6 +127,7 @@ def test_every_bash_script_runs_on_the_bash_a_mac_ships():
     """F-107: a Mac's /bin/bash is 3.2, and a tool started from a desktop app (Vibe's MCP server, an editor) finds that
     one first: lint.sh's mapfile was "command not found" there and the lint step went red. No bash 4 builtins."""
     import re
+
     bash4 = re.compile(r"^\s*(mapfile|readarray)\b|\bdeclare -A\b|\$\{\w+(,,|\^\^)\}", re.MULTILINE)
     used = [f for f in shell_scripts() if bash4.search((REPO / f).read_text(encoding="utf-8", errors="replace"))]
     assert used == []
@@ -117,8 +144,10 @@ def test_the_step_lints_every_css_file_of_this_repository_with_stylelint():
     config = (LINT / "stylelint.config.mjs").read_text()
     assert '"stylelint-config-recommended"' in config  # likely mistakes; the layout stays as written
     lock = json.loads((LINT / "package-lock.json").read_text())["packages"]
-    assert lock["node_modules/stylelint"]["version"] == json.loads((LINT / "package.json").read_text())[
-        "devDependencies"]["stylelint"]
+    assert (
+        lock["node_modules/stylelint"]["version"]
+        == json.loads((LINT / "package.json").read_text())["devDependencies"]["stylelint"]
+    )
     script = (LINT / "lint.sh").read_text()
     assert "== stylelint (every CSS file)" in script and 'bad "stylelint"' in script
     conf = project.load(REPO)

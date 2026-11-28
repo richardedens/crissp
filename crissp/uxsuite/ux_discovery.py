@@ -18,11 +18,20 @@ from ux_config import Suite
 
 def screens_for_a_run(suite: Suite, m: dict) -> list[dict]:
     """The map's screens as a run reads them: each picture as a file it can open."""
+
     def file(url: str) -> str:
         return str(suite.results / url.removeprefix("/ux/results/"))
-    return [{"key": s["key"], "title": s["title"], "area": s["area"], "gaps": s["gaps"],
-             "pictures": [{"device": p["device"], "source": p["source"], "file": file(p["url"])} for p in s["shots"]]}
-            for s in m["screens"]]
+
+    return [
+        {
+            "key": s["key"],
+            "title": s["title"],
+            "area": s["area"],
+            "gaps": s["gaps"],
+            "pictures": [{"device": p["device"], "source": p["source"], "file": file(p["url"])} for p in s["shots"]],
+        }
+        for s in m["screens"]
+    ]
 
 
 def brief(need: dict, names: dict[str, str]) -> str:
@@ -44,9 +53,12 @@ def design_request(suite: Suite, conf: dict, need_id: str, need: dict) -> str:
         n += 1
         name = f"{base}-{n}"
     start = next((s for s in need.get("screens") or [] if isinstance(s, str) and s.startswith("/")), "/")
-    walk = {"title": str(need.get("title") or "A need from discovery").strip(), "need": need_id,
-            "brief": brief(need, {p["key"]: p["name"] for p in conf["personas"]}),
-            "steps": [{"do": "goto", "path": start}, {"do": "shot", "title": str(need.get("title") or "The screen")}]}
+    walk = {
+        "title": str(need.get("title") or "A need from discovery").strip(),
+        "need": need_id,
+        "brief": brief(need, {p["key"]: p["name"] for p in conf["personas"]}),
+        "steps": [{"do": "goto", "path": start}, {"do": "shot", "title": str(need.get("title") or "The screen")}],
+    }
     (suite.here / "walks").mkdir(parents=True, exist_ok=True)
     (suite.here / "walks" / f"{name}.json").write_text(json.dumps(walk, ensure_ascii=False, indent=1) + "\n")
     return name
@@ -58,6 +70,7 @@ def approved(suite: Suite, conf: dict, need_id: str, need: dict) -> dict:
     conf = {**conf, "walks": {**conf["walks"]}}
     if walk not in conf["walks"]:
         import ux_config
+
         conf["walks"][walk] = ux_config.walk(suite.here / "walks" / f"{walk}.json")
     try:
         return {"walk": walk, **ux_team.request(suite, conf, "proposal", walk, "")}

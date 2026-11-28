@@ -60,8 +60,13 @@ def test_this_projects_dashboard_is_reused(tmp_path):
         httpd.shutdown()
 
 
-@pytest.mark.parametrize("answer, whose", [({"stamp": 1.0, "root": "/elsewhere/shop"}, "/elsewhere/shop"),
-                                           ({"stamp": 1.0}, "a project that does not say which")])
+@pytest.mark.parametrize(
+    "answer, whose",
+    [
+        ({"stamp": 1.0, "root": "/elsewhere/shop"}, "/elsewhere/shop"),
+        ({"stamp": 1.0}, "a project that does not say which"),
+    ],
+)
 def test_another_projects_dashboard_is_left_alone_and_the_next_port_taken(tmp_path, answer, whose):
     httpd, port = listen(answer)
     try:

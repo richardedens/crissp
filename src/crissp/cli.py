@@ -4,8 +4,9 @@
                               bring this folder in: git init when it is no repository yet, then the agreement, the
                               backlog, the configuration and the deploy template; never overwrites, never commits.
                               Also writes .vibe/config.toml (the crissp MCP server for Mistral Vibe, pinned like
-                              .mcp.json, naming this folder; not in git, F-100) and, when Vibe is installed (VIBE_HOME or ~/.vibe), asks to add this
-                              folder to its trusted_folders.toml (--yes: adds it; F-24, F-28). Writes
+                              .mcp.json, naming this folder; not in git, F-100) and, when Vibe is installed (VIBE_HOME or
+                              ~/.vibe), asks to add this folder to its trusted_folders.toml (--yes: adds it; F-24,
+                              F-28). Writes
                               .githooks/pre-commit and sets core.hooksPath, unless the repository has hooks of its
                               own (F-50)
     crissp check [--plan]     test what changed since the last green state (crissp/check.sh)
@@ -85,8 +86,13 @@ def plan_init(root: Path, values: dict, deploy: bool) -> list[tuple[Path, Path, 
     files.append((TEMPLATE / "mcp.json", root / ".mcp.json", True))
     files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24/F-100: Vibe's MCP
     files.append((TEMPLATE / "githooks" / "pre-commit", root / ".githooks" / "pre-commit", False))  # F-50: the lint
-    files.append((TEMPLATE / "agents" / "skills" / "crissp" / "SKILL.md", root / ".agents" / "skills" / "crissp" / "SKILL.md",
-                  False))  # F-111: the crissp skill, for an agent that reads .agents/skills (Vibe)
+    files.append(
+        (
+            TEMPLATE / "agents" / "skills" / "crissp" / "SKILL.md",
+            root / ".agents" / "skills" / "crissp" / "SKILL.md",
+            False,
+        )
+    )  # F-111: the crissp skill, for an agent that reads .agents/skills (Vibe)
     tree(TEMPLATE / "crissp", root / "crissp")
     files.append((ENGINE / "CRISSP.md", root / "crissp" / "CRISSP.md", False))
     if deploy:
@@ -129,15 +135,21 @@ def vibe_note(root: Path, env: dict, confirm=lambda question: True) -> str:
     if home.is_dir():
         question = f"Trust {root} in Vibe ({home / vibe.FILE}), so Vibe loads .vibe/config.toml? [Y/n] "
         if vibe.state(home, root) == "absent" and not confirm(question):
-            return (f"Vibe on {system()}: {root} not trusted, as you chose; 'crissp repair --yes' or vibe itself "
-                    "trusts it later.")
+            return (
+                f"Vibe on {system()}: {root} not trusted, as you chose; 'crissp repair --yes' or vibe itself "
+                "trusts it later."
+            )
         return f"Vibe on {system()}: {vibe.trust(home, root)}"
     on = shutil.which("vibe")
     if on:
-        return (f"Vibe on {system()}: vibe is at {on}, but {home} does not exist yet; start vibe once, then "
-                "'crissp repair' trusts this folder. .vibe/config.toml is written either way.")
-    return (f"Vibe on {system()}: not installed; .vibe/config.toml is written, and 'crissp repair' trusts this "
-            "folder once Vibe is installed.")
+        return (
+            f"Vibe on {system()}: vibe is at {on}, but {home} does not exist yet; start vibe once, then "
+            "'crissp repair' trusts this folder. .vibe/config.toml is written either way."
+        )
+    return (
+        f"Vibe on {system()}: not installed; .vibe/config.toml is written, and 'crissp repair' trusts this "
+        "folder once Vibe is installed."
+    )
 
 
 def hook_note(root: Path) -> str:
@@ -155,11 +167,18 @@ def hook_note(root: Path) -> str:
 
 def init(root: Path, args, env: dict, out=None, ask=input) -> int:
     out = sys.stdout if out is None else out
-    values = {"PRODUCT": args.product or root.name, "OWNER": args.owner or "the product owner",
-              "REPOSITORY": root.name, "DATE": datetime.date.today().isoformat(), "VERSION": "0.1.0",
-              "CRISSP_VERSION": __version__}
+    values = {
+        "PRODUCT": args.product or root.name,
+        "OWNER": args.owner or "the product owner",
+        "REPOSITORY": root.name,
+        "DATE": datetime.date.today().isoformat(),
+        "VERSION": "0.1.0",
+        "CRISSP_VERSION": __version__,
+    }
     values |= vibe.fields(root, *vibe.server(root, __version__))  # F-100: .vibe/config.toml names this folder
-    if not args.yes and ask(f"Bring {root} in as {values['PRODUCT']} (C.R.I.S.S.P. {__version__})? [y/N] ").strip().lower() not in ("y", "yes"):
+    if not args.yes and ask(
+        f"Bring {root} in as {values['PRODUCT']} (C.R.I.S.S.P. {__version__})? [y/N] "
+    ).strip().lower() not in ("y", "yes"):
         print("Nothing changed.", file=out)
         return 1
     if not args.no_git and not (root / ".git").exists():
@@ -187,31 +206,45 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
     print(hook_note(root), file=out)
     print(vibe_note(root, env, confirm), file=out)  # F-24/F-25: Vibe loads project-local config only in trusted folders
     if windows():  # F-14: the guards are bash scripts; on native Windows they run inside WSL 2
-        print("Windows: crissp check, check-all, deploy, ux and dashboard are bash scripts — run them inside "
-              "WSL 2; the Vibe onboarding above works natively.", file=out)
-    print(f"C.R.I.S.S.P. {__version__} for {values['PRODUCT']}: {len(made)} made, {len(kept)} kept as they were.", file=out)
+        print(
+            "Windows: crissp check, check-all, deploy, ux and dashboard are bash scripts — run them inside "
+            "WSL 2; the Vibe onboarding above works natively.",
+            file=out,
+        )
+    print(
+        f"C.R.I.S.S.P. {__version__} for {values['PRODUCT']}: {len(made)} made, {len(kept)} kept as they were.",
+        file=out,
+    )
     for rel in made:
         print(f"  made  {rel}", file=out)
     for rel in kept:
         print(f"  kept  {rel}", file=out)
-    print("\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you, and first asks how many backends\n"
-          "and frontends the product has: a large one is better split into parts of its own), name the product's parts\n"
-          "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.\n"
-          "Every Claude or Vibe session then opens with the stage the work is in (Discover, Plan, Build, Verify,\n"
-          "Review, Release) and offers help with it; `crissp dashboard` shows the same on its Stages page.", file=out)
+    print(
+        "\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you, and first asks how many backends\n"
+        "and frontends the product has: a large one is better split into parts of its own), name the product's parts\n"
+        "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.\n"
+        "Every Claude or Vibe session then opens with the stage the work is in (Discover, Plan, Build, Verify,\n"
+        "Review, Release) and offers help with it; `crissp dashboard` shows the same on its Stages page.",
+        file=out,
+    )
     return 0
 
 
 def engine_env(root: Path, env: dict) -> dict:
     """The environment the engine's scripts run in: the project, and this Python first on PATH (they call python3)."""
-    return {**env, "CRISSP_ROOT": str(root), "CRISSP_COMMAND": "crissp",  # the guards then name `crissp …` (F-04)
-            "CRISSP_VERSION": __version__,  # crissp repair moves the .mcp.json pin to this version (F-20)
-            "PATH": os.pathsep.join([str(Path(sys.executable).parent), env.get("PATH", "")])}
+    return {
+        **env,
+        "CRISSP_ROOT": str(root),
+        "CRISSP_COMMAND": "crissp",  # the guards then name `crissp …` (F-04)
+        "CRISSP_VERSION": __version__,  # crissp repair moves the .mcp.json pin to this version (F-20)
+        "PATH": os.pathsep.join([str(Path(sys.executable).parent), env.get("PATH", "")]),
+    }
 
 
 def run_script(root: Path, name: str, argv: list[str], env: dict) -> int:
-    return subprocess.run(["bash", str(ENGINE / name), *argv], cwd=root, env=engine_env(root, env),
-                          check=False).returncode
+    return subprocess.run(
+        ["bash", str(ENGINE / name), *argv], cwd=root, env=engine_env(root, env), check=False
+    ).returncode
 
 
 def parser() -> argparse.ArgumentParser:
@@ -219,15 +252,20 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"crissp {__version__}")
     p.add_argument("--root", help="the project (default: CRISSP_ROOT or the nearest crissp project upwards)")
     sub = p.add_subparsers(dest="command", required=True)
-    i = sub.add_parser("init", help="bring this folder in (git init, agreement, backlog, configuration, deploy template)")
+    i = sub.add_parser(
+        "init", help="bring this folder in (git init, agreement, backlog, configuration, deploy template)"
+    )
     i.add_argument("--product", help="the product's name (default: the folder's name)")
     i.add_argument("--owner", help="the product owner's name")
     i.add_argument("--yes", action="store_true", help="do not ask")
     i.add_argument("--no-git", action="store_true", help="do not run git init")
     i.add_argument("--no-deploy", action="store_true", help="leave out the Helm chart and Terraform")
-    for name, help_ in (("check", "test what changed (--plan)"), ("check-all", "the full run"),
-                        ("deploy", "deploy behind the release gate (--plan, --cluster, --cluster-plan)"),
-                        ("ux", "the UX suite (--list, --status, --shoot, --map, --discover, --round, --propose)")):
+    for name, help_ in (
+        ("check", "test what changed (--plan)"),
+        ("check-all", "the full run"),
+        ("deploy", "deploy behind the release gate (--plan, --cluster, --cluster-plan)"),
+        ("ux", "the UX suite (--list, --status, --shoot, --map, --discover, --round, --propose)"),
+    ):
         sub.add_parser(name, help=help_, add_help=False)  # its options belong to the guard: passed on untouched
     sub.add_parser("dashboard", help="the Tests dashboard and the UX suite on 127.0.0.1")
     sub.add_parser("hook", help="the lint steps, as git runs them before every commit (.githooks/pre-commit)")
@@ -250,7 +288,7 @@ def split(argv: list[str]) -> tuple[list[str], list[str]]:
             i += 2
             continue
         if argv[i] in SCRIPTS:
-            return argv[:i + 1], argv[i + 1:]
+            return argv[: i + 1], argv[i + 1 :]
         i += 1
     return argv, []
 
@@ -265,14 +303,23 @@ def main(argv: list[str] | None = None, env: dict | None = None) -> int:
     if args.command == "dashboard":
         return run_script(root, "test.sh", ["--dashboard"], env)
     if args.command == "repair":
-        return subprocess.run([sys.executable, str(ENGINE / "testsuite" / "lib" / "repair.py"), *(["--yes"] if args.yes else [])],
-                              cwd=root, env=engine_env(root, env), check=False).returncode
+        return subprocess.run(
+            [sys.executable, str(ENGINE / "testsuite" / "lib" / "repair.py"), *(["--yes"] if args.yes else [])],
+            cwd=root,
+            env=engine_env(root, env),
+            check=False,
+        ).returncode
     if args.command == "hook":
-        return subprocess.run([sys.executable, str(ENGINE / "testsuite" / "lib" / "hook.py")], cwd=root,
-                              env=engine_env(root, env), check=False).returncode
+        return subprocess.run(
+            [sys.executable, str(ENGINE / "testsuite" / "lib" / "hook.py")],
+            cwd=root,
+            env=engine_env(root, env),
+            check=False,
+        ).returncode
     if args.command == "mcp":
-        return subprocess.run([sys.executable, "-I", str(ENGINE / "tool" / "server.py")], cwd=root,
-                              env=engine_env(root, env), check=False).returncode
+        return subprocess.run(
+            [sys.executable, "-I", str(ENGINE / "tool" / "server.py")], cwd=root, env=engine_env(root, env), check=False
+        ).returncode
     return run_script(root, SCRIPTS[args.command], passed, env)
 
 

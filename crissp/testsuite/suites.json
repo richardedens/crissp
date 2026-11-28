@@ -28,7 +28,7 @@
   },
   {
    "key": "python-lint",
-   "label": "Lint of crissp's own Python (ruff with pyproject.toml's rules, standard library only, no duplicate code)",
+   "label": "Lint of crissp's own Python (ruff's rules and layout, standard library only, no duplicate code)",
    "dir": ".",
    "run": "py crissp/testsuite/lint/python_lint.py",
    "seconds": 5,

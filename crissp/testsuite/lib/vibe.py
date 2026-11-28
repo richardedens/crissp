@@ -36,7 +36,8 @@ def _lists(db: Path) -> tuple[list[str], list[str]] | None:
         return None
     lists = data.get("trusted", []), data.get("untrusted", [])
     if set(data) - {"trusted", "untrusted"} or not all(
-            isinstance(x, list) and all(isinstance(s, str) for s in x) for x in lists):
+        isinstance(x, list) and all(isinstance(s, str) for s in x) for x in lists
+    ):
         return None
     return lists
 
@@ -76,8 +77,12 @@ def trust(vibe_home: Path, root: PurePath) -> str:
 def fields(root: PurePath, command: str, args: list[str], path: str | None = None) -> dict[str, str]:
     """F-100: the config's placeholders as TOML values (json.dumps: a backslash in a Windows path stays valid). F-107:
     the PATH of the shell this runs in (else the given one), for what the server starts."""
-    return {"VIBE_COMMAND": json.dumps(command), "VIBE_ARGS": json.dumps(args), "VIBE_ROOT": json.dumps(str(root)),
-            "VIBE_PATH": json.dumps(os.environ.get("PATH", "") if path is None else path)}
+    return {
+        "VIBE_COMMAND": json.dumps(command),
+        "VIBE_ARGS": json.dumps(args),
+        "VIBE_ROOT": json.dumps(str(root)),
+        "VIBE_PATH": json.dumps(os.environ.get("PATH", "") if path is None else path),
+    }
 
 
 def config(root: PurePath, command: str, args: list[str], path: str | None = None) -> str:
@@ -106,9 +111,14 @@ def pinned(text: str, root: PurePath) -> bool:
         servers = tomllib.loads(text).get("mcp_servers")
     except tomllib.TOMLDecodeError:
         return True
-    mine = [s for s in servers if isinstance(s, dict) and s.get("name") == "crissp"] if isinstance(servers, list) else []
+    mine = (
+        [s for s in servers if isinstance(s, dict) and s.get("name") == "crissp"] if isinstance(servers, list) else []
+    )
     if not mine:
         return True
     env = mine[0].get("env") if isinstance(mine[0].get("env"), dict) else {}
-    return _key(mine[0].get("cwd", "")) == _key(root) and _key(env.get("CRISSP_ROOT", "")) == _key(root) \
+    return (
+        _key(mine[0].get("cwd", "")) == _key(root)
+        and _key(env.get("CRISSP_ROOT", "")) == _key(root)
         and bool(env.get("PATH"))
+    )

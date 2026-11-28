@@ -25,15 +25,32 @@ setTimeout(() => console.log(JSON.stringify(els["#view"].innerHTML)), 50);
 def render(data: dict) -> str:
     if not shutil.which("node"):
         pytest.skip("no node on this machine")
-    done = subprocess.run(["node", "-e", STAND_IN % (json.dumps(json.dumps(data)), json.dumps(str(PAGE)))],
-                          capture_output=True, text=True, timeout=30, check=False)
+    done = subprocess.run(
+        ["node", "-e", STAND_IN % (json.dumps(json.dumps(data)), json.dumps(str(PAGE)))],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout)
 
 
 def one(source: str, **more) -> dict:
-    return {"id": f"{source}-1", "source": source, "title": f"{source} work", "history": 343_000, "long": True,
-            "prompt": "do it", "busy": True, "updated": 1, "main": None, "agents": [], "earlier": 0, **more}
+    return {
+        "id": f"{source}-1",
+        "source": source,
+        "title": f"{source} work",
+        "history": 343_000,
+        "long": True,
+        "prompt": "do it",
+        "busy": True,
+        "updated": 1,
+        "main": None,
+        "agents": [],
+        "earlier": 0,
+        **more,
+    }
 
 
 def test_vibe_sessions_show_beside_claudes_with_their_own_advice():
@@ -52,6 +69,12 @@ def test_no_session_at_all_names_both():
 
 def test_the_context_budget_warnings_show():
     """F-104: what a session spends its context on, said where its history is."""
-    view = render({"sessions": [one("vibe", long=False, budget=["12 images in the main thread"])], "now": 1,
-                   "product": "P", "monogram": "P"})
+    view = render(
+        {
+            "sessions": [one("vibe", long=False, budget=["12 images in the main thread"])],
+            "now": 1,
+            "product": "P",
+            "monogram": "P",
+        }
+    )
     assert "12 images in the main thread" in view and "context budget" in view

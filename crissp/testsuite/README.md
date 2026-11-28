@@ -46,9 +46,10 @@ database per worker on that server, named after `PYTEST_XDIST_WORKER`:
 ```python
 @pytest.fixture(scope="session")
 def database_url():
-    name = f"test_{os.environ.get('PYTEST_XDIST_WORKER', 'main')}"   # test_gw0, test_gw1, … or test_main
-    with admin() as db:                                               # the one server, its maintenance database
-        db.execute(f'DROP DATABASE IF EXISTS "{name}"'); db.execute(f'CREATE DATABASE "{name}"')
+    name = f"test_{os.environ.get('PYTEST_XDIST_WORKER', 'main')}"  # test_gw0, test_gw1, … or test_main
+    with admin() as db:  # the one server, its maintenance database
+        db.execute(f'DROP DATABASE IF EXISTS "{name}"')
+        db.execute(f'CREATE DATABASE "{name}"')
     url = SERVER_URL.rsplit("/", 1)[0] + "/" + name
     migrate(url)
     yield url

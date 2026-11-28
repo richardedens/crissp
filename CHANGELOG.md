@@ -4,6 +4,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **crissp's own Python has one layout (F-97).** It was formatted once with `ruff format`, and the `python-lint`
+  step now checks the layout (`ruff format --check`) and the line length. `git blame` skips the layout commit
+  (`.git-blame-ignore-revs`; locally `git config blame.ignoreRevsFile .git-blame-ignore-revs`).
 - **See where the work is in the six stages, and get help with each (F-130).** The dashboard has a Stages page
   (`/stages`, first in the top bar): Discover, Plan, Build, Verify, Review and Release, which stage the work is in now,
   and per stage what is in it and whose move it is (to set up, work to do, waits for you, clear). It is read from the

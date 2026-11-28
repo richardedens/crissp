@@ -119,7 +119,9 @@ def too_long(chosen: list[dict], took: dict[str, int]) -> list[dict]:
     for s in chosen:
         seconds = took.get(s["key"], s["seconds"])
         if s["key"] != project.GATE and seconds > SPLIT_SECONDS:
-            out.append({"key": s["key"], "label": s["label"], "minutes": math.ceil(seconds / 60), "measured": s["key"] in took})
+            out.append(
+                {"key": s["key"], "label": s["label"], "minutes": math.ceil(seconds / 60), "measured": s["key"] in took}
+            )
     return out
 
 
@@ -154,7 +156,9 @@ def check_release_notes(root: Path) -> list[str]:
     title, _, body = sections[0].partition("\n")
     named = SEMVER.match(title.strip())
     if not named or named.group(0) != version:
-        why.append(f"CHANGELOG.md: the top section is {title.strip()!r}, it should name the version in VERSION ({version})")
+        why.append(
+            f"CHANGELOG.md: the top section is {title.strip()!r}, it should name the version in VERSION ({version})"
+        )
     if not re.search(r"^\s*[-*] \S", body, re.MULTILINE):
         why.append(f"CHANGELOG.md: the top section ({title.strip()}) has no bullet: say what changed")
     return why

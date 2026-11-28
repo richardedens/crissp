@@ -20,7 +20,9 @@ def filled(path: Path, product: str = "Example") -> dict:
 def configured(tmp_path: Path, *parts: str) -> tuple[dict, Path]:
     root = tmp_path / "example"
     (root / "crissp" / "testsuite").mkdir(parents=True)
-    (root / "crissp" / "testsuite" / "suites.json").write_text(json.dumps(filled(TEMPLATE / "testsuite" / "suites.json")))
+    (root / "crissp" / "testsuite" / "suites.json").write_text(
+        json.dumps(filled(TEMPLATE / "testsuite" / "suites.json"))
+    )
     for part in parts:
         (root / part).parent.mkdir(parents=True, exist_ok=True)
         (root / part).mkdir() if not part.endswith(".json") else (root / part).write_text("{}")
@@ -37,18 +39,35 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     conf, root = configured(tmp_path)  # D-02: a project just brought in has no part yet, so no step fails on nothing
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
-    assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
-                                                              "frontend-lint", "audit", "secrets", "sast"]
-    assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
-                                                         "frontend": "app/frontend", "frontend-lint": "app/frontend",
-                                                         "audit": ".", "secrets": ".", "sast": "."}
+    assert [s["key"] for s in project.steps(conf, root)] == [
+        "backend",
+        "gate",
+        "backend-lint",
+        "frontend",
+        "frontend-lint",
+        "audit",
+        "secrets",
+        "sast",
+    ]
+    assert {s["key"]: s["dir"] for s in conf["steps"]} == {
+        "backend": "app/backend",
+        "backend-lint": "app/backend",
+        "frontend": "app/frontend",
+        "frontend-lint": "app/frontend",
+        "audit": ".",
+        "secrets": ".",
+        "sast": ".",
+    }
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [
         ("app/backend/", ["backend", "backend-lint", "secrets", "sast"]),
-        ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast"])]
+        ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast"]),
+    ]
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
     assert ".githooks/" in [r["match"] for r in conf["shared"]]  # F-50: what git runs before every commit
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
-    lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-34: crissp's own tools, the project's files
+    lint = next(
+        s for s in conf["steps"] if s["key"] == "frontend-lint"
+    )  # F-34: crissp's own tools, the project's files
     assert lint["run"] == "frontend_lint" and lint["when"] == "app/frontend/package.json"  # untouched
 
 
@@ -58,13 +77,18 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
     conf, _ = configured(tmp_path)
     step = next(s for s in conf["steps"] if s["key"] == "audit")
     assert step["run"] == "audit run" and step["full_only"] and step["when"] == "app"
-    assert conf["audit"] == {"missing": "skip", "pip": ["app/backend/requirements.txt"], "npm": ["app/frontend"],
-                             "fs": ["app/backend", "app/frontend"], "dockerfiles": ["app/*/Dockerfile"],
-                             "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
-                             "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
-                             "own_images": {"values": "crissp/deploy/helm/app/values.yaml",
-                                            "parts": ["backend", "frontend"]},
-                             "sast": ["app"], "sast_rules": []}
+    assert conf["audit"] == {
+        "missing": "skip",
+        "pip": ["app/backend/requirements.txt"],
+        "npm": ["app/frontend"],
+        "fs": ["app/backend", "app/frontend"],
+        "dockerfiles": ["app/*/Dockerfile"],
+        "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
+        "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
+        "own_images": {"values": "crissp/deploy/helm/app/values.yaml", "parts": ["backend", "frontend"]},
+        "sast": ["app"],
+        "sast_rules": [],
+    }
 
 
 def test_every_project_scans_its_git_history_for_secrets(tmp_path):
@@ -112,7 +136,11 @@ def test_the_uxsuite_part_is_there_with_its_own_ignore_and_no_old_ux_team():
     rules = [x for x in (ux / ".gitignore").read_text().splitlines() if x.strip() and not x.startswith("#")]
     assert rules == ["results/"]  # what the suite makes stays local
     team = filled(ux / "team.json")
-    assert team["product"] == "Example" and len(team["personas"]) == 5 and sum(p["moderator"] for p in team["personas"]) == 1
+    assert (
+        team["product"] == "Example"
+        and len(team["personas"]) == 5
+        and sum(p["moderator"] for p in team["personas"]) == 1
+    )
     assert sorted(p.name for p in (ux / "walks").glob("*.json")) == ["first-visit.json"]
     assert not (TEMPLATE / "uxteam").exists()
 
@@ -129,8 +157,14 @@ def test_the_framework_and_the_agreement_say_how_a_session_stays_small():
     """E4-F1-01: every step resends the whole conversation; the habits that keep it short are part of the agreement."""
     for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "CLAUDE.md"):
         text = " ".join(doc.read_text().split())
-        for words in ("Sessions that stay small", "/clear", "/compact", "in a subagent", "start with `run` and are read with `status`",
-                      "Explore agent"):
+        for words in (
+            "Sessions that stay small",
+            "/clear",
+            "/compact",
+            "in a subagent",
+            "start with `run` and are read with `status`",
+            "Explore agent",
+        ):
             assert words in text, (doc.name, words)
 
 
@@ -140,10 +174,16 @@ def test_the_sessions_section_names_the_vibe_way_too():
     for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "CLAUDE.md"):
         text = doc.read_text()
         start = text.index("## Sessions that stay small")
-        section = " ".join(text[start:text.index("\n## ", start + 1)].split())
-        for words in ("Mistral Vibe", "a new session in the desktop app", "`/compact <what to keep>`", "`task` tool",
-                      "`explore` agent", "auto_compact_threshold",
-                      "Vibe sessions too"):
+        section = " ".join(text[start : text.index("\n## ", start + 1)].split())
+        for words in (
+            "Mistral Vibe",
+            "a new session in the desktop app",
+            "`/compact <what to keep>`",
+            "`task` tool",
+            "`explore` agent",
+            "auto_compact_threshold",
+            "Vibe sessions too",
+        ):
             assert words in section, (doc.name, words)
 
 
@@ -154,8 +194,18 @@ def test_the_root_agents_file_gives_an_agent_its_first_moves():
     for agents in (REPO / "AGENTS.md", REPO / "crissp/template/AGENTS.md"):
         text = agents.read_text()
         assert len(text.splitlines()) <= 25, agents
-        for needed in ("`brief`", "`stage`", "`backlog`", "`run`", "`status`", "`check-all`", "search_tool_functions",
-                       ".agents/skills/crissp/SKILL.md", "`.env`", "repair"):
+        for needed in (
+            "`brief`",
+            "`stage`",
+            "`backlog`",
+            "`run`",
+            "`status`",
+            "`check-all`",
+            "search_tool_functions",
+            ".agents/skills/crissp/SKILL.md",
+            "`.env`",
+            "repair",
+        ):
             assert needed in text, (agents, needed)
     for sub in (REPO / "crissp/AGENTS.md", TEMPLATE / "AGENTS.md"):
         assert "main session" in sub.read_text().split("\n\n")[1] and "ignores this file" in sub.read_text()

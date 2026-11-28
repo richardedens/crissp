@@ -41,19 +41,29 @@ def _merged(per_file: dict[str, dict[str, str]]) -> dict[str, str]:
     return out
 
 
-def _record(before: dict[str, str], after: dict[str, str], at: str, commit: str | None, subject: str,
-            out: dict[str, list[dict]]) -> None:
+def _record(
+    before: dict[str, str], after: dict[str, str], at: str, commit: str | None, subject: str, out: dict[str, list[dict]]
+) -> None:
     for pbi, status in after.items():
         if before.get(pbi) != status:
-            out.setdefault(pbi, []).append({"from": before.get(pbi), "to": status, "at": at, "commit": commit,
-                                            "subject": subject})
+            out.setdefault(pbi, []).append(
+                {"from": before.get(pbi), "to": status, "at": at, "commit": commit, "subject": subject}
+            )
 
 
 def moves(root: Path, tool) -> dict[str, list[dict]]:
     """Each PBI's moves, oldest first: the commits that changed the epic files, then the working tree."""
     out: dict[str, list[dict]] = {}
-    log = _git(root, "log", "--reverse", "--no-renames", "--format=%x00%H%x09%h%x09%cI%x09%s", "--name-status", "--",
-               "crissp/backlog")
+    log = _git(
+        root,
+        "log",
+        "--reverse",
+        "--no-renames",
+        "--format=%x00%H%x09%h%x09%cI%x09%s",
+        "--name-status",
+        "--",
+        "crissp/backlog",
+    )
     per_file: dict[str, dict[str, str]] = {}
     state: dict[str, str] = {}
     for chunk in _text(log or b"").split("\x00")[1:]:

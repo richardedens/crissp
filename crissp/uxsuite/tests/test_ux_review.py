@@ -16,9 +16,19 @@ import ux_map
 import ux_review
 import ux_verdicts
 
-TWO = {**ROUND, "advice": [{"title": "Plain words", "detail": "x", "priority": "could"},
-                           {"title": "Bigger buttons", "detail": "Thumb reach.", "priority": "must", "shot": "laptop 1",
-                            "where": {"x": 10, "y": 20, "w": 100, "h": 40}}]}
+TWO = {
+    **ROUND,
+    "advice": [
+        {"title": "Plain words", "detail": "x", "priority": "could"},
+        {
+            "title": "Bigger buttons",
+            "detail": "Thumb reach.",
+            "priority": "must",
+            "shot": "laptop 1",
+            "where": {"x": 10, "y": 20, "w": 100, "h": 40},
+        },
+    ],
+}
 
 
 def _screen(suite, walk="first-visit"):
@@ -31,9 +41,18 @@ def _say(suite, item, verdict, reason=""):
 
 
 def test_a_screen_goes_from_new_to_accepted(product):
-    assert _screen(product) == {"walk": "first-visit", "title": "First visit", "area": "home", "status": "new", "step": 0,
-                                "waits": "team", "next": "shoot it: crissp/ux.sh --shoot first-visit", "open": [],
-                                "must": 0, "design": None}
+    assert _screen(product) == {
+        "walk": "first-visit",
+        "title": "First visit",
+        "area": "home",
+        "status": "new",
+        "step": 0,
+        "waits": "team",
+        "next": "shoot it: crissp/ux.sh --shoot first-visit",
+        "open": [],
+        "must": 0,
+        "design": None,
+    }
     add_shots(product)
     assert _screen(product)["status"] == "seen" and _screen(product)["next"] == "ask the team for a round"
     finish(product, "round", "first-visit", 1, TWO)
@@ -43,13 +62,27 @@ def test_a_screen_goes_from_new_to_accepted(product):
     _say(product, "first-visit/r1/a1", "agree")
     _say(product, "first-visit/r1/a0", "later")
     s = _screen(product)
-    assert s["status"] == "decided" and s["open"] == [] and s["waits"] == "team" and s["next"] == "ask the team for a design"
+    assert (
+        s["status"] == "decided"
+        and s["open"] == []
+        and s["waits"] == "team"
+        and s["next"] == "ask the team for a design"
+    )
     finish(product, "proposal", "first-visit", 1, PROPOSAL)
     s = _screen(product)
-    assert s["status"] == "designed" and s["waits"] == "you" and s["next"] == "judge design 1" and s["design"] == "first-visit#v1"
+    assert (
+        s["status"] == "designed"
+        and s["waits"] == "you"
+        and s["next"] == "judge design 1"
+        and s["design"] == "first-visit#v1"
+    )
     _say(product, "first-visit#v1", "approve")
     s = _screen(product)
-    assert s["status"] == "approved" and s["waits"] == "team" and s["next"] == "build it, then shoot it again: crissp/ux.sh --shoot first-visit"
+    assert (
+        s["status"] == "approved"
+        and s["waits"] == "team"
+        and s["next"] == "build it, then shoot it again: crissp/ux.sh --shoot first-visit"
+    )
     shots = product.results / "shots" / "first-visit" / "shots.json"
     os.utime(shots, (time.time() + 120, time.time() + 120))
     s = _screen(product)
@@ -85,8 +118,16 @@ def test_progress_counts_every_screen_and_those_that_wait_for_you_come_first(tmp
     finish(suite, "round", "c-walk", 1, TWO)
     review = api.state(suite)["review"]
     assert [s["walk"] for s in review["screens"]] == ["c-walk", "b-walk", "a-walk"]
-    assert review["progress"] == {"new": 1, "seen": 1, "discussed": 1, "decided": 0, "designed": 0, "approved": 0,
-                                  "built": 0, "accepted": 0}
+    assert review["progress"] == {
+        "new": 1,
+        "seen": 1,
+        "discussed": 1,
+        "decided": 0,
+        "designed": 0,
+        "approved": 0,
+        "built": 0,
+        "accepted": 0,
+    }
     assert review["waiting"] == 1 and review["total"] == 3 and review["steps"] == list(ux_review.STEPS)
 
 
@@ -102,9 +143,13 @@ def test_a_mapped_screen_takes_the_status_of_the_walks_that_look_at_it(product):
 
 
 def test_the_area_of_a_screen_comes_from_its_walk_s_first_page(tmp_path):
-    suite = make_product(tmp_path, walks={"pay": {"title": "Pay", "steps": [{"do": "goto", "path": "/checkout/12"},
-                                                                         {"do": "shot", "title": "x"}]},
-                                          "none": {"title": "None", "steps": [{"do": "shot", "title": "x"}]}})
+    suite = make_product(
+        tmp_path,
+        walks={
+            "pay": {"title": "Pay", "steps": [{"do": "goto", "path": "/checkout/12"}, {"do": "shot", "title": "x"}]},
+            "none": {"title": "None", "steps": [{"do": "shot", "title": "x"}]},
+        },
+    )
     areas = {s["walk"]: s["area"] for s in api.state(suite)["review"]["screens"]}
     assert areas == {"pay": "checkout", "none": "home"}
 

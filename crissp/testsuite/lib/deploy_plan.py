@@ -98,17 +98,37 @@ def port(compose: dict, root: Path, environ: dict[str, str]) -> str:
     return str(p.get("default", ""))
 
 
-def plan(*, gate: list[str], notes: list[str], deployed: dict | None, changed: list[str] | None, head: str, version: str,
-         compose: dict, product: str, port: str, has_file: bool, why_all: str = "") -> dict:
+def plan(
+    *,
+    gate: list[str],
+    notes: list[str],
+    deployed: dict | None,
+    changed: list[str] | None,
+    head: str,
+    version: str,
+    compose: dict,
+    product: str,
+    port: str,
+    has_file: bool,
+    why_all: str = "",
+) -> dict:
     """The whole decision. `deployed`: the last record or None; `changed`: the files changed since its commit, or None
     when every service is rebuilt (`why_all` says why); `has_file`: the compose file exists."""
     rebuild = rebuilds(compose, changed, why_all) if has_file else {}
     url = compose.get("url", "").replace("{port}", port)
-    return {"version": version, "commit": head, "deployed": deployed, "product": product, "compose": has_file,
-            "file": compose.get("file", ""),
-            "stops": [f"Release gate: {r}" for r in gate] + [f"Release notes: {r}" for r in notes],
-            "rebuild": rebuild, "services": [s for s in services(compose) if s in rebuild],
-            "all": services(compose), "health": [url + h for h in compose.get("health", [])] if url else []}
+    return {
+        "version": version,
+        "commit": head,
+        "deployed": deployed,
+        "product": product,
+        "compose": has_file,
+        "file": compose.get("file", ""),
+        "stops": [f"Release gate: {r}" for r in gate] + [f"Release notes: {r}" for r in notes],
+        "rebuild": rebuild,
+        "services": [s for s in services(compose) if s in rebuild],
+        "all": services(compose),
+        "health": [url + h for h in compose.get("health", [])] if url else [],
+    }
 
 
 def _short(commit: str) -> str:
@@ -117,12 +137,16 @@ def _short(commit: str) -> str:
 
 def render_text(p: dict) -> str:
     d = p["deployed"]
-    rows = [f"Deploy {p['product']} {p['version']} (commit {_short(p['commit'])})",
-            f"  Last deployed: {d['version']} (commit {d['commit'][:8]})" if d else "  Last deployed: nothing recorded yet"]
+    rows = [
+        f"Deploy {p['product']} {p['version']} (commit {_short(p['commit'])})",
+        f"  Last deployed: {d['version']} (commit {d['commit'][:8]})" if d else "  Last deployed: nothing recorded yet",
+    ]
     if not p["compose"]:
         where = f"({p['file']})" if p["file"] else "(deploy.json names none)"
-        rows.append(f"  No compose file {where}: nothing to deploy locally. A cluster deploy: crissp/deploy.sh --cluster "
-                    "(crissp/deploy.sh --cluster-plan shows it).")
+        rows.append(
+            f"  No compose file {where}: nothing to deploy locally. A cluster deploy: crissp/deploy.sh --cluster "
+            "(crissp/deploy.sh --cluster-plan shows it)."
+        )
         return "\n".join(rows)
     if p["stops"]:
         rows.append("  Stops, nothing is rebuilt:")
@@ -130,18 +154,31 @@ def render_text(p: dict) -> str:
     if not p["rebuild"]:
         rows.append(f"  Nothing to rebuild: no file that goes into {', '.join(p['all'])} changed.")
     for c, why in p["rebuild"].items():
-        rows.append(f"  Rebuild {c} (docker compose up -d --build --no-deps {c}), because: " + ", ".join(why[:6])
-                    + (" …" if len(why) > 6 else ""))
-    rows.append(f"  Then: health checks ({', '.join(p['health']) or 'none configured'}), and record this commit and "
-                "version as deployed.")
+        rows.append(
+            f"  Rebuild {c} (docker compose up -d --build --no-deps {c}), because: "
+            + ", ".join(why[:6])
+            + (" …" if len(why) > 6 else "")
+        )
+    rows.append(
+        f"  Then: health checks ({', '.join(p['health']) or 'none configured'}), and record this commit and "
+        "version as deployed."
+    )
     return "\n".join(rows)
 
 
 def render_shell(p: dict) -> str:
-    return "\n".join([f"PLAN_STOPS={len(p['stops'])}", f"PLAN_COMPOSE={1 if p['compose'] else 0}",
-                      f"PLAN_FILE={shlex.quote(p['file'])}", f"PLAN_SERVICES={shlex.quote(' '.join(p['services']))}",
-                      f"PLAN_VERSION={shlex.quote(p['version'])}", f"PLAN_COMMIT={shlex.quote(p['commit'])}",
-                      f"PLAN_PRODUCT={shlex.quote(p['product'])}", f"PLAN_HEALTH={shlex.quote(' '.join(p['health']))}"])
+    return "\n".join(
+        [
+            f"PLAN_STOPS={len(p['stops'])}",
+            f"PLAN_COMPOSE={1 if p['compose'] else 0}",
+            f"PLAN_FILE={shlex.quote(p['file'])}",
+            f"PLAN_SERVICES={shlex.quote(' '.join(p['services']))}",
+            f"PLAN_VERSION={shlex.quote(p['version'])}",
+            f"PLAN_COMMIT={shlex.quote(p['commit'])}",
+            f"PLAN_PRODUCT={shlex.quote(p['product'])}",
+            f"PLAN_HEALTH={shlex.quote(' '.join(p['health']))}",
+        ]
+    )
 
 
 def since_deployed(deployed: dict | None, root: Path = ROOT) -> tuple[list[str] | None, str]:
@@ -168,17 +205,32 @@ def collect(root: Path = ROOT, deployed_path: Path = DEPLOYED) -> dict:
     except subprocess.CalledProcessError:
         head = "(no commit yet)"
     has_file = bool(compose.get("file")) and (root / compose["file"]).is_file()
-    return plan(gate=_load("release").check(root, root / "crissp" / "testsuite" / "results"),
-                notes=_load("impact").check_release_notes(root), deployed=deployed, changed=changed, head=head,
-                version=version, compose=compose, product=settings.get("product", "the product"),
-                port=port(compose, root, dict(os.environ)), has_file=has_file, why_all=why_all)
+    return plan(
+        gate=_load("release").check(root, root / "crissp" / "testsuite" / "results"),
+        notes=_load("impact").check_release_notes(root),
+        deployed=deployed,
+        changed=changed,
+        head=head,
+        version=version,
+        compose=compose,
+        product=settings.get("product", "the product"),
+        port=port(compose, root, dict(os.environ)),
+        has_file=has_file,
+        why_all=why_all,
+    )
 
 
 def record(components: list[str], root: Path = ROOT, deployed_path: Path = DEPLOYED) -> dict:
     last = json.loads(deployed_path.read_text()) if deployed_path.is_file() else {}
-    entry = {"commit": _git("rev-parse", "HEAD", root=root).strip(), "version": (root / "VERSION").read_text().strip(),
-             "at": time.time(), "rebuilt": components}
-    history = ([*last.get("history", []), {k: last[k] for k in ("commit", "version", "at", "rebuilt")}])[-20:] if last else []
+    entry = {
+        "commit": _git("rev-parse", "HEAD", root=root).strip(),
+        "version": (root / "VERSION").read_text().strip(),
+        "at": time.time(),
+        "rebuilt": components,
+    }
+    history = (
+        ([*last.get("history", []), {k: last[k] for k in ("commit", "version", "at", "rebuilt")}])[-20:] if last else []
+    )
     deployed_path.parent.mkdir(parents=True, exist_ok=True)
     deployed_path.write_text(json.dumps({**entry, "history": history}, indent=2))
     return entry
@@ -211,5 +263,5 @@ def main(argv: list[str]) -> int:
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import project
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
-    sys.exit(main(sys.argv))
+
+    project.script(main)

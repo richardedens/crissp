@@ -70,8 +70,18 @@ def runner(argv: list[str], cwd: Path) -> tuple[int, str, str]:
 
 
 def _finding(source, target, package, installed, id_, severity, fixed, title, blocks, aliases=()) -> dict:
-    return {"source": source, "target": target, "package": package, "installed": installed, "id": id_,
-            "aliases": list(aliases), "severity": severity, "fixed": fixed, "title": title, "blocks": blocks}
+    return {
+        "source": source,
+        "target": target,
+        "package": package,
+        "installed": installed,
+        "id": id_,
+        "aliases": list(aliases),
+        "severity": severity,
+        "fixed": fixed,
+        "title": title,
+        "blocks": blocks,
+    }
 
 
 def from_pip_audit(data: dict, target: str) -> list[dict]:
@@ -81,9 +91,20 @@ def from_pip_audit(data: dict, target: str) -> list[dict]:
             if (dep["name"], v["id"]) in seen:  # pip-audit can report one advisory twice
                 continue
             seen.add((dep["name"], v["id"]))
-            out.append(_finding("pip-audit", target, dep["name"], dep["version"], v["id"], "UNKNOWN",
-                                ", ".join(v.get("fix_versions", [])) or "no fix",
-                                (v.get("description") or "").splitlines()[0][:160], True, v.get("aliases", [])))
+            out.append(
+                _finding(
+                    "pip-audit",
+                    target,
+                    dep["name"],
+                    dep["version"],
+                    v["id"],
+                    "UNKNOWN",
+                    ", ".join(v.get("fix_versions", [])) or "no fix",
+                    (v.get("description") or "").splitlines()[0][:160],
+                    True,
+                    v.get("aliases", []),
+                )
+            )
     return out
 
 
@@ -94,9 +115,19 @@ def from_npm_audit(data: dict, target: str) -> list[dict]:
             if not isinstance(via, dict):  # only points at another package's advisory: counted there
                 continue
             severity = via.get("severity", vuln.get("severity", "")).upper().replace("MODERATE", "MEDIUM")
-            out.append(_finding("npm audit", target, name, vuln.get("range", ""), via["url"].rsplit("/", 1)[-1],
-                                severity, "fix available" if vuln.get("fixAvailable") else "no fix",
-                                via.get("title", ""), severity in BLOCKING))
+            out.append(
+                _finding(
+                    "npm audit",
+                    target,
+                    name,
+                    vuln.get("range", ""),
+                    via["url"].rsplit("/", 1)[-1],
+                    severity,
+                    "fix available" if vuln.get("fixAvailable") else "no fix",
+                    via.get("title", ""),
+                    severity in BLOCKING,
+                )
+            )
     return out
 
 
@@ -105,13 +136,34 @@ def from_trivy(data: dict, target: str) -> list[dict]:
     for result in data.get("Results") or []:
         for v in result.get("Vulnerabilities") or []:
             fixed = v.get("FixedVersion") or ""
-            out.append(_finding("trivy", target, v["PkgName"], v.get("InstalledVersion", ""), v["VulnerabilityID"],
-                                v["Severity"], fixed or "no fix", v.get("Title", ""),
-                                v["Severity"] in BLOCKING and bool(fixed)))
+            out.append(
+                _finding(
+                    "trivy",
+                    target,
+                    v["PkgName"],
+                    v.get("InstalledVersion", ""),
+                    v["VulnerabilityID"],
+                    v["Severity"],
+                    fixed or "no fix",
+                    v.get("Title", ""),
+                    v["Severity"] in BLOCKING and bool(fixed),
+                )
+            )
         for m in result.get("Misconfigurations") or []:
             if m.get("Status") == "FAIL":
-                out.append(_finding("trivy", target, result["Target"], "", m["ID"], m["Severity"], "change the config",
-                                    m.get("Title", ""), m["Severity"] in BLOCKING))
+                out.append(
+                    _finding(
+                        "trivy",
+                        target,
+                        result["Target"],
+                        "",
+                        m["ID"],
+                        m["Severity"],
+                        "change the config",
+                        m.get("Title", ""),
+                        m["Severity"] in BLOCKING,
+                    )
+                )
     return out
 
 
@@ -183,6 +235,7 @@ def own_images(root: Path, conf: dict) -> list[str]:
 
 def _scanner(run, findings: list, problems: list, scanned: list):
     """scan(label, argv, cwd, parse, target): run one scanner, its JSON parsed into findings, or a problem."""
+
     def scan(label: str, argv: list[str], cwd: Path, parse, target: str) -> None:
         code, out, err = run(argv, cwd)
         try:
@@ -192,14 +245,25 @@ def _scanner(run, findings: list, problems: list, scanned: list):
             return
         findings.extend(parse(data, target))
         scanned.append(label)
+
     return scan
 
 
-def _report(kind: str, on: datetime.date, scanned: list, problems: list, findings: list, accepted: dict,
-            **more) -> dict:
+def _report(
+    kind: str, on: datetime.date, scanned: list, problems: list, findings: list, accepted: dict, **more
+) -> dict:
     findings, invalid = apply_accepted(findings, accepted, on)
-    return {"kind": kind, "date": on.isoformat(), "scanned": scanned, "not_scanned": [], "absent": [], **more,
-            "problems": problems + invalid, "findings": findings, "blocking": [f for f in findings if f["blocks"]]}
+    return {
+        "kind": kind,
+        "date": on.isoformat(),
+        "scanned": scanned,
+        "not_scanned": [],
+        "absent": [],
+        **more,
+        "problems": problems + invalid,
+        "findings": findings,
+        "blocking": [f for f in findings if f["blocks"]],
+    }
 
 
 def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> dict:
@@ -225,13 +289,37 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         # resolved first (every transitive package, pinned), then audited as is: no throwaway environment, no pip run
         with tempfile.TemporaryDirectory(prefix="audit-") as tmp:
             resolved = str(Path(tmp) / "resolved.txt")
-            code, _, err = run(["uv", "pip", "compile", "--quiet", "--python-version", python, req, "-o", resolved], root)
+            code, _, err = run(
+                ["uv", "pip", "compile", "--quiet", "--python-version", python, req, "-o", resolved], root
+            )
             if code != 0:
-                problems.append(f"pip-audit {req}: could not resolve the requirements (exit {code}): {err.strip()[-300:]}")
+                problems.append(
+                    f"pip-audit {req}: could not resolve the requirements (exit {code}): {err.strip()[-300:]}"
+                )
                 continue
-            scan(f"pip-audit {req}", ["uv", "run", "--quiet", "--no-project", "--with", PIP_AUDIT, "pip-audit", "-r",
-                                      resolved, "--no-deps", "--disable-pip", "--format", "json",
-                                      "--progress-spinner", "off"], root, from_pip_audit, str(Path(req).parent))
+            scan(
+                f"pip-audit {req}",
+                [
+                    "uv",
+                    "run",
+                    "--quiet",
+                    "--no-project",
+                    "--with",
+                    PIP_AUDIT,
+                    "pip-audit",
+                    "-r",
+                    resolved,
+                    "--no-deps",
+                    "--disable-pip",
+                    "--format",
+                    "json",
+                    "--progress-spinner",
+                    "off",
+                ],
+                root,
+                from_pip_audit,
+                str(Path(req).parent),
+            )
     for app in conf.get("npm", []):
         if (root / app / "package-lock.json").is_file():
             scan(f"npm audit {app}", ["npm", "audit", "--json"], root / app, from_npm_audit, app)
@@ -240,8 +328,10 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         else:
             problems.append(f"npm audit {app}: no package-lock.json to audit")
     fs = [a for a in conf.get("fs", []) if there(f"trivy fs {a}", a)]
-    configs = [*(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
-               *(c for c in conf.get("config", []) if there(f"trivy config {c}", c))]
+    configs = [
+        *(str(p.relative_to(root)) for p in dockerfiles(root, conf)),
+        *(c for c in conf.get("config", []) if there(f"trivy config {c}", c)),
+    ]
     found_images = images(root, conf)
     trivy_bin = None
     if fs or configs or found_images:
@@ -261,8 +351,9 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, f"image {image}")
     if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
-    return _report("audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf),
-                   absent=absent)
+    return _report(
+        "audit", on, scanned, problems, findings, accepted, not_scanned=own_images(root, conf), absent=absent
+    )
 
 
 def from_gitleaks(data: list, target: str) -> list[dict]:
@@ -271,9 +362,22 @@ def from_gitleaks(data: list, target: str) -> list[dict]:
     for leak in data or []:
         commit = (leak.get("Commit") or "")[:12]
         where = f"line {leak['StartLine']}" + (f" in {commit}" if commit else "")
-        out.append({**_finding("gitleaks", target, leak["File"], where, leak["RuleID"], "HIGH",
-                               "rotate it, then remove it from the history", leak.get("Description", ""), True),
-                    "fingerprint": leak.get("Fingerprint", "")})
+        out.append(
+            {
+                **_finding(
+                    "gitleaks",
+                    target,
+                    leak["File"],
+                    where,
+                    leak["RuleID"],
+                    "HIGH",
+                    "rotate it, then remove it from the history",
+                    leak.get("Description", ""),
+                    True,
+                ),
+                "fingerprint": leak.get("Fingerprint", ""),
+            }
+        )
     return out
 
 
@@ -288,21 +392,38 @@ def secrets_all(root: Path, run, on: datetime.date, accepted: dict) -> dict:
         problems.append(f"gitleaks: {e}")
     else:
         history = (root / ".git").exists()
-        scan("gitleaks git history" if history else "gitleaks files",
-             [gitleaks, "git" if history else "dir", "--no-banner", "--redact", "--report-format", "json",
-              "--report-path", "-", "--exit-code", "0", "--log-level", "warn", "."], root, from_gitleaks,
-             "git history" if history else "files")
+        scan(
+            "gitleaks git history" if history else "gitleaks files",
+            [
+                gitleaks,
+                "git" if history else "dir",
+                "--no-banner",
+                "--redact",
+                "--report-format",
+                "json",
+                "--report-path",
+                "-",
+                "--exit-code",
+                "0",
+                "--log-level",
+                "warn",
+                ".",
+            ],
+            root,
+            from_gitleaks,
+            "git history" if history else "files",
+        )
     return _report("secrets", on, scanned, problems, findings, accepted)
 
 
 NOT_GREEN = {
     "audit": "Not green: update the package or image to the fixed version, or accept it for a while with a reason in "
-             "crissp/testsuite/accepted-risks.json (at most 90 days).",
+    "crissp/testsuite/accepted-risks.json (at most 90 days).",
     "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
-               "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
-               "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
+    "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
+    "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
     "sast": "Not green: change the code (each finding says why), or accept it for a while with a reason in "
-            "crissp/testsuite/accepted-risks.json (at most 90 days).",
+    "crissp/testsuite/accepted-risks.json (at most 90 days).",
 }
 
 
@@ -311,10 +432,20 @@ SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM"}
 
 def from_semgrep(data: dict, target: str) -> list[dict]:
     """A finding names the file, the line, the rule and why; never the code it matched."""
-    return [_finding("semgrep", target, r["path"], f"line {r['start']['line']}", r["check_id"].rsplit(".", 1)[-1],
-                     SEVERITY.get(r["extra"]["severity"], "LOW"), "change the code", r["extra"].get("message", ""),
-                     r["extra"]["severity"] == "ERROR")
-            for r in data.get("results", [])]
+    return [
+        _finding(
+            "semgrep",
+            target,
+            r["path"],
+            f"line {r['start']['line']}",
+            r["check_id"].rsplit(".", 1)[-1],
+            SEVERITY.get(r["extra"]["severity"], "LOW"),
+            "change the code",
+            r["extra"].get("message", ""),
+            r["extra"]["severity"] == "ERROR",
+        )
+        for r in data.get("results", [])
+    ]
 
 
 def semgrep(*args: str) -> list[str]:
@@ -343,15 +474,22 @@ def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> 
             problems.append(f"semgrep: no rules at {rules}")
 
     def parse(data: dict, target: str) -> list[dict]:
-        problems.extend(f"semgrep: {e.get('type')}: {e.get('message', '')}".strip() for e in data.get("errors", [])
-                        if e.get("level") == "error")
+        problems.extend(
+            f"semgrep: {e.get('type')}: {e.get('message', '')}".strip()
+            for e in data.get("errors", [])
+            if e.get("level") == "error"
+        )
         return from_semgrep(data, target)
 
     if paths:
         configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
         _scanner(run, findings, problems, scanned)(
-            f"semgrep {' '.join(paths)}", semgrep("scan", *configs, "--json", "--metrics", "off",
-                                                  "--disable-version-check", "--quiet", *paths), root, parse, "code")
+            f"semgrep {' '.join(paths)}",
+            semgrep("scan", *configs, "--json", "--metrics", "off", "--disable-version-check", "--quiet", *paths),
+            root,
+            parse,
+            "code",
+        )
     elif not conf.get("sast") and not skip:
         problems.append("nothing to scan: name the code in crissp/testsuite/suites.json (audit, sast)")
     return _report("sast", on, scanned, problems, findings, accepted, absent=absent)
@@ -366,7 +504,9 @@ def rules_test(root: Path, run) -> tuple[int, str]:
 def render(report: dict) -> str:
     lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
     for image in report["not_scanned"]:
-        lines.append(f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above")
+        lines.append(
+            f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above"
+        )
     for path in report.get("absent", []):
         lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:
@@ -374,8 +514,10 @@ def render(report: dict) -> str:
     kind = report.get("kind", "audit")
     fix = "fixed in " if kind == "audit" else ""
     for f in report["blocking"]:
-        lines.append(f"BLOCKING {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): "
-                     f"{f['title']} — {fix}{f['fixed']}")
+        lines.append(
+            f"BLOCKING {f['severity']:<8} {f['id']}  {f['package']} {f['installed']}  ({f['target']}): "
+            f"{f['title']} — {fix}{f['fixed']}"
+        )
     listed = [f for f in report["findings"] if not f["blocks"]]
     for f in listed:
         note = f"accepted: {f['accepted']}" if f.get("accepted") else f"{fix}{f['fixed']}"
@@ -385,7 +527,9 @@ def render(report: dict) -> str:
     elif kind == "secrets":
         lines.append("No secret found.")
     elif not report["scanned"]:
-        lines.append(f"Nothing to {'scan' if kind == 'sast' else 'audit'} yet: none of the places suites.json names is here.")
+        lines.append(
+            f"Nothing to {'scan' if kind == 'sast' else 'audit'} yet: none of the places suites.json names is here."
+        )
     elif kind == "sast":
         lines.append(f"No unsafe code blocks ({len(listed)} listed for review).")
     else:

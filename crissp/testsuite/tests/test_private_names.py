@@ -39,8 +39,11 @@ def repository_files(repo: Path = REPO) -> list[str]:
         names = []
     if names:
         return names
-    return sorted(str(p.relative_to(repo)) for p in repo.rglob("*")
-                  if p.is_file() and not LOCAL & set(p.relative_to(repo).parts) and p.name != ".DS_Store")
+    return sorted(
+        str(p.relative_to(repo))
+        for p in repo.rglob("*")
+        if p.is_file() and not LOCAL & set(p.relative_to(repo).parts) and p.name != ".DS_Store"
+    )
 
 
 def test_without_git_every_file_but_what_git_never_keeps_is_read(tmp_path):

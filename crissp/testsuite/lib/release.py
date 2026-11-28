@@ -1,7 +1,8 @@
 """The release certificate: nothing is deployed that was not entirely tested, exactly as it is.
 
-A full run (crissp/check-all.sh: every step of the project's suites, crissp/testsuite/suites.json) writes crissp/testsuite/results/release.json: the commit it tested,
-whether tracked code had uncommitted changes, whether the code changed while it ran, and every step's result.
+A full run (crissp/check-all.sh: every step of the project's suites, crissp/testsuite/suites.json) writes
+crissp/testsuite/results/release.json: the commit it tested, whether tracked code had uncommitted changes, whether
+the code changed while it ran, and every step's result.
 deploy.sh refuses unless that certificate is green, at most 7 days old, and about exactly the code being deployed: HEAD
 is the certified commit and nothing tracked is changed. The one difference allowed is the coverage baseline the run
 raises itself (crissp/testsuite/coverage-baseline.json).
@@ -11,11 +12,12 @@ raises itself (crissp/testsuite/coverage-baseline.json).
     python3 crissp/testsuite/lib/release.py finish           after the run: write release.json (a red run keeps the last
                                                       green one as release-previous.json, for its older commit only)
     python3 crissp/testsuite/lib/release.py check [--max-age-hours 168]   for deploy.sh: exit 1 with the reasons when not allowed
-    python3 crissp/testsuite/lib/release.py advance <ran.json>   after a green crissp/check.sh: move the certificate to HEAD, if allowed
+    python3 crissp/testsuite/lib/release.py advance <ran.json>   after a green crissp/check.sh: move the certificate
+                                                      to HEAD, if allowed
 
-crissp/check.sh tests only what changed since the certificate's commit (crissp/testsuite/lib/impact.py decides what that is) and
-then advances the certificate to this commit. The full run stays the foundation: a deploy needs the last full run to be
-at most 7 days old, and every change since covered by a green crissp/check.sh.
+crissp/check.sh tests only what changed since the certificate's commit (crissp/testsuite/lib/impact.py decides what
+that is) and then advances the certificate to this commit. The full run stays the foundation: a deploy needs the last
+full run to be at most 7 days old, and every change since covered by a green crissp/check.sh.
 """
 
 import hashlib
@@ -31,8 +33,10 @@ import project
 # written by the run itself: may differ between the tested and the deployed code
 GENERATED = ("crissp/testsuite/coverage-baseline.json",)
 MAX_AGE_HOURS = 7 * 24
-INTERRUPTED = ("A full run was started after this certificate and did not finish: the certificate now only stands for "
-               "its own commit, nothing can be built on it. Run crissp/check-all.sh.")
+INTERRUPTED = (
+    "A full run was started after this certificate and did not finish: the certificate now only stands for "
+    "its own commit, nothing can be built on it. Run crissp/check-all.sh."
+)
 
 
 def _git(*args: str, root: Path) -> str:
@@ -51,8 +55,11 @@ def _changes(root: Path) -> str:
 
 def _code_since(commit: str, root: Path) -> list[str]:
     """Files changed in commits since `commit`, without the baseline the run generates itself."""
-    return [f for f in _git("diff", "--name-only", f"{commit}..HEAD", root=root).splitlines()
-            if f and not f.startswith(GENERATED)]
+    return [
+        f
+        for f in _git("diff", "--name-only", f"{commit}..HEAD", root=root).splitlines()
+        if f and not f.startswith(GENERATED)
+    ]
 
 
 def _load(path: Path) -> dict | None:
@@ -76,8 +83,9 @@ def start(root: Path | None = None, results: Path | None = None) -> None:
     root, results = _where(root, results)
     results.mkdir(parents=True, exist_ok=True)
     # the last certificate stays until this run has a result (finish), valid for its own commit only
-    (results / "release-start.json").write_text(json.dumps({"commit": _head(root), "changes": _changes(root),
-                                                            "started": time.time()}))
+    (results / "release-start.json").write_text(
+        json.dumps({"commit": _head(root), "changes": _changes(root), "started": time.time()})
+    )
 
 
 def finish(root: Path | None = None, results: Path | None = None) -> dict:
@@ -86,9 +94,14 @@ def finish(root: Path | None = None, results: Path | None = None) -> dict:
     root, results = _where(root, results)
     began = json.loads((results / "release-start.json").read_text())
     steps = _load(results / "steps.json") or {}
-    cert = {"commit": began["commit"], "changes": began["changes"], "started": began["started"], "finished": time.time(),
-            "changed_during_run": bool(_code_since(began["commit"], root)) or _changes(root) != began["changes"],
-            "steps": steps}
+    cert = {
+        "commit": began["commit"],
+        "changes": began["changes"],
+        "started": began["started"],
+        "finished": time.time(),
+        "changed_during_run": bool(_code_since(began["commit"], root)) or _changes(root) != began["changes"],
+        "steps": steps,
+    }
     previous = results / "release-previous.json"
     last = _load(results / "release.json")
     need = needed(root)
@@ -132,8 +145,10 @@ def _why(cert: dict, root: Path, max_age_hours: float) -> list[str]:
         except subprocess.CalledProcessError:
             since = ["(the tested commit is not in this checkout any more)"]
         listed = ", ".join(since[:8]) + (" …" if len(since) > 8 else "") if since else "only the coverage baseline"
-        why.append(f"HEAD ({head[:8]}) is not the tested commit {cert['commit'][:8]} (changed since: {listed}). "
-                   "Run crissp/check.sh: it tests what changed and moves the certificate to this commit.")
+        why.append(
+            f"HEAD ({head[:8]}) is not the tested commit {cert['commit'][:8]} (changed since: {listed}). "
+            "Run crissp/check.sh: it tests what changed and moves the certificate to this commit."
+        )
     if _changes(root):
         why.append("There are uncommitted changes: what you deploy must be exactly what was tested.")
     return why
@@ -169,20 +184,31 @@ def advance(ran: dict, root: Path | None = None, results: Path | None = None) ->
     if red:
         why.append("The last full run was not green (" + ", ".join(red) + "): run crissp/check-all.sh.")
     if ran.get("full"):
-        why.append("These changes touch shared ground, only a full run can vouch for them: " + "; ".join(ran["full"][:3]))
+        why.append(
+            "These changes touch shared ground, only a full run can vouch for them: " + "; ".join(ran["full"][:3])
+        )
     if not ran.get("passed"):
         why.append("The targeted tests were not green.")
     planned = sorted(f for f in ran.get("files", []) if not f.startswith(GENERATED))
-    if planned != sorted(_code_since(cert["commit"], root)):  # the plan was made for exactly these changes, nothing since
+    if planned != sorted(
+        _code_since(cert["commit"], root)
+    ):  # the plan was made for exactly these changes, nothing since
         why.append("The plan does not belong to the changes since the certificate: run crissp/check.sh again.")
     if _changes(root):
         why.append("There are uncommitted changes: commit them and run crissp/check.sh again.")
     if why:
         return why
     head = _head(root)
-    cert.setdefault("increments", []).append({"from": cert["commit"], "to": head, "at": time.time(),
-                                              "suites": ran.get("suites", []), "light": ran.get("light", []),
-                                              "files": len(ran.get("files", []))})
+    cert.setdefault("increments", []).append(
+        {
+            "from": cert["commit"],
+            "to": head,
+            "at": time.time(),
+            "suites": ran.get("suites", []),
+            "light": ran.get("light", []),
+            "files": len(ran.get("files", [])),
+        }
+    )
     cert["commit"] = head
     (results / "release.json").write_text(json.dumps(cert, indent=2))
     return []
@@ -204,8 +230,11 @@ def main(argv: list[str]) -> int:
         finish()
         return 0
     if cmd == "advance" and len(argv) > 2:
-        return _say(advance(json.loads(Path(argv[2]).read_text())), "Certificate moved: green for this commit.",
-                    "Certificate not moved.")
+        return _say(
+            advance(json.loads(Path(argv[2]).read_text())),
+            "Certificate moved: green for this commit.",
+            "Certificate not moved.",
+        )
     if cmd == "check":
         hours = float(argv[argv.index("--max-age-hours") + 1]) if "--max-age-hours" in argv else MAX_AGE_HOURS
         return _say(check(max_age_hours=hours), "Release gate: green for this commit.", "Release gate: not green.")
@@ -214,5 +243,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover — run as a script by the check scripts; main() is tested
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
-    sys.exit(main(sys.argv))
+    project.script(main)

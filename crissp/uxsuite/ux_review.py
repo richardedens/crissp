@@ -51,8 +51,11 @@ def open_advice(w: dict, verdicts: dict) -> list[tuple[int, str]]:
         return []
     last = rounds[-1]
     advice = last["result"].get("advice") or []
-    return sorted((PRIORITY.get(a.get("priority"), 3), f"{w['id']}/r{last['version']}/a{i}")
-                  for i, a in enumerate(advice) if f"{w['id']}/r{last['version']}/a{i}" not in verdicts)
+    return sorted(
+        (PRIORITY.get(a.get("priority"), 3), f"{w['id']}/r{last['version']}/a{i}")
+        for i, a in enumerate(advice)
+        if f"{w['id']}/r{last['version']}/a{i}" not in verdicts
+    )
 
 
 def screen(walk: dict, w: dict, verdicts: dict) -> dict:
@@ -63,15 +66,30 @@ def screen(walk: dict, w: dict, verdicts: dict) -> dict:
     approved = next((p for p in reversed(designs) if (p.get("verdict") or {}).get("verdict") == "approve"), None)
     rebuilt = bool(approved and w["shot_at"] and w["shot_at"] > approved["verdict"]["at"])
     built = (approved or {}).get("built") or {}
-    reached = {"seen": any(s["path"] for s in w["shots"]) or bool(rounds), "discussed": bool(rounds),
-               "decided": bool(rounds) and not pending, "designed": bool(designs), "approved": bool(approved),
-               "built": rebuilt, "accepted": rebuilt and built.get("verdict") == "accept"}
+    reached = {
+        "seen": any(s["path"] for s in w["shots"]) or bool(rounds),
+        "discussed": bool(rounds),
+        "decided": bool(rounds) and not pending,
+        "designed": bool(designs),
+        "approved": bool(approved),
+        "built": rebuilt,
+        "accepted": rebuilt and built.get("verdict") == "accept",
+    }
     status = next((s for s in reversed(STEPS[1:]) if reached[s]), "new")
     design = approved or (designs[-1] if designs else None)
     waits, said = _next(walk, w, reached, pending, designs, built)
-    return {"walk": w["id"], "title": w["title"], "area": area_of(walk), "status": status, "step": STEPS.index(status),
-            "waits": waits, "next": said, "open": pending, "must": sum(1 for p, _ in held if p == 0),
-            "design": design["key"] if design else None}
+    return {
+        "walk": w["id"],
+        "title": w["title"],
+        "area": area_of(walk),
+        "status": status,
+        "step": STEPS.index(status),
+        "waits": waits,
+        "next": said,
+        "open": pending,
+        "must": sum(1 for p, _ in held if p == 0),
+        "design": design["key"] if design else None,
+    }
 
 
 def _next(walk: dict, w: dict, reached: dict, pending: list, designs: list, built: dict) -> tuple[str | None, str]:
@@ -111,13 +129,18 @@ def review(conf: dict, walks: list[dict], verdicts: dict, m: dict | None) -> dic
     screens = [screen(conf["walks"][w["id"]], w, verdicts) for w in walks]
     screens.sort(key=lambda s: (s["waits"] != "you", -s["must"], -s["step"], order[s["walk"]]))
     progress = {step: sum(1 for s in screens if s["status"] == step) for step in STEPS}
-    return {"steps": list(STEPS), "screens": screens, "progress": progress, "total": len(screens),
-            "waiting": sum(1 for s in screens if s["waits"] == "you"),
-            "map": map_status(m, {s["walk"]: s["status"] for s in screens})}
-
+    return {
+        "steps": list(STEPS),
+        "screens": screens,
+        "progress": progress,
+        "total": len(screens),
+        "waiting": sum(1 for s in screens if s["waits"] == "you"),
+        "map": map_status(m, {s["walk"]: s["status"] for s in screens}),
+    }
 
 
 # ------------------------------------------------------------------------------------------------------- decide once
+
 
 def theme(advice: dict) -> str:
     """What a piece of advice is about, as a key: its theme when the team gave one, else its title."""
@@ -159,8 +182,15 @@ def proposed(suite, conf: dict, verdicts: dict, rules: list[dict]) -> list[dict]
         if len(walks) < 2 or key in have:
             continue
         first = found[0][2]
-        out.append({"id": f"proposed/{key}", "title": str(first.get("theme") or first.get("title")).strip(),
-                    "severity": min((a.get("priority") for _, _, a in found), key=lambda p: PRIORITY.get(p, 3)),
-                    "text": "\n".join(dict.fromkeys(str(a.get("detail") or a.get("title")).strip() for _, _, a in found)),
-                    "walks": walks, "advice": [i for _, i, _ in found], "verdict": verdicts.get(f"proposed/{key}")})
+        out.append(
+            {
+                "id": f"proposed/{key}",
+                "title": str(first.get("theme") or first.get("title")).strip(),
+                "severity": min((a.get("priority") for _, _, a in found), key=lambda p: PRIORITY.get(p, 3)),
+                "text": "\n".join(dict.fromkeys(str(a.get("detail") or a.get("title")).strip() for _, _, a in found)),
+                "walks": walks,
+                "advice": [i for _, i, _ in found],
+                "verdict": verdicts.get(f"proposed/{key}"),
+            }
+        )
     return out

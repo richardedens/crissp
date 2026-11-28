@@ -118,19 +118,30 @@ def machine(root: Path = Path("/"), run=_command, platform: str = sys.platform, 
         if limit and total:
             total, available = min(total, limit[0]), min(available or limit[1], limit[1])
             sources.append("cgroup memory.max")
-    return {"cpus": cpus, "cpu_from": cpu_from, "memory_mb": total, "available_mb": available if total else None,
-            "memory_from": ", ".join(sources) or "unknown"}
+    return {
+        "cpus": cpus,
+        "cpu_from": cpu_from,
+        "memory_mb": total,
+        "available_mb": available if total else None,
+        "memory_from": ", ".join(sources) or "unknown",
+    }
 
 
-def count(found: dict, memory_mb: int = DEFAULT_MB, files: int | None = None, env: dict | None = None) -> tuple[int, str]:
+def count(
+    found: dict, memory_mb: int = DEFAULT_MB, files: int | None = None, env: dict | None = None
+) -> tuple[int, str]:
     """(workers, why) for a step on this machine: the tightest limit, at least 1, unless CRISSP_WORKERS says."""
     wanted = (env or {}).get("CRISSP_WORKERS", "")
     if wanted.isdigit() and int(wanted) >= 1:
         return int(wanted), f"CRISSP_WORKERS={wanted}"
     limits = [(found["cpus"] - 1, f"{found['cpus']} CPUs, one left for the machine")]
     if found.get("available_mb") is not None:
-        limits.append((int(found["available_mb"] * SHARE // memory_mb),
-                       f"{found['available_mb'] / 1024:.1f} GB available, {memory_mb} MB per worker"))
+        limits.append(
+            (
+                int(found["available_mb"] * SHARE // memory_mb),
+                f"{found['available_mb'] / 1024:.1f} GB available, {memory_mb} MB per worker",
+            )
+        )
     if files is not None:
         limits.append((files, f"{files} test files"))
     n, why = min(limits, key=lambda limit: limit[0])
@@ -151,8 +162,10 @@ def describe(found: dict) -> str:
     cpus = f"{found['cpus']} CPU{'s' if found['cpus'] != 1 else ''} ({found['cpu_from']})"
     if found["memory_mb"] is None:
         return f"This machine: {cpus}, memory unknown."
-    return (f"This machine: {cpus}, {found['memory_mb'] / 1024:.1f} GB memory, {found['available_mb'] / 1024:.1f} GB "
-            f"available ({found['memory_from']}).")
+    return (
+        f"This machine: {cpus}, {found['memory_mb'] / 1024:.1f} GB memory, {found['available_mb'] / 1024:.1f} GB "
+        f"available ({found['memory_from']})."
+    )
 
 
 def alive(pid) -> bool:
@@ -179,8 +192,18 @@ def _rows(path: Path) -> list[dict]:
 
 
 def _lane(name: str) -> dict:
-    return {"worker": name, "done": 0, "passed": 0, "failed": 0, "skipped": 0, "busy": 0.0, "last": None, "last_at": None,
-            "now": None, "now_at": None}
+    return {
+        "worker": name,
+        "done": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "busy": 0.0,
+        "last": None,
+        "last_at": None,
+        "now": None,
+        "now_at": None,
+    }
 
 
 def _order(lane: dict) -> tuple:
@@ -212,24 +235,45 @@ def step_state(folder: Path, path: Path, label: str, now: float, alive) -> dict 
         at = cur.get("at") or 0
         if at < began:  # a worker of an earlier run
             continue
-        name = now_file.name[len(key) + 5:-5]
+        name = now_file.name[len(key) + 5 : -5]
         lane = lanes.setdefault(name, _lane(name))
         if running and not (lane["last_at"] and lane["last_at"] >= at):  # not finished since
             lane["now"], lane["now_at"] = cur.get("id"), at
-    end = finish.get("at", now) if finish else now if running else max((r.get("at") or began for r in rows), default=began)
+    end = (
+        finish.get("at", now)
+        if finish
+        else now
+        if running
+        else max((r.get("at") or began for r in rows), default=began)
+    )
     elapsed, done = end - began, len(tests)
     collected = max((r.get("n") or 0 for r in rows if r.get("kind") == "collected"), default=0)
     out_lanes = []
     for lane in sorted(lanes.values(), key=_order):
         since = round(now - lane["now_at"]) if lane["now"] else None
-        out_lanes.append({**{k: v for k, v in lane.items() if k not in ("last_at", "now_at")}, "busy": round(lane["busy"], 1),
-                          "since": since, "quiet": bool(since is not None and since > QUIET_S)})
-    return {"key": key, "label": label, "workers": start.get("workers") or 1, "why": start.get("why") or "",
-            "status": ("failed" if finish.get("status") else "passed") if finish else "running" if running else "stopped",
-            "began": began, "elapsed": round(elapsed), "collected": collected, "done": done,
-            "left": round(elapsed / done * (collected - done)) if running and done and collected > done else None,
-            "outcomes": {k: sum(1 for r in tests if r.get("outcome") == k) for k in ("passed", "failed", "skipped")},
-            "failed": [r.get("id") for r in tests if r.get("outcome") == "failed"][:50], "lanes": out_lanes}
+        out_lanes.append(
+            {
+                **{k: v for k, v in lane.items() if k not in ("last_at", "now_at")},
+                "busy": round(lane["busy"], 1),
+                "since": since,
+                "quiet": bool(since is not None and since > QUIET_S),
+            }
+        )
+    return {
+        "key": key,
+        "label": label,
+        "workers": start.get("workers") or 1,
+        "why": start.get("why") or "",
+        "status": ("failed" if finish.get("status") else "passed") if finish else "running" if running else "stopped",
+        "began": began,
+        "elapsed": round(elapsed),
+        "collected": collected,
+        "done": done,
+        "left": round(elapsed / done * (collected - done)) if running and done and collected > done else None,
+        "outcomes": {k: sum(1 for r in tests if r.get("outcome") == k) for k in ("passed", "failed", "skipped")},
+        "failed": [r.get("id") for r in tests if r.get("outcome") == "failed"][:50],
+        "lanes": out_lanes,
+    }
 
 
 def read_json(path: Path) -> dict:
@@ -240,7 +284,9 @@ def read_json(path: Path) -> dict:
     return found if isinstance(found, dict) else {}
 
 
-def state(root: Path, now: float | None = None, alive=alive, found: dict | None = None, env: dict | None = None) -> dict:
+def state(
+    root: Path, now: float | None = None, alive=alive, found: dict | None = None, env: dict | None = None
+) -> dict:
     """What /workers shows: this machine, what a parallel step would get here, and every step that ran (running first,
     then the newest)."""
     now = time.time() if now is None else now
@@ -254,8 +300,14 @@ def state(root: Path, now: float | None = None, alive=alive, found: dict | None 
     folder = project.results(root) / "timing"
     steps = [step_state(folder, p, labels.get(p.stem, p.stem), now, alive) for p in sorted(folder.glob("*.jsonl"))]
     steps = sorted((s for s in steps if s), key=lambda s: (s["status"] != "running", -s["began"]))
-    return {"product": conf["product"], "monogram": conf["monogram"], "machine": found,
-            "would": {"workers": n, "why": why}, "steps": steps, "now": now}
+    return {
+        "product": conf["product"],
+        "monogram": conf["monogram"],
+        "machine": found,
+        "would": {"workers": n, "why": why},
+        "steps": steps,
+        "now": now,
+    }
 
 
 def main(argv: list[str], env: dict) -> int:

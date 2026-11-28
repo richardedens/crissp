@@ -3,12 +3,12 @@
 import importlib.util
 import json
 import runpy
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import pytest
+from gitrepo import git as _git
 
 LIB = Path(__file__).resolve().parents[1] / "lib" / "release.py"
 
@@ -22,14 +22,14 @@ def _module():
 
 release = _module()
 STEPS = ("unit", "gate", "lint", "build")  # the example product's steps: the gate follows its one gated step
-CONFIG = {"product": "Shop", "steps": [
-    {"key": "unit", "label": "Unit tests", "run": "covered", "gate": True, "sources": ["src"]},
-    {"key": "lint", "label": "Lint", "run": "true"}, {"key": "build", "label": "Build", "run": "true", "full_only": True}]}
-
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args], cwd=root,
-                          check=True, capture_output=True, text=True).stdout
+CONFIG = {
+    "product": "Shop",
+    "steps": [
+        {"key": "unit", "label": "Unit tests", "run": "covered", "gate": True, "sources": ["src"]},
+        {"key": "lint", "label": "Lint", "run": "true"},
+        {"key": "build", "label": "Build", "run": "true", "full_only": True},
+    ],
+}
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -59,7 +59,9 @@ def _run(root: Path, results: Path, *, failed: str = "", skip: str = "", during=
     release.start(root, results)
     if during:
         during()
-    (results / "steps.json").write_text(json.dumps({k: "failed" if k == failed else "passed" for k in STEPS if k != skip}))
+    (results / "steps.json").write_text(
+        json.dumps({k: "failed" if k == failed else "passed" for k in STEPS if k != skip})
+    )
     release.finish(root, results)
 
 
@@ -115,7 +117,12 @@ def test_even_a_committed_coverage_baseline_needs_check_sh_but_it_is_named(tmp_p
     _run(root, results)
     _commit(root, "crissp/testsuite/coverage-baseline.json", '{"raised": 1}')
     assert "changed since: only the coverage baseline" in release.check(root, results)[0]
-    assert release.advance({"files": ["crissp/testsuite/coverage-baseline.json"], "full": [], "passed": True}, root, results) == []
+    assert (
+        release.advance(
+            {"files": ["crissp/testsuite/coverage-baseline.json"], "full": [], "passed": True}, root, results
+        )
+        == []
+    )
     assert release.check(root, results) == []
 
 
@@ -151,7 +158,9 @@ def test_uncommitted_changes_before_during_or_after_the_run_stop_the_deploy(tmp_
 
 def test_the_coverage_baseline_the_run_raises_is_not_a_code_change(tmp_path):
     root, results = _repo(tmp_path), tmp_path / "results"
-    _run(root, results, during=lambda: (root / "crissp/testsuite/coverage-baseline.json").write_text('{"raised": true}'))
+    _run(
+        root, results, during=lambda: (root / "crissp/testsuite/coverage-baseline.json").write_text('{"raised": true}')
+    )
     assert release.check(root, results) == []
 
 
@@ -219,6 +228,7 @@ def test_the_previous_certificate_is_held_to_every_rule(tmp_path):
 
 # ------------------------------------------------------------------------------------------------ crissp/check.sh advances
 
+
 def test_check_sh_advances_the_certificate_over_exactly_the_changes_it_tested(tmp_path):
     """After a green crissp/check.sh the certificate is about the new commit; a plan for other changes, a red plan or one that
     needed the full run does not move it."""
@@ -227,11 +237,14 @@ def test_check_sh_advances_the_certificate_over_exactly_the_changes_it_tested(tm
     _commit(root, "app.py", "print('v2')\n")
     tested = {"files": ["app.py"], "suites": ["unit"], "light": [], "full": [], "passed": True}
     assert release.advance({**tested, "files": ["other.py"]}, root, results) == [
-        "The plan does not belong to the changes since the certificate: run crissp/check.sh again."]
+        "The plan does not belong to the changes since the certificate: run crissp/check.sh again."
+    ]
     assert release.advance({**tested, "passed": False}, root, results) == ["The targeted tests were not green."]
     assert "touch shared ground" in release.advance({**tested, "full": ["x: shared"]}, root, results)[0]
     (root / "app.py").write_text("print('loose')\n")
-    assert release.advance(tested, root, results) == ["There are uncommitted changes: commit them and run crissp/check.sh again."]
+    assert release.advance(tested, root, results) == [
+        "There are uncommitted changes: commit them and run crissp/check.sh again."
+    ]
     _git(root, "checkout", "app.py")
     assert release.check(root, results)  # still red: app.py changed since the full run
     assert release.advance(tested, root, results) == []
@@ -254,6 +267,7 @@ def test_check_sh_cannot_build_on_a_missing_red_or_invalid_full_run(tmp_path):
 
 
 # ------------------------------------------------------------------------------------------------ the command line
+
 
 def test_the_command_line(tmp_path, monkeypatch, capsys):
     root, results = _repo(tmp_path), tmp_path / "results"

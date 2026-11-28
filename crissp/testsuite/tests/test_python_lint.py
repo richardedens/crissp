@@ -43,9 +43,17 @@ def test_the_lint_step_runs_the_pinned_ruff_over_src_crissp_and_site():
 
 def test_every_change_to_linted_python_brings_the_lint_step():
     conf = _conf()
-    for path in ("src/crissp/cli.py", "crissp/testsuite/lib/collect.py", "crissp/testsuite/tests/test_gate.py",
-                 "crissp/testsuite/package_tests/test_cli.py", "crissp/uxsuite/api.py", "crissp/tool/server.py",
-                 "crissp/deploy/tests/test_chart.py", "site/build.sh", "pyproject.toml"):
+    for path in (
+        "src/crissp/cli.py",
+        "crissp/testsuite/lib/collect.py",
+        "crissp/testsuite/tests/test_gate.py",
+        "crissp/testsuite/package_tests/test_cli.py",
+        "crissp/uxsuite/api.py",
+        "crissp/tool/server.py",
+        "crissp/deploy/tests/test_chart.py",
+        "site/build.sh",
+        "pyproject.toml",
+    ):
         kind, steps = impact.classify(path, conf)
         assert kind == "suites" and "python-lint" in steps, path
     assert impact.classify("crissp/backlog/FINDINGS.md", conf) == ("nothing", "")  # notes still need nothing
@@ -88,16 +96,19 @@ def _engine(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 def test_an_import_outside_the_standard_library_is_a_finding_by_file_and_line(tmp_path):
-    root = _engine(tmp_path, {
-        "src/crissp/cli.py": "import json\nimport crissp.x\nimport requests\n",
-        "crissp/testsuite/lib/collect.py": "import measure\nfrom . import serve\nfrom yaml import safe_load\n",
-        "crissp/testsuite/lib/measure.py": "def f():\n    import numpy.linalg\n",  # one inside a function counts too
-        "crissp/testsuite/lib/tests/test_x.py": "import pytest\n",  # tests run with the pinned tools
-        "crissp/testsuite/lib/pytest_plugin/p.py": "import pytest\n",
-        "crissp/tool/server.py": "import urllib.request\n",
-        "crissp/uxsuite/ux_shoot.py": "def run():\n    from playwright.sync_api import sync_playwright\n",
-        "crissp/uxsuite/api.py": "import ux_shoot\nimport playwright\n",  # playwright: ux_shoot.py alone
-    })
+    root = _engine(
+        tmp_path,
+        {
+            "src/crissp/cli.py": "import json\nimport crissp.x\nimport requests\n",
+            "crissp/testsuite/lib/collect.py": "import measure\nfrom . import serve\nfrom yaml import safe_load\n",
+            "crissp/testsuite/lib/measure.py": "def f():\n    import numpy.linalg\n",  # one inside a function counts too
+            "crissp/testsuite/lib/tests/test_x.py": "import pytest\n",  # tests run with the pinned tools
+            "crissp/testsuite/lib/pytest_plugin/p.py": "import pytest\n",
+            "crissp/tool/server.py": "import urllib.request\n",
+            "crissp/uxsuite/ux_shoot.py": "def run():\n    from playwright.sync_api import sync_playwright\n",
+            "crissp/uxsuite/api.py": "import ux_shoot\nimport playwright\n",  # playwright: ux_shoot.py alone
+        },
+    )
     assert pl.foreign_imports(root) == [
         "crissp/testsuite/lib/collect.py:3: imports yaml, not the standard library",
         "crissp/testsuite/lib/measure.py:2: imports numpy, not the standard library",
@@ -116,8 +127,18 @@ def _git(root: Path, *files: str) -> None:
 
 
 def test_pylint_compares_the_tracked_python_ruff_reads_and_skips_the_unsafe_rule_tests(tmp_path):
-    root = _engine(tmp_path, {"src/a.py": "", "crissp/b.py": "", "site/c.py": "", "other/d.py": "", "crissp/e.txt": "",
-                              "crissp/testsuite/sast/tests/bad.py": "", "crissp/untracked.py": ""})
+    root = _engine(
+        tmp_path,
+        {
+            "src/a.py": "",
+            "crissp/b.py": "",
+            "site/c.py": "",
+            "other/d.py": "",
+            "crissp/e.txt": "",
+            "crissp/testsuite/sast/tests/bad.py": "",
+            "crissp/untracked.py": "",
+        },
+    )
     _git(root, "src", "crissp/b.py", "site", "other", "crissp/e.txt", "crissp/testsuite")
     assert sorted(pl.python_files(root)) == ["crissp/b.py", "site/c.py", "src/a.py"]
 
@@ -130,7 +151,7 @@ def _stand_in(monkeypatch, answers: dict[str, subprocess.CompletedProcess]) -> l
         if cmd[0] == "git":
             return real(cmd, **kw)
         calls.append(cmd)
-        name = "pylint" if "pylint" in cmd else "ruff"
+        name = "pylint" if "pylint" in cmd else "ruff format" if "format" in cmd else "ruff"
         return answers.get(name) or subprocess.CompletedProcess(cmd, 0, "", "")
 
     monkeypatch.setattr(pl.subprocess, "run", run)
@@ -157,7 +178,8 @@ def test_duplicate_code_runs_the_pinned_pylint_with_pyprojects_settings(tmp_path
 def test_without_uv_the_duplicate_check_is_a_finding_never_a_silent_pass(tmp_path, monkeypatch):
     monkeypatch.setattr(pl.shutil, "which", lambda name: None)
     assert pl.duplicates(tmp_path) == [
-        "pylint: uv is not installed: the duplicate-code check cannot run (https://docs.astral.sh/uv/)"]
+        "pylint: uv is not installed: the duplicate-code check cannot run (https://docs.astral.sh/uv/)"
+    ]
 
 
 def test_a_tool_that_fails_without_saying_why_still_fails(tmp_path, monkeypatch):
@@ -173,6 +195,7 @@ def test_the_step_is_clean_or_names_every_finding(tmp_path, monkeypatch, capsys)
     assert pl.main({"CRISSP_ROOT": str(root)}) == 0
     assert "python-lint: clean" in capsys.readouterr().out
     assert calls[0] == [sys.executable, "-m", "ruff", "check", "--no-cache", "--quiet", "src", "crissp", "site"]
+    assert calls[1] == [sys.executable, "-m", "ruff", "format", "--check", "--no-cache", "src", "crissp", "site"]
     (root / "crissp/tool/server.py").write_text("import requests\n")
     _stand_in(monkeypatch, {"ruff": subprocess.CompletedProcess([], 1, "crissp/tool/server.py:1:1: F401 unused\n", "")})
     monkeypatch.chdir(root)
@@ -208,3 +231,19 @@ def test_an_editor_writes_files_the_way_the_checks_hold_them():
     assert int(every["max_line_length"]) == ruff["line-length"] and conf["*.py"]["indent_size"] == "4"
     assert conf["*.json"]["indent_size"] == "1" and conf["*.md"]["trim_trailing_whitespace"] == "false"
     assert impact.classify(".editorconfig", _conf()) == ("nothing", "")
+
+
+def test_the_python_has_one_layout_checked_and_blame_skips_the_layout_commit():
+    """F-97: crissp's Python had no layout standard (each file as its author typed it, lines up to 300 long). It was
+    formatted once with ruff format; the step checks the layout (ruff format --check) and the line length (E501, 130 for
+    a docstring or message), and git blame skips the layout commit (.git-blame-ignore-revs, GitHub reads it too)."""
+    lint = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
+    assert "E501" not in lint.get("ignore", []) and lint["pycodestyle"]["max-line-length"] == 130
+    assert pl.FORMAT == ("-m", "ruff", "format", "--check", "--no-cache")
+    revs = [line for line in (ROOT / ".git-blame-ignore-revs").read_text().splitlines() if line and line[0] != "#"]
+    assert revs and all(re.fullmatch(r"[0-9a-f]{40}", r) for r in revs)
+    for rev in revs:
+        subject = subprocess.run(
+            ["git", "log", "-1", "--format=%s", rev], cwd=ROOT, capture_output=True, text=True, check=False
+        ).stdout
+        assert subject in ("", "F-97: ruff format, once, over crissp's own Python (layout only)\n"), rev  # "": shallow
