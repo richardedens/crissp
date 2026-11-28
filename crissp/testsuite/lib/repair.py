@@ -22,6 +22,9 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
     gitignore  .gitignore lacks some of the framework's rules (secrets, dumps, results): added, nothing removed
     sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
                so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
+    stages     crissp/CLAUDE.md's "The six stages" is not this crissp's (F-130: a session says the stage the work is in
+               and offers help with it): replaced by the template's, or added before "Sessions that stay small"
+               (else before "Working with the product owner", else at the end)
     vibe-pin   .vibe/config.toml pins an older crissp than the one that repairs (F-27): the pin moves, as in .mcp.json
     git-hook   .githooks/pre-commit is not there, or core.hooksPath is not set (F-50): the template's hook, and
                core.hooksPath .githooks, so git runs the lint steps before every commit; never over a core.hooksPath
@@ -74,6 +77,7 @@ OLD_AGENTS = re.compile(r"# (.+) — for agents\n\nRead `crissp/AGENTS\.md` \(wh
                         r"know\) and `crissp/CLAUDE\.md` \(the agreement\)\.\n")
 OLD_INTRO = ("The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
              "specific to\nworking as an agent next to the main session.\n")
+STAGES = "## The six stages"
 BEFORE = "## Working with the product owner"
 OLD_TOOL = re.compile(r"`crissp/tool`,(\s+)registered(\s+)in `\.mcp\.json`")
 
@@ -263,28 +267,39 @@ def section(text: str, heading: str) -> str:
     return text[where[0]:where[1]].rstrip("\n") + "\n\n" if where else ""
 
 
-def fix_sessions(root: Path) -> Repair | None:
-    """F-21: the agreement's sessions section is crissp's: this crissp's text, in place of an old one or added."""
+def fix_section(root: Path, key: str, heading: str, before: tuple[str, ...]) -> Repair | None:
+    """A section of the agreement that is crissp's own: this crissp's text, in place of an old one, or added before the
+    first of the headings in before that is there (else at the end)."""
     path = root / "crissp/CLAUDE.md"
     if not brought_in(root) or not path.is_file():
         return None
-    ours = section((TEMPLATE / "crissp/CLAUDE.md").read_text(), SESSIONS)
-    have = section(path.read_text(), SESSIONS)
+    ours = section((TEMPLATE / "crissp/CLAUDE.md").read_text(), heading)
+    have = section(path.read_text(), heading)
     if have == ours:
         return None
 
     def do() -> None:
         text = path.read_text()  # read again: the agreement repair may have changed it first
-        where = span(text, SESSIONS) or span(text, BEFORE)
+        old = span(text, heading)
+        where = old or next((w for h in before if (w := span(text, h))), None)
         if where:
-            end = where[1] if text[where[0]:].startswith(SESSIONS) else where[0]
+            end = where[1] if old else where[0]
             text = text[:where[0]] + ours + text[end:]
         else:
             text = text.rstrip("\n") + "\n\n" + ours
         path.write_text(text)
 
-    return Repair("sessions", f'crissp/CLAUDE.md: "{SESSIONS[3:]}" is {"old" if have else "missing"} → this crissp\'s',
-                  do)
+    return Repair(key, f'crissp/CLAUDE.md: "{heading[3:]}" is {"old" if have else "missing"} → this crissp\'s', do)
+
+
+def fix_sessions(root: Path) -> Repair | None:
+    """F-21: the agreement's sessions section is crissp's."""
+    return fix_section(root, "sessions", SESSIONS, (BEFORE,))
+
+
+def fix_stages(root: Path) -> Repair | None:
+    """F-130: the agreement's six stages are crissp's: what a session says and offers on a <!-- CRISSP --> prompt."""
+    return fix_section(root, "stages", STAGES, (SESSIONS, BEFORE))
 
 
 def fix_gitignore(root: Path) -> Repair | None:
@@ -458,7 +473,8 @@ def fix_hook(root: Path) -> Repair | None:
 
 def find(root: Path, version: str | None = None, home: Path | None = None) -> list[Repair]:
     """What is out of place, in the order it is put in place."""
-    return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_missing(root),
+    return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_stages(root),
+                        fix_missing(root),
                         fix_crissp_md(root), fix_agents(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
                         fix_vibe_pin(root, version), fix_vibe(root, version, home), fix_hook(root)) if r]
 

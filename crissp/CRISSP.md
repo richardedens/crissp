@@ -138,6 +138,16 @@ seen ──► F-row ──► item (or decision) ──► doing ──► fail
 7. **Review**: status `review`; report what was wrong, how it was fixed, how it is proven.
 8. **Accept**: only the product owner; then the item or finding moves to `crissp/backlog/done/`.
 
+### The six stages
+
+The same flow, as the agentic SDLC names it, in six stages: **Discover** (observe: the UX team walks the running
+product and finds what its users need), **Plan** (shape: findings and approved needs become PBIs, real choices become
+decisions), **Build** (prove first and change), **Verify** (check and commit), **Review** (the product owner reviews
+and accepts) and **Release** (release notes, then the product owner's tag). Where the work is now is read from the
+repository, never kept apart: the crissp tool `stage` and the dashboard's Stages page both say it, and how Claude or
+Mistral Vibe helps with each stage ("crissp: help me with Plan"). Every session opens by saying the stage and offering
+the help for it; helping never pushes, tags, publishes or deploys.
+
 ---
 
 ## Who does what

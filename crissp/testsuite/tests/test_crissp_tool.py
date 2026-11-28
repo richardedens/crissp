@@ -103,7 +103,7 @@ def test_it_speaks_mcp(tmp_path):
     assert init["result"]["protocolVersion"] == "2025-03-26" and init["result"]["serverInfo"]["name"] == "crissp"
     assert srv.handle(root, {"id": 2, "method": "initialize"})["result"]["protocolVersion"] == srv.PROTOCOL
     assert srv.handle(root, {"method": "notifications/initialized"}) is None
-    assert [t["name"] for t in srv.handle(root, {"id": 3, "method": "tools/list"})["result"]["tools"]] == ["brief", "backlog", "finding", "decision", "epic", "feature", "item", "run", "status", "dashboard"]
+    assert [t["name"] for t in srv.handle(root, {"id": 3, "method": "tools/list"})["result"]["tools"]] == ["brief", "stage", "backlog", "finding", "decision", "epic", "feature", "item", "run", "status", "dashboard"]
     call = srv.handle(root, {"id": 4, "method": "tools/call", "params": {"name": "backlog", "arguments": {"id": "D-04"}}})
     assert "Admin kubeconfigs" in call["result"]["content"][0]["text"] and "isError" not in call["result"]
     assert srv.handle(root, {"id": 5, "method": "tools/call", "params": {"name": "brief"}})["result"]["content"][0]["text"]
@@ -701,3 +701,30 @@ def test_the_full_run_starts_only_when_the_product_owner_asked_for_it(tmp_path):
     assert not (tmp_path / "crissp/testsuite/results/mcp/runs.json").exists()
     schema = next(t for t in srv.TOOLS if t["name"] == "run")["inputSchema"]["properties"]
     assert schema["asked"]["type"] == "boolean" and "product owner" in schema["asked"]["description"]
+
+
+def test_stage_says_where_the_work_is_in_the_six_stages_and_how_to_help(tmp_path):
+    """F-130: the stage tool answers from lib/stages.py, the same as the Stages page: where the work is now, every stage
+    in a few lines, and for one stage what Claude or Vibe does to help with it."""
+    root = _repo(tmp_path)
+    call = lambda args: srv.handle(root, {"id": 1, "method": "tools/call", "params": {"name": "stage", "arguments": args}})["result"]  # noqa: E731
+    whole = call({})["content"][0]["text"]
+    assert whole.startswith("The work is in Build: E1-01 is being built.")
+    assert "  Discover · setup: No UX suite yet" in whole
+    one = call({"stage": "discover"})["content"][0]["text"]
+    assert one.startswith("Discover · setup") and "crissp/uxsuite/team.json" in one and "crissp ux --map" in one
+    assert call({"stage": "deploy"})["isError"]
+    schema = next(t for t in srv.TOOLS if t["name"] == "stage")["inputSchema"]["properties"]["stage"]
+    assert schema["enum"] == ["discover", "plan", "build", "verify", "review", "release"]
+    init = srv.handle(root, {"id": 2, "method": "initialize"})["result"]["instructions"]
+    assert "call stage" in init and "<!-- CRISSP" in init
+
+
+def test_stage_comes_from_the_project_s_engine_or_this_one(tmp_path, monkeypatch):
+    root = _repo(tmp_path)
+    monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")
+    assert srv.call(root, "stage", {})["isError"]  # neither the project nor the engine has lib/stages.py
+    lib = root / "crissp" / "testsuite" / "lib"
+    lib.mkdir(parents=True, exist_ok=True)
+    (lib / "stages.py").write_text("def state(root, crissp):\n    return {}\n\ndef text(state, key=None):\n    return 'own'\n")
+    assert srv.call(root, "stage", {})["content"][0]["text"] == "own"
