@@ -54,8 +54,39 @@
   const walkPicker = (w, to) => `<div class="toolbar"><select id="walk" data-to="${to}" aria-label="Walk">${S.walks.map(x => `<option value="${esc(x.id)}" ${x === w ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></div>`;
 
   function shotsOf(w) {
-    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}</figcaption></figure>`
+    return `<div class="shots">${w.shots.map(s => s.url ? `<figure><button class="shot" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(s.device)}" data-n="${s.n}" title="Enlarge"><img src="${esc(s.url)}" alt="${esc(s.title)}" loading="lazy"></button><figcaption>${esc(s.device)} ${s.n} · ${esc(s.title)}</figcaption></figure>`
       : `<p class="small">${badge("failed", s.device)} ${esc(s.error)}</p>`).join("") || '<p class="small muted">No screenshots yet.</p>'}</div>`;
+  }
+
+  /* The debate (F-80): every persona's first look on their own device, then their answers to each other, round by
+     round; it fills in live while the round runs (debate.json). A shot a persona points at opens enlarged. */
+  const shotRef = (w, ref) => {
+    const [device, n] = String(ref || "").split(" ");
+    const s = (w.shots || []).find(x => x.device === device && String(x.n) === n && x.url);
+    return s ? `<button class="link small" data-view="shot" data-walk="${esc(w.id)}" data-device="${esc(device)}" data-n="${esc(n)}">${esc(ref)} ⤢</button>` : (ref ? `<span class="small muted">${esc(ref)}</span>` : "");
+  };
+  const persona = key => S.personas.find(p => p.key === key) || { key, name: key, role: "", device: "" };
+  const who = key => { const p = persona(key); return `<span class="who"><span class="avatar" aria-hidden="true">${esc((p.name || "?")[0])}</span><b>${esc(p.name)}</b></span>`; };
+
+  function debateOf(w, r) {
+    const d = r.debate;
+    if (!d) return r.status?.phase === "done" ? "" : '<p class="small muted">The debate appears here as the team writes it.</p>';
+    const reviews = (d.reviews || []).map(v => `<article class="look">
+        <header><span class="who-role">${who(v.persona)} <span class="small muted">${esc(persona(v.persona).role)}</span></span>${typeof v.score === "number" ? `<span class="score big" title="Their score, 1 to 10">${v.score}</span>` : ""}</header>
+        ${(v.good || []).length ? `<div class="label">Good</div><ul class="small">${v.good.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
+        ${(v.problems || []).length ? `<div class="label">Problems</div>${v.problems.map(x => `<div class="problem">${badge(x.severity === "blocker" ? "failed" : x.severity === "major" ? "must" : "could", x.severity || "minor")} <b>${esc(x.title)}</b> ${shotRef(w, x.shot)}<p class="small">${esc(x.detail || "")}</p></div>`).join("")}` : ""}
+        ${(v.ideas || []).length ? `<div class="label">Ideas</div><ul class="small">${v.ideas.map(i => `<li>${esc(typeof i === "string" ? i : i.title || JSON.stringify(i))}</li>`).join("")}</ul>` : ""}
+      </article>`).join("");
+    const rounds = {};
+    (d.rebuttals || []).forEach(a => { (rounds[a.round || 1] = rounds[a.round || 1] || []).push(a); });
+    const answers = Object.keys(rounds).sort((a, b) => a - b).map(n => `<div class="label">Answers, round ${esc(n)}</div>` + rounds[n].map(a => `<div class="answer">
+        <div class="row">${who(a.persona)}</div>
+        ${(a.disagree || []).map(x => `<p class="small"><span class="tag no">disagrees</span> with ${x.with ? `<b>${esc(persona(x.with).name)}</b>` : "the others"} on “${esc(x.point)}”: ${esc(x.why || "")}</p>`).join("")}
+        ${(a.agree || []).map(x => `<p class="small"><span class="tag yes">agrees</span> ${esc(typeof x === "string" ? x : `${x.with ? persona(x.with).name + ": " : ""}${x.point || ""}`)}</p>`).join("")}
+        ${(a.changed_my_mind || []).map(x => `<p class="small"><span class="tag turn">changed their mind</span> ${esc(typeof x === "string" ? x : JSON.stringify(x))}</p>`).join("")}
+      </div>`).join("")).join("");
+    return `<details class="debate" open><summary>The debate: ${(d.reviews || []).length} first look(s), ${(d.rebuttals || []).length} answer(s)</summary>
+      <div class="looks">${reviews}</div>${answers ? `<div class="answers">${answers}</div>` : ""}</details>`;
   }
 
   function verdictButtons(id, options) {
@@ -71,15 +102,16 @@
     return walkPicker(w, "rounds") + `<div class="card" style="margin-bottom:14px"><div class="label">What the team looked at</div>${shotsOf(w)}</div>` +
       (list.map(r => {
         const res = r.result;
-        if (!res) return `<div class="card">Round ${r.version} ${phase(r.status)} <span class="small muted">${esc(r.status.note || "")}</span></div>`;
+        if (!res) return `<div class="card walk">Round ${r.version} ${phase(r.status)} <span class="small muted">${esc(r.status.note || "")}</span>${debateOf(w, r)}</div>`;
         return `<article class="card walk"><header><h3>Round ${r.version}</h3>${phase(r.status)}<span class="small muted">${esc(r.request?.at || "")}</span></header>
           <div class="scores"><span class="score">average <b>${avg(res.scores)}</b></span>${Object.entries(res.scores || {}).map(([k, v]) => `<span class="score">${esc(name(k))} <b>${esc(v)}</b></span>`).join("")}</div>
           <p>${esc(res.summary)}</p>
+          ${debateOf(w, r)}
           ${(res.consensus || []).length ? `<details><summary>Everyone agreed (${res.consensus.length})</summary><ul>${res.consensus.map(c => `<li>${esc(c)}</li>`).join("")}</ul></details>` : ""}
           ${(res.disputes || []).length ? `<details><summary>Where they disagree (${res.disputes.length})</summary>${res.disputes.map(d => `<p><b>${esc(d.topic)}</b></p><ul>${(d.positions || []).map(x => `<li>${esc(name(x.persona))}: ${esc(x.position)}</li>`).join("")}</ul>`).join("")}</details>` : ""}
           <div class="label">Advice</div>${(res.advice || []).map((a, i) => `<div class="advice ${esc(a.priority)}">
             <div class="row">${badge(a.priority, a.priority)}${a.effort ? badge("ver", a.effort) : ""}<b>${esc(a.title)}</b></div>
-            <p>${esc(a.detail)}</p><p class="small">Asked by ${(a.personas || []).map(name).map(esc).join(", ") || "the team"}${a.shot ? ` · ${esc(a.shot)}` : ""}${a.rule ? ` · rule <code>${esc(a.rule)}</code>` : ""}</p>
+            <p>${esc(a.detail)}</p><p class="small">Asked by ${(a.personas || []).map(name).map(esc).join(", ") || "the team"}${a.shot ? ` · ${shotRef(w, a.shot)}` : ""}${a.rule ? ` · rule <code>${esc(a.rule)}</code>` : ""}</p>
             ${verdictButtons(`${w.id}/r${r.version}/a${i}`, [["agree", "Agree"], ["disagree", "Disagree"], ["later", "Later"]])}</div>`).join("") || '<p class="muted small">No advice.</p>'}</article>`;
       }).join("") || '<div class="card">No round yet. <button class="ghost" data-request="round" data-walk="' + esc(w.id) + '">Ask for a round</button></div>');
   }
@@ -125,11 +157,65 @@
     const pick = devices.length > 1 ? `<span class="seg">${devices.map(x => `<button class="ghost small" data-device="${x}" aria-pressed="${x === d}">${x === "laptop" ? "Laptop" : "Phone"}</button>`).join("")}</span>` : "";
     return `<div class="compare">
         <figure class="pane"><figcaption><b>Before</b> · what people see now ${pick}</figcaption>
-          <div class="frame ${d === "phone" ? "tall" : ""}">${before ? `<img src="${esc(before.url)}" alt="Before: ${esc(before.title || "")}">` : '<p class="small muted">No screenshot of this walk yet: crissp ux --shoot ' + esc(w.id) + '</p>'}</div></figure>
-        <figure class="pane"><figcaption><b>After</b> · design ${p.version} <a class="small" href="${esc(p.mockup)}" target="_blank" rel="noopener">open full size ↗</a></figcaption>
-          <div class="frame fit"><iframe sandbox="allow-scripts" src="${esc(p.mockup)}" title="After: design ${p.version}" tabindex="-1"></iframe></div></figure>
+          <div class="frame ${d === "phone" ? "tall" : ""}">${before ? `<button class="shot" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d)}" data-mode="before" title="Enlarge"><img src="${esc(before.url)}" alt="Before: ${esc(before.title || "")}"></button>` : '<p class="small muted">No screenshot of this walk yet: crissp ux --shoot ' + esc(w.id) + '</p>'}</div></figure>
+        <figure class="pane"><figcaption><b>After</b> · design ${p.version}</figcaption>
+          <div class="frame fit"><iframe sandbox="allow-scripts" src="${esc(p.mockup)}" title="After: design ${p.version}" tabindex="-1"></iframe>
+            <button class="cover" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d || "")}" data-mode="after" aria-label="Enlarge the design"></button></div></figure>
+      </div>
+      <div class="toolbar enlarge"><button class="primary" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d || "")}" data-mode="both">Enlarge: before and after ⤢</button>
+        <button class="ghost" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d || "")}" data-mode="after">The design alone</button>
+        <a class="small" href="${esc(p.mockup)}" target="_blank" rel="noopener">open in a new tab ↗</a>
       </div>`;
   }
+
+  /* The viewer (F-80): a screenshot or a design enlarged over the whole window, before, after or side by side, at
+     fit, 100%, 150% or 200% (keys 1 2 3 for the view, + − 0 for the zoom, Esc closes). The design stays in its sandbox. */
+  let view = null;
+  function openViewer(v) {
+    view = { zoom: "fit", ...v };
+    $("#viewer-title").textContent = v.title;
+    if (!$("#viewer").open) $("#viewer").showModal();  // first open, so the panes have a width to fit the design to
+    drawViewer();
+  }
+  function drawViewer() {
+    const v = view, modes = v.after && v.before ? [["before", "Before"], ["both", "Side by side"], ["after", "After"]] : [];
+    $("#viewer-modes").innerHTML = modes.map(([m, l], i) => `<button class="ghost small" data-mode-to="${m}" aria-pressed="${m === v.mode}" title="key ${i + 1}">${l}</button>`).join("");
+    document.querySelectorAll("#viewer [data-zoom]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zoom === String(v.zoom))));
+    const pane = (what, label) => what === "before"
+      ? `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><img src="${esc(v.before.url)}" alt="${esc(v.before.title || "")}" data-z></div></figure>`
+      : `<figure class="pane"><figcaption>${label || ""}</figcaption><div class="scroll"><div class="mock" data-z><iframe sandbox="allow-scripts" src="${esc(v.after)}" title="The design"></iframe></div></div></figure>`;
+    const panes = v.mode === "both" ? pane("before", "<b>Before</b> · now") + pane("after", "<b>After</b> · the design") : pane(v.mode === "after" ? "after" : "before");
+    $("#viewer-body").className = `viewer-body ${v.mode === "both" ? "two" : "one"}`;
+    $("#viewer-body").innerHTML = panes;
+    $("#viewer-body").querySelectorAll("img[data-z]").forEach(img => img.complete ? zoomViewer() : img.addEventListener("load", zoomViewer));
+    zoomViewer();
+  }
+  function zoomViewer() {
+    if (!view) return;
+    document.querySelectorAll("#viewer-body .pane").forEach(pane => {
+      const box = pane.querySelector(".scroll"), img = pane.querySelector("img"), mock = pane.querySelector(".mock");
+      if (img) {
+        img.style.width = view.zoom === "fit" ? "" : `${img.naturalWidth * view.zoom}px`;
+        img.classList.toggle("fit", view.zoom === "fit");
+      }
+      if (mock) {  // the design is drawn 1440 wide; fit scales it to the pane
+        const z = view.zoom === "fit" ? Math.min(1, (box.clientWidth - 2) / 1440) : Number(view.zoom);
+        mock.style.width = `${1440 * z}px`; mock.style.height = `${900 * z}px`;
+        mock.firstElementChild.style.transform = `scale(${z})`;
+      }
+    });
+  }
+  window.addEventListener("resize", zoomViewer);
+  document.addEventListener("keydown", e => {
+    if (!$("#viewer").open || e.target.closest("input, textarea, select")) return;
+    const modes = [...document.querySelectorAll("#viewer [data-mode-to]")].map(b => b.dataset.modeTo);
+    const zooms = ["fit", 1, 1.5, 2], at = zooms.findIndex(z => String(z) === String(view.zoom));
+    if (/^[1-3]$/.test(e.key) && modes[e.key - 1]) { view.mode = modes[e.key - 1]; drawViewer(); }
+    else if (e.key === "+" || e.key === "=") { view.zoom = zooms[Math.min(zooms.length - 1, at + 1)]; drawViewer(); }
+    else if (e.key === "-") { view.zoom = zooms[Math.max(0, at - 1)]; drawViewer(); }
+    else if (e.key === "0") { view.zoom = "fit"; drawViewer(); }
+  });
+  $("#viewer").addEventListener("close", () => { view = null; $("#viewer-body").innerHTML = ""; });
 
   /* scale every mockup (drawn 1440 wide) to the width of its pane */
   function fit() {
@@ -228,8 +314,26 @@
   }
 
   document.addEventListener("click", async e => {
-    const dv = e.target.closest("[data-device]");
+    const dv = e.target.closest("[data-device]:not([data-view])");
     if (dv) { query.set("device", dv.dataset.device); render(); return; }  // Before on the laptop or the phone
+    const vw = e.target.closest("[data-view]");
+    if (vw) {
+      const w = walkOf(vw.dataset.walk);
+      if (vw.dataset.view === "shot") {
+        const s = w.shots.find(x => x.device === vw.dataset.device && String(x.n) === vw.dataset.n);
+        openViewer({ title: `${w.title} · ${s.device} ${s.n} · ${s.title}`, before: s, after: null, mode: "before" });
+      } else {
+        const p = w.proposals.find(x => x.key === vw.dataset.key);
+        const s = (w.shots || []).find(x => x.device === vw.dataset.device && x.url) || null;
+        openViewer({ title: `${w.title} · design ${p.version}${p.result?.title ? ": " + p.result.title : ""}`, before: s, after: p.mockup,
+                     mode: s ? vw.dataset.mode : "after" });
+      }
+      return;
+    }
+    const mt = e.target.closest("[data-mode-to]");
+    if (mt) { view.mode = mt.dataset.modeTo; drawViewer(); return; }
+    const zm = e.target.closest("[data-zoom]");
+    if (zm) { view.zoom = zm.dataset.zoom === "fit" ? "fit" : Number(zm.dataset.zoom); drawViewer(); return; }
     const go = e.target.closest("[data-goto]");
     if (go) { location.hash = go.dataset.goto; return; }
     const t = e.target.closest("[data-tab]");

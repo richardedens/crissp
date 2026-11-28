@@ -223,3 +223,16 @@ def test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_h
     finish(product, "round", "first-visit", 1, ROUND)
     ux_team.request(product, _conf(product), "proposal", "first-visit")
     assert '"principles": [{"rule", "how"}]' in ux_team.popen.started[1].cmd[2].replace("{{", "{").replace("}}", "}")
+
+
+def test_a_round_carries_its_debate_as_it_grows(product):
+    """F-80: the page shows the debate (every persona's first look and their answers to each other), also while the
+    round still runs: versions() carries debate.json as the run left it, or None before it is written."""
+    vdir = finish(product, "round", "first-visit", 1, ROUND)
+    assert ux_team.versions(product, "round", "first-visit")[0]["debate"] is None
+    debate = {"reviews": [{"persona": "tech", "score": 7, "good": ["clear"], "problems": [], "ideas": []}],
+              "rebuttals": [{"persona": "phone", "agree": [], "disagree": [{"with": "tech", "point": "clear", "why": "tiny"}]}]}
+    (vdir / "debate.json").write_text(json.dumps(debate))
+    assert ux_team.versions(product, "round", "first-visit")[0]["debate"] == debate
+    finish(product, "proposal", "first-visit", 1, PROPOSAL)
+    assert "debate" not in ux_team.versions(product, "proposal", "first-visit")[0]

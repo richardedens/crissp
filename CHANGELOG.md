@@ -28,6 +28,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **Easier on a phone, and readable buttons (F-72).** The top bar no longer makes pages scroll sideways on a phone: the
   sections get a row of their own. Text on the purple accent is dark in the dark theme, so primary buttons pass WCAG AA
   contrast.
+- **See the debate, and enlarge a design (F-80).** A round on the UX page now shows the debate itself, not only the
+  moderator's summary: each persona's first look (score, what is good, the problems with a link to the screenshot,
+  ideas) and every answer per debate round (who agrees, who disagrees with whom and why, who changed their mind), live
+  while the round runs. Every screenshot and design opens big over the whole page: before, side by side or after, at
+  fit, 100%, 150% or 200% (keys 1-3 switch the view, + - 0 zoom, Esc closes).
 - **git lints before every commit (F-50).** `crissp init` writes `.githooks/pre-commit` and sets
   `core.hooksPath .githooks`, so a commit runs the project's lint steps first (`lint` and every `*-lint` step, such as
   `backend-lint` and `frontend-lint`) and a red lint stops it. The hook runs the crissp `.mcp.json` pins (the new

@@ -1291,6 +1291,33 @@
    ]
   },
   {
+   "id": "ux-panel-debate-and-viewer",
+   "title": "The UX page hid the debate and could not enlarge a design",
+   "problem": "A round showed only the moderator's summary and advice; the personas' own first looks and their answers to each other were written nowhere the page read. A design was a small frame beside a small screenshot, with no way to see it big or next to today's screen (F-80).",
+   "fix": "ux_team.versions() carries each round's debate.json, and the round prompt has the team rewrite it as each look and answer comes in, each answer with its debate round. The page shows the first looks as cards (score, good, problems with severity and a link to the shot, ideas) and the answers per round (agrees, disagrees with whom, changed their mind), live while the round runs. Every screenshot and design opens in a viewer over the whole window: before, side by side or after, at fit, 100%, 150% or 200% (keys 1-3, + - 0, Esc), the design still in its sandbox.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def versions("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function debateOf("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function openViewer("
+    },
+    {
+     "file": "crissp/uxsuite/web/index.html",
+     "symbol": "id=\"viewer\""
+    }
+   ],
+   "tests": [
+    "test_ux_team::test_a_round_carries_its_debate_as_it_grows"
+   ]
+  },
+  {
    "id": "pytest-raises-ambiguous-pattern",
    "title": "A test's match= matched every message (F-90)",
    "problem": "pytest.raises(match=...) reads a regular expression. match=\"cannot hold a |\" ends in an empty alternative and matches any message, so the finding() test passed whatever error was raised; 18 more patterns held a regex sign (a dot, a bar) by accident.",
