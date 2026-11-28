@@ -944,7 +944,7 @@
     "test_lint.py::test_ci_sets_up_node_and_runs_the_lint_step",
     "test_lint.py::test_the_lint_tools_are_never_in_the_wheel_and_their_versions_are_audited",
     "test_impact.py::test_this_repository_maps_its_own_parts",
-    "test_audit.py::test_this_repository_audits_its_pinned_tools"
+    "test_audit.py::test_this_repository_audits_its_pinned_tools_and_its_chart"
    ]
   },
   {
@@ -960,6 +960,124 @@
    ],
    "tests": [
     "test_lint.py::test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repository"
+   ]
+  },
+  {
+   "id": "pinned-scanners",
+   "title": "trivy ran as whatever version a machine had on its PATH (F-42, E6-F1-01)",
+   "problem": "lib/audit.py called trivy from the PATH: an old trivy, a missing one, or a replaced release (as happened to trivy's own releases in 2026) decided what was green, and two machines could disagree.",
+   "fix": "lib/tools.py pins one version of each scanner crissp brings (trivy 0.76.2, gitleaks 8.30.1) with the SHA-256 of its release archive for Linux and macOS (x86_64, arm64), fetches it once into the crissp cache (CRISSP_CACHE, XDG_CACHE_HOME or ~/.cache), refuses and keeps nothing when the checksum differs, and takes only the binary's bytes from the archive. audit.py runs that trivy; a trivy that cannot be had is a problem, and the other scanners still run.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/tools.py",
+     "symbol": "def ensure("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def binary("
+    }
+   ],
+   "tests": [
+    "test_tools::test_a_tool_is_fetched_once_checked_and_kept",
+    "test_tools::test_a_download_that_differs_from_the_pin_is_refused_and_nothing_is_kept",
+    "test_tools::test_a_system_without_a_pin_is_said_plainly",
+    "test_audit::test_trivy_is_the_pinned_one_never_the_one_on_the_path",
+    "test_audit::test_a_trivy_that_cannot_be_had_is_a_problem_and_the_rest_still_scans"
+   ]
+  },
+  {
+   "id": "audit-in-every-project",
+   "title": "A project brought in with crissp init had no audit, and crissp's own audit skipped its chart (F-42, E6-F1-02)",
+   "problem": "The template's suites.json had no audit step and no audit section, so a project's dependencies, images, Dockerfiles, chart and Terraform were never scanned. crissp's own audit ran pip-audit only. And an audit that named a place the project did not have yet could only fail on it.",
+   "fix": "The template gets a full-run audit step (`audit run`, a new steps.sh helper that runs the engine's lib/audit.py) once app/ exists, and an audit section naming the default places (D-02): the backend's requirements, the frontend's lock, both folders for trivy fs, the Dockerfiles, the chart, Terraform, the compose file and the chart's images. `missing: skip` lists a place that is not there yet instead of failing; with none there the audit is green and says so. crissp's suites.json adds trivy config on crissp/deploy/helm/app and crissp/deploy/terraform.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def run_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "audit()"
+    },
+    {
+     "file": "crissp/template/crissp/testsuite/suites.json",
+     "symbol": "\"audit\""
+    }
+   ],
+   "tests": [
+    "test_audit::test_a_place_the_project_does_not_have_yet_is_said_not_red",
+    "test_audit::test_a_project_with_none_of_the_places_yet_has_nothing_to_audit_and_is_green",
+    "test_audit::test_without_skip_a_missing_place_stays_a_problem",
+    "test_audit::test_this_repository_audits_its_pinned_tools_and_its_chart",
+    "test_template::test_every_project_is_audited_in_its_full_run_on_the_default_places",
+    "test_run::test_audit_runs_the_engines_security_scans_for_the_project",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
+  },
+  {
+   "id": "secrets-step",
+   "title": "Nothing scanned git for secrets (F-43, E6-F2-01)",
+   "problem": "'Never in git: keys, .env' was guarded by .gitignore only. A key committed anyway, in crissp or in a project, was found by nothing, and stayed in the history.",
+   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is in .gitleaksignore with why.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def secrets_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def from_gitleaks("
+    },
+    {
+     "file": ".gitleaksignore",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_audit::test_a_secret_in_the_history_blocks_and_its_value_is_never_kept_or_said",
+    "test_audit::test_without_git_the_files_are_scanned",
+    "test_audit::test_a_secrets_scan_that_cannot_run_is_a_problem",
+    "test_audit::test_the_command_line_runs_each_scan_into_its_own_results",
+    "test_audit::test_this_repository_scans_its_history_for_secrets",
+    "test_template::test_every_project_scans_its_git_history_for_secrets"
+   ]
+  },
+  {
+   "id": "sast",
+   "title": "No static security analysis (F-44, E6-F3-01)",
+   "problem": "eval, a shell built from a value, yaml.load, pickle, verify=False, SQL built from strings, innerHTML or child_process.exec in a project's code, or in crissp's own, passed every step.",
+   "fix": "lib/audit.py sast runs Semgrep 1.185.0 (pinned, through uv) offline with crissp's own 13 rules (crissp/testsuite/sast: Python, JavaScript, TypeScript, JSX) plus the project's rules folders (audit.sast_rules), on the code audit.sast names; ERROR blocks, WARNING is listed, a finding never repeats the code. Every rule has tests (sast/tests, ruleid and ok lines), run by audit rules and by crissp's own sast step before it scans src, crissp and site. The template gets a sast step (audit sast on app) and its backend lint becomes ruff_check: ruff's Bandit rules (S) on top of the part's own ruff configuration, with asserts, made-up passwords and random allowed in tests. crissp's own .semgrepignore keeps Semgrep's defaults from skipping crissp/testsuite (the engine).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def sast_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def rules_test("
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "ruff_check()"
+    },
+    {
+     "file": "crissp/testsuite/sast/python.yaml",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/sast/javascript.yaml",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_audit::test_unsafe_code_blocks_on_error_and_is_listed_on_warning",
+    "test_audit::test_semgrep_errors_and_a_failed_run_are_problems",
+    "test_audit::test_sast_on_places_not_there_yet_runs_nothing_and_is_green",
+    "test_audit::test_the_rules_have_tests_and_the_rules_command_runs_them",
+    "test_audit::test_this_repository_scans_its_own_code_and_tests_its_rules",
+    "test_run::test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwords_in_tests",
+    "test_template::test_every_project_s_code_is_scanned_for_unsafe_code",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
    ]
   }
  ],

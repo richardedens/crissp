@@ -102,6 +102,8 @@ def test_the_testsuite_s_own_tests_can_be_named(ref):
 def test_the_folders_are_the_steps_test_folders():
     assert TEST_DIRS == (ROOT / "crissp/testsuite/tests", ROOT / "crissp/uxsuite/tests", ROOT / "crissp/deploy/tests",
                          ROOT / "crissp/testsuite/package_tests",
+                         ROOT / "crissp/testsuite/tests",  # the secrets step runs from crissp/testsuite
+                         ROOT / "crissp/testsuite/tests",  # and the sast step
                          ROOT / "crissp/testsuite/tests")  # the audit step runs from crissp/testsuite
 
 

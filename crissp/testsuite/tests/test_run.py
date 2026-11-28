@@ -128,6 +128,33 @@ def test_covered_runs_pytest_under_coverage_with_the_step_s_settings(tmp_path):
     assert rc.read_text() == "[run]\nbranch = true\nparallel = true\npatch = subprocess\ndisable_warnings = no-data-collected\n"
 
 
+def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
+    """A project's step names `audit run` (or secrets, sast): the engine's lib/audit.py, wherever crissp is installed."""
+    (tmp_path / "crissp/testsuite").mkdir(parents=True)
+    (tmp_path / "crissp/testsuite/suites.json").write_text('{"audit": {"missing": "skip", "fs": ["app/backend"]}}')
+    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "CRISSP_ROOT": str(tmp_path)}
+    done = subprocess.run(["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path, check=False)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "not there yet, not scanned: app/backend" in done.stdout
+    assert (tmp_path / "crissp/testsuite/results/audit.json").is_file()
+
+
+def test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwords_in_tests(tmp_path):
+    """F-44: a project's backend lint brings ruff's S rules on top of its own ruff configuration (never written into
+    the project); a test may assert and use made-up secrets."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "py").write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n')
+    (bin_ / "py").chmod(0o755)
+    done = subprocess.run(["bash", "-c", "ruff_check ."], capture_output=True, text=True, check=False,
+                          env={"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "PY": str(bin_ / "py")})
+    argv = done.stdout.splitlines()
+    assert argv[:5] == ["-m", "ruff", "check", "--no-cache", "--extend-select"] and argv[5] == "S" and argv[-1] == "."
+    ignores = {argv[i + 1] for i, a in enumerate(argv) if a == "--extend-per-file-ignores"}
+    assert {"**/tests/**:S101", "**/test_*.py:S105", "**/conftest.py:S106"} <= ignores
+    assert not any(i.endswith(":S602") for i in ignores)  # a shell=True is never allowed, not even in a test
+
+
 def test_without_py_it_runs_the_pinned_tools_with_uv(tmp_path):
     bin_ = tmp_path / "bin"
     bin_.mkdir()

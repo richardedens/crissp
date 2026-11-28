@@ -76,9 +76,11 @@ def test_a_change_to_a_linted_file_runs_the_lint_step():
                                                "crissp/testsuite/lint/package-lock.json"]:
         kind, detail = impact.classify(f, conf)
         assert kind == "full" or (kind == "suites" and "lint" in detail), (f, kind, detail)
-    assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == ("suites", ("tools", "lint"))
-    assert impact.classify("crissp/testsuite/lint/eslint.config.js", conf) == ("suites", ("lint",))
-    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == ("suites", ("tools", "python-lint"))
+    # every part's change is also scanned for secrets, and its code for unsafe code (F-43, F-44)
+    assert impact.classify("crissp/testsuite/dashboard/app.js", conf) == ("suites", ("tools", "lint", "secrets", "sast"))
+    assert impact.classify("crissp/testsuite/lint/eslint.config.js", conf) == ("suites", ("lint", "secrets"))
+    assert impact.classify("crissp/testsuite/lib/collect.py", conf) == ("suites",
+                                                                       ("tools", "python-lint", "secrets", "sast"))
 
 
 def test_ci_sets_up_node_and_runs_the_lint_step():

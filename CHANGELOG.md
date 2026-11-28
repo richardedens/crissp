@@ -11,6 +11,30 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
   ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
   what to do instead. `git commit --no-verify` skips the hook once.
+- **Static security analysis (SAST) for every project (F-44).** A new `sast` step runs Semgrep (pinned, offline, no
+  metrics) with crissp's own rules on `app/`: Python, JavaScript, TypeScript and JSX. It blocks on eval or exec of a
+  value, a shell command built from a value, `yaml.load`, switched-off TLS checks and a debug server, and lists for
+  review pickle, SQL built from strings, HTML put into the page from a value and `dangerouslySetInnerHTML`. A project
+  can add its own rules folders (`"sast_rules"` in `suites.json`'s `audit`); its `.semgrepignore` counts. The
+  backend's lint now also runs ruff's security rules (`S`, from Bandit) on top of the backend's own ruff
+  configuration (`ruff_check .`), with `assert` and made-up passwords allowed in tests. Projects brought in earlier
+  can copy the `sast` step and change their `backend-lint` run to `ruff_check .`.
+- **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit
+  and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
+  It runs in `crissp check` for every change under `app/`. The project's own `.gitleaks.toml`, `.gitleaksignore` and
+  `gitleaks:allow` count; a finding that is no secret goes into `.gitleaksignore` by its fingerprint (from
+  `crissp/testsuite/results/secrets.json`). A step runs it as `audit secrets`.
+- **Every project is audited in its full run (F-42).** `crissp init` now gives a project an `audit` step (full run
+  only, once `app/` exists): pip-audit of `app/backend/requirements.txt`, npm audit of `app/frontend`, trivy for the
+  dependencies, the Dockerfiles, the Helm chart, Terraform and the images the compose file and the chart name. A
+  place the project does not have yet is listed as "not there yet", not red (`"missing": "skip"` in `suites.json`'s
+  `audit`). Projects brought in earlier can copy the step and the `audit` section from the template. A step runs it
+  as `audit run`.
+- **The scanners are pinned, and checked before they run (F-42).** The audit no longer runs whatever `trivy` a machine
+  has on its `PATH`: crissp fetches trivy 0.76.2 (and, for the new secrets step, gitleaks 8.30.1) once from the
+  release, checks it against the SHA-256 crissp ships, and keeps it in its cache (`CRISSP_CACHE`, else
+  `~/.cache/crissp`). A download that differs is refused. Linux and macOS, x86_64 and arm64; on Windows the guards
+  run in WSL 2.
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
   `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint
