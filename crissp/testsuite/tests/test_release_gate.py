@@ -3,12 +3,12 @@
 import importlib.util
 import json
 import runpy
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 import pytest
+from gitrepo import git as _git
 
 LIB = Path(__file__).resolve().parents[1] / "lib" / "release.py"
 
@@ -26,10 +26,6 @@ CONFIG = {"product": "Shop", "steps": [
     {"key": "unit", "label": "Unit tests", "run": "covered", "gate": True, "sources": ["src"]},
     {"key": "lint", "label": "Lint", "run": "true"}, {"key": "build", "label": "Build", "run": "true", "full_only": True}]}
 
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args], cwd=root,
-                          check=True, capture_output=True, text=True).stdout
 
 
 def _repo(tmp_path: Path) -> Path:

@@ -157,6 +157,26 @@ def test_the_guards_speak_the_crissp_command_when_they_run_as_it():
     assert out.getvalue() == "Green: crissp deploy may go.\n" and stream.getvalue() == out.getvalue()  # the rest passes through
 
 
+def test_a_guard_runs_as_a_script_speaking_and_exits_with_mains_answer(monkeypatch):
+    """F-97: four guards (check, release, deploy_plan, cluster_plan) carried the same three lines to run as a script;
+    project.script() is that block, once."""
+    import io
+    out, err, seen = io.StringIO(), io.StringIO(), []
+    monkeypatch.setattr(sys, "stdout", out)
+    monkeypatch.setattr(sys, "stderr", err)
+    monkeypatch.setattr(sys, "argv", ["guard.py", "plan"])
+    monkeypatch.setenv("CRISSP_COMMAND", "crissp")
+
+    def main(argv):
+        seen.append(argv)
+        print("Run crissp/check-all.sh")
+        return 3
+
+    with pytest.raises(SystemExit) as stop:
+        project.script(main)
+    assert stop.value.code == 3 and seen == [["guard.py", "plan"]]
+    assert out.getvalue() == "Run crissp check-all\n" and isinstance(sys.stderr, project.Speaking)
+
 def test_a_step_runs_in_one_process_unless_it_says_parallel():  # E1-F1-02
     one, many = project.parse({"steps": [{"key": "a", "label": "A", "run": "x"},
                                          {"key": "b", "label": "B", "run": "y", "parallel": True, "memory_mb": 512}]})["steps"]

@@ -4,11 +4,11 @@ run when it cannot vouch. On a small example product (a shop with a backend and 
 import importlib.util
 import json
 import runpy
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from gitrepo import git as _git
 
 LIB = Path(__file__).resolve().parents[1] / "lib"
 REPO = Path(__file__).resolve().parents[3]
@@ -169,10 +169,6 @@ def test_release_notes_problems_are_named(tmp_path):
 
 
 # ------------------------------------------------------------------------------------------------ git and the command line
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args], cwd=root,
-                          check=True, capture_output=True, text=True).stdout
 
 
 def test_the_plan_is_made_for_the_files_changed_since_the_certificate(shop, capsys):

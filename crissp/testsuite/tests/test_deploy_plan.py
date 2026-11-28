@@ -7,11 +7,11 @@ import importlib.util
 import json
 import re
 import runpy
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from gitrepo import git as _git
 
 SUITE = Path(__file__).resolve().parents[1]
 LIB = SUITE / "lib" / "deploy_plan.py"
@@ -187,10 +187,6 @@ def test_deploy_sh_names_no_product():
 
 
 # ------------------------------------------------------------------------------------------------ git and the record
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
-                          cwd=root, check=True, capture_output=True, text=True).stdout
 
 
 @pytest.fixture

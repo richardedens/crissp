@@ -214,5 +214,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover — run as a script by the check scripts; main() is tested
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
-    sys.exit(main(sys.argv))
+    project.script(main)

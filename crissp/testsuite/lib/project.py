@@ -87,6 +87,11 @@ class Speaking:
         return getattr(self._stream, name)
 
 
+def script(main) -> None:
+    """Run a guard as a script: stdout and stderr speak the names a person can type (F-04), the exit is main's."""
+    sys.stdout, sys.stderr = Speaking(sys.stdout), Speaking(sys.stderr)
+    sys.exit(main(sys.argv))
+
 def root(env=None) -> Path:
     """The project: CRISSP_ROOT, or the current directory."""
     env = os.environ if env is None else env

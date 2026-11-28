@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from gitrepo import git as _git
 
 ROOT = Path(__file__).resolve().parents[3]
 LIB = ROOT / "crissp/testsuite/lib"
@@ -37,10 +38,6 @@ SHOP = {"product": "Shop", "steps": [
     "paths": [{"match": "app/backend/", "steps": ["backend"]}, {"match": "app/frontend/src/", "steps": ["web"]}],
     "shared": [{"match": "*/Dockerfile", "why": "what goes into an image"}]}
 
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args], cwd=root,
-                          check=True, capture_output=True, text=True).stdout
 
 
 def product(tmp_path: Path) -> Path:

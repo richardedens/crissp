@@ -261,5 +261,4 @@ def main(argv: list[str], root: Path | None = None) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover — run by crissp/check.sh and check-all.sh; main() is tested
-    sys.stdout, sys.stderr = project.Speaking(sys.stdout), project.Speaking(sys.stderr)  # F-04: the names a person can type
-    sys.exit(main(sys.argv))
+    project.script(main)
