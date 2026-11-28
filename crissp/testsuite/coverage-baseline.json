@@ -140,6 +140,10 @@
     "crissp/uxsuite/ux_verdicts.py": {
      "branch": 100.0,
      "line": 100.0
+    },
+    "crissp/testsuite/lib/vibesessions.py": {
+     "branch": 100.0,
+     "line": 100.0
     }
    },
    "line": 100.0
