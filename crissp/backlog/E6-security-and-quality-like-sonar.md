@@ -9,7 +9,7 @@ nothing written into the project's files.
 Why        The audit (pip-audit, npm audit, trivy) exists but the template has no audit step, crissp's own audit skips
            its chart, and trivy is whatever a machine has on its PATH.
 
-### E6-F1-01 · Pinned scanners: trivy and gitleaks fetched once, checksum-checked        [todo] [S]
+### E6-F1-01 · Pinned scanners: trivy and gitleaks fetched once, checksum-checked        [review] [S]
 Why        trivy runs as whatever version a machine has (a compromised or old trivy decides what is green).
 What       lib/tools.py: one pinned version per tool and per system with its SHA-256, downloaded once from the release
            into the crissp cache, refused when the checksum differs; audit.py runs that trivy.
@@ -18,7 +18,7 @@ Done when  A wrong checksum is refused and nothing is kept; a cached tool is not
 Tests      tests/test_tools.py, tests/test_audit.py
 Depends    —
 
-### E6-F1-02 · The audit in every project, and on crissp's own chart                     [todo] [S]
+### E6-F1-02 · The audit in every project, and on crissp's own chart                     [review] [S]
 Why        A project brought in with crissp init has no audit step; crissp's own audit never runs trivy config on its
            chart and Terraform.
 What       The template gets a full-run audit step and an audit section naming the default places (D-02), with missing:
@@ -32,7 +32,7 @@ Depends    —
 ## E6-F2 · Secrets never in git, tested                                                  [todo]
 Why        'Secrets never in git' is a rule without a test: nothing scans the history.
 
-### E6-F2-01 · A secrets step: gitleaks over the history                                 [todo] [M]
+### E6-F2-01 · A secrets step: gitleaks over the history                                 [review] [M]
 Why        Nothing proves no secret reached git.
 What       audit.py secrets: the pinned gitleaks over the git history (the files when there is no git), redacted, never
            printing a value; a project's own gitleaks configuration (.gitleaks.toml, .gitleaksignore, gitleaks:allow) is
@@ -46,7 +46,7 @@ Depends    E6-F1-01
 Why        Nothing looks for eval, shell injection, unsafe deserialisation, disabled TLS checks or HTML injection in a
            project's code or crissp's own.
 
-### E6-F3-01 · SAST: ruff's Bandit rules and Semgrep with crissp's rules                 [todo] [M]
+### E6-F3-01 · SAST: ruff's Bandit rules and Semgrep with crissp's rules                 [review] [M]
 Why        Unsafe code (eval, shell=True, pickle, yaml.load, verify=False, innerHTML, child_process.exec) passes every
            step.
 What       The template's backend-lint adds ruff's S rules on top of the project's own ruff configuration (asserts
