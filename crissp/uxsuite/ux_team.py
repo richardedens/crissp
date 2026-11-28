@@ -85,9 +85,12 @@ def versions(suite: Suite, kind: str, walk: str) -> list[dict]:
         if proc is not None and proc.poll() is not None and status.get("phase") != "done":
             status = {**status, "phase": "failed", "note": f"the run stopped (exit code {proc.returncode})"}
         rel = vdir.relative_to(suite.results).as_posix()
-        out.append({"version": n, "key": f"{walk}#{PREFIX[kind]}{n}", "request": _load(vdir / "request.json"),
-                    "status": status, "result": _load(vdir / RESULT[kind]), "check": _load(vdir / "check.json"),
-                    "mockup": f"/ux/results/{rel}/mockup.html" if (vdir / "mockup.html").is_file() else None})
+        row = {"version": n, "key": f"{walk}#{PREFIX[kind]}{n}", "request": _load(vdir / "request.json"),
+               "status": status, "result": _load(vdir / RESULT[kind]), "check": _load(vdir / "check.json"),
+               "mockup": f"/ux/results/{rel}/mockup.html" if (vdir / "mockup.html").is_file() else None}
+        if kind == "round":  # the debate as far as it got (F-80): every first look and every answer, live while it runs
+            row["debate"] = _load(vdir / "debate.json")
+        out.append(row)
     return out
 
 
@@ -288,7 +291,8 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 2. debate — {conf['rounds']} round(s); in each, one agent per persona, the moderator too ("debate <key>"): each reads the
    others and answers them, agree, disagree or nuance, and why, ending with JSON {{"persona", "agree": [], "disagree":
    [{{"with", "point", "why"}}], "changed_my_mind": []}}. Write every review and answer to {vdir}/debate.json as
-   {{"reviews": [...], "rebuttals": [...]}}.
+   {{"reviews": [...], "rebuttals": [...]}}, and write it again as each one comes in (the product owner follows the
+   debate live), each answer with "round": <its debate round number>.
 3. moderate — the moderator ({moderator}, description "moderate") separates taste from real problems, takes the quietest
    voice seriously and writes {vdir}/round.json: {{"summary" (three sentences), "scores": {{"<persona key>": score}},
    "consensus": [], "disputes": [{{"topic", "positions": [{{"persona", "position"}}]}}], "advice": [{{"title", "detail",

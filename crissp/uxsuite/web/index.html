@@ -19,6 +19,11 @@
   <dialog id="why"><form method="dialog"><h3 id="why-title">Why?</h3><p class="small muted" id="why-hint"></p>
     <textarea id="why-text" aria-label="Your reason"></textarea>
     <div class="toolbar" style="margin:10px 0 0"><button class="primary" value="ok">Save</button><button class="ghost" value="cancel">Cancel</button></div></form></dialog>
+  <dialog id="viewer" class="viewer" aria-label="Enlarged view"><div class="viewer-bar"><b id="viewer-title"></b>
+    <span class="seg" id="viewer-modes" role="group" aria-label="What to show"></span>
+    <span class="seg" role="group" aria-label="Zoom"><button class="ghost small" data-zoom="fit">Fit</button><button class="ghost small" data-zoom="1">100%</button><button class="ghost small" data-zoom="1.5">150%</button><button class="ghost small" data-zoom="2">200%</button></span>
+    <form method="dialog"><button class="ghost" aria-label="Close (Esc)">Close ✕</button></form></div>
+    <div id="viewer-body" class="viewer-body"></div></dialog>
   <script src="ux.js"></script>
   <script src="../../look/water.js"></script>
 </body>
