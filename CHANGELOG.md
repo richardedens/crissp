@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **One screen at a time, from the keyboard (E7-F4-01).** The UX page's new **Review** tab shows how far the product
+  is (every screen new, seen, discussed, decided, designed, approved, built or accepted, as one bar) and goes through
+  the screens that wait for you first. Per screen: the shot with the team's advice pinned where it is, next to the
+  design; the advice must first; and one verdict bar at the bottom of the window. 1 2 3 give the verdict, ← → go to the
+  previous or next screen, ↑ ↓ to the previous or next item; after a verdict it moves on to the next open one.
 - **The browser measures what it can, so the team does not guess (E7-F2-02).** A rule can say what the browser checks
   for it at every shoot: text that is cut off or runs past the screen, tap targets under 44 × 44 on a phone, the
   primary action below the fold, a see-through dialog, a control without a visible focus. Tick them in the Rules tab

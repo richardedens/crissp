@@ -321,7 +321,8 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
    voice seriously and writes {vdir}/round.json: {{"summary" (three sentences), "scores": {{"<persona key>": score}},
    "consensus": [], "disputes": [{{"topic", "positions": [{{"persona", "position"}}]}}], "advice": [{{"title", "detail",
    "priority": "must|should|could", "effort": "S|M|L", "personas": [keys of who asked], "shot": "<device> <n>",
-   "rule": "<the id of the rule it is about, from rules.md, or empty>"}}]}},
+   "rule": "<the id of the rule it is about, from rules.md, or empty>",
+   "where": {{"x", "y", "w", "h"}} (where on that shot it is, in the screenshot's pixels, when it is one place; else leave it out)}}]}},
    the advice worst first, each piece something a developer can act on.
 4. done — status.json with phase "done" and a one-line note.
 """ + FOREGROUND

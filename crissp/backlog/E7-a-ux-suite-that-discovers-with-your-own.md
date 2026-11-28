@@ -72,7 +72,7 @@ Depends    E7-F1-01 E7-F3-01
 Why        The product owner decides fast and once: one screen with before and after, findings pinned on it, and a
            verdict on a rule that holds for every screen under it.
 
-### E7-F4-01 · The review screen: status per screen, before and after, pinned findings   [todo] [L]
+### E7-F4-01 · The review screen: status per screen, before and after, pinned findings   [review] [L]
 Why        The page lists walks with advice; there is no status per screen, no progress and no before and after in one
            view.
 What       Per screen its status (seen, discussed, decided, designed, approved, built, accepted), a progress bar, before

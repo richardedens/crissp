@@ -35,6 +35,7 @@ import ux_backlog  # noqa: E402
 import ux_cards  # noqa: E402
 import ux_config  # noqa: E402
 import ux_map  # noqa: E402
+import ux_review  # noqa: E402
 import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
 
@@ -63,10 +64,11 @@ def state(suite: ux_config.Suite) -> dict:
         walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"),
                       "shot_at": ux_team.shot_at(suite, w["id"]), "shots": ux_team.shots(suite, w["id"]),
                       "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
+    found = ux_map.load(suite)
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
             "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
             "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "map": ux_map.load(suite), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
+            "walks": walks, "map": found, "review": ux_review.review(conf, walks, verdicts, found), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
             "team": ux_team.state(suite, conf)}
 
 
