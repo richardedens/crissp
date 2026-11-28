@@ -49,3 +49,46 @@
   .persona a, .rule a, .edit a { display: inline-flex; align-items: center; min-height: 44px; }
   .edit input[type=checkbox] { width: 22px; height: 22px; min-height: 0; }
 }
+
+/* The debate (F-80): first looks side by side, then the answers, round by round */
+.debate { border-top: 1px solid var(--line); padding-top: 10px; }
+.debate summary { cursor: pointer; font-weight: 600; }
+.looks { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 10px 0; }
+.look { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 6px; align-content: start; background: var(--panel2); }
+.look header { display: flex; align-items: flex-start; gap: 8px; }
+.look header .who-role { flex: 1; min-width: 0; }
+.look header .score { flex: none; }
+.look ul { margin: 0; padding-left: 18px; }
+.problem p { margin: 2px 0 6px; color: var(--muted); }
+.score.big { margin-left: auto; font-size: 15px; font-weight: 700; }
+.who { display: inline-flex; align-items: center; gap: 6px; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--panel); border: 2px solid var(--accent); color: var(--text); font-size: 12px; font-weight: 700; }
+.answers { display: grid; gap: 8px; }
+.answer { border-left: 3px solid var(--line); padding: 4px 12px; }
+.answer p { margin: 4px 0; }
+.tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); }
+.tag.no { border-color: var(--must); } .tag.yes { border-color: var(--green); } .tag.turn { border-color: var(--accent); }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
+button.shot { all: unset; cursor: zoom-in; display: block; }
+button.shot:focus-visible, .compare .frame .cover:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.compare .frame .cover { position: absolute; inset: 0; background: transparent; border: 0; cursor: zoom-in; }
+.toolbar.enlarge { margin: -4px 0 14px; align-items: center; }
+
+/* The viewer (F-80): over the whole window, solid, the picture scrolls inside it */
+dialog.viewer { max-width: none; width: 96vw; height: 94vh; padding: 0; display: none; }
+dialog.viewer[open] { display: flex; flex-direction: column; }
+.viewer-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.viewer-bar b { margin-right: auto; }
+.viewer-bar form { margin: 0; }
+.viewer-bar .seg { display: inline-flex; gap: 4px; }
+.viewer-bar button[aria-pressed="true"] { background: var(--panel2); border-color: var(--accent); }
+.viewer-body { flex: 1; min-height: 0; display: grid; gap: 12px; padding: 12px; }
+.viewer-body.two { grid-template-columns: 1fr 1fr; }
+.viewer-body .pane { margin: 0; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.viewer-body figcaption { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.viewer-body .scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
+.viewer-body img { display: block; margin: 0 auto; }
+.viewer-body img.fit { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.viewer-body .mock { position: relative; overflow: hidden; background: #fff; }
+.viewer-body .mock iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
+@media (max-width: 800px) { .viewer-body.two { grid-template-columns: 1fr; } dialog.viewer { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; } }
