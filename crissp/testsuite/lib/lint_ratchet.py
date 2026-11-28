@@ -88,6 +88,23 @@ def baseline_of(folder: Path, findings: list[dict]) -> dict:
     }
 
 
+def _file(folder: Path, file: str, mine: list[dict], rules: dict[str, int], was: dict | None):
+    """One file's findings against its baseline entry: what blocks, how many are allowed, its shrunk entry or None."""
+    if was is None or was.get("sha256") != digest(folder / file):
+        why = "a new file is clean" if was is None else "a changed file is clean"
+        return [{**f, "why": why} for f in mine], 0, None
+    limits = was.get("rules", {})
+    blocking, allowed = [], 0
+    for rule, n in rules.items():
+        if n > limits.get(rule, 0):
+            why = f"{n} of {rule}, the baseline allows {limits.get(rule, 0)}"
+            blocking += [{**f, "why": why} for f in mine if f["rule"] == rule]
+        else:
+            allowed += n
+    shrunk = {rule: n for rule, n in sorted(rules.items()) if n <= limits.get(rule, 0)}
+    return blocking, allowed, ({"sha256": was["sha256"], "rules": shrunk} if shrunk else None)
+
+
 def judge(
     folder: Path, findings: list[dict], known: dict | None, complete: bool
 ) -> tuple[list[dict], int, dict | None]:
@@ -98,25 +115,13 @@ def judge(
         return [{**f, "why": ""} for f in findings], 0, None
     files = known.get("files", {})
     blocking, allowed, kept = [], 0, {}
-    found = counts(findings)
-    for file, rules in found.items():
-        was = files.get(file)
+    for file, rules in counts(findings).items():
         mine = [f for f in findings if f["file"] == file]
-        if was is None or was.get("sha256") != digest(folder / file):
-            why = "a new file is clean" if was is None else "a changed file is clean"
-            blocking += [{**f, "why": why} for f in mine]
-            continue
-        for rule, n in rules.items():
-            limit = was.get("rules", {}).get(rule, 0)
-            if n > limit:
-                blocking += [
-                    {**f, "why": f"{n} of {rule}, the baseline allows {limit}"} for f in mine if f["rule"] == rule
-                ]
-            else:
-                allowed += n
-        shrunk = {rule: n for rule, n in rules.items() if n <= was.get("rules", {}).get(rule, 0)}
-        if shrunk:
-            kept[file] = {"sha256": was["sha256"], "rules": dict(sorted(shrunk.items()))}
+        more, ok, entry = _file(folder, file, mine, rules, files.get(file))
+        blocking += more
+        allowed += ok
+        if entry:
+            kept[file] = entry
     if blocking or not complete:
         return blocking, allowed, None
     tighter = {"files": dict(sorted(kept.items()))}

@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "0c27db7e2ab6f577a0ed52b8e3c346178388df5c",
+ "commit": "2288ebe1d0ce1fac58f6b3a7500dc25e6523c521",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -42,6 +42,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/impact.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/lint_ratchet.py": {
      "branch": 100.0,
      "line": 100.0
     },
@@ -90,6 +94,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/setup_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/sources.py": {
      "branch": 100.0,
      "line": 100.0
     },

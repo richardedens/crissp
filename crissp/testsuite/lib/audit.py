@@ -81,6 +81,10 @@ NEEDED = ("id", "package", "why", "by", "since", "until")
 PIP_AUDIT = "pip-audit==2.10.1"
 SEMGREP = "semgrep==1.185.0"  # SAST, run offline with crissp's own rules (never the registry, metrics off)
 RULES = Path(__file__).resolve().parents[1] / "sast"  # crissp's Semgrep rules, with their tests in sast/tests
+# F-150: never a build folder (its lock files are not the project's; built code is not its code), also when the project's
+# own .semgrepignore leaves Semgrep's defaults out
+UNBUILT_TRIVY = [x for name in sources.BUILD for x in ("--skip-dirs", f"**/{name}")]
+UNBUILT_SEMGREP = [x for name in sources.BUILD for x in ("--exclude", name)]
 PYTHON = "3.14"  # what pip-audit resolves for, unless the project names another
 
 
@@ -375,11 +379,10 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
     def trivy(sub: str) -> list[str]:
         return [trivy_bin, sub, "--quiet"]
 
-    unbuilt = [x for name in sources.BUILD for x in ("--skip-dirs", f"**/{name}")]  # F-150: no build folder's locks
     for app in fs if trivy_bin else []:
         scan(
             f"trivy fs {app}",
-            [*trivy("fs"), "--scanners", "vuln", *unbuilt, "--format", "json", app],
+            [*trivy("fs"), "--scanners", "vuln", *UNBUILT_TRIVY, "--format", "json", app],
             root,
             from_trivy,
             app,
@@ -1032,14 +1035,12 @@ def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> 
 
     if paths:
         configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
-        # F-150: never build output, also when the project's own .semgrepignore leaves Semgrep's defaults out
-        excludes = [x for name in sources.BUILD for x in ("--exclude", name)]
         _scanner(run, findings, problems, scanned)(
             f"semgrep {' '.join(paths)}",
             semgrep(
                 "scan",
                 *configs,
-                *excludes,
+                *UNBUILT_SEMGREP,
                 "--json",
                 "--metrics",
                 "off",

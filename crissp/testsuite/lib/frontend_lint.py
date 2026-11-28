@@ -158,32 +158,10 @@ def lint(tool: str, argv: list[str], folder: Path, run, env: dict, names: list[s
     return found, problems
 
 
-def main(
-    argv: list[str],
-    env: dict,
-    run: Callable[..., int] = call,
-    which: Callable[[str], str | None] = shutil.which,
-    cwd: Path | None = None,
-) -> int:
-    flags = {a for a in argv if a in ("--react-compiler", "--baseline")}
-    argv = [a for a in argv if a not in flags]
-    if len(argv) > 1 or any(a.startswith("-") for a in argv):
-        print("usage: frontend_lint.py [--react-compiler] [--baseline] [<folder>]")
-        return 2
-    here = Path(cwd or os.getcwd())
-    folder = here / argv[0] if argv else here
-    if not folder.is_dir():
-        print(f"frontend-lint: {argv[0]} is not a folder")
-        return 1
-    npm = which("npm")
-    if npm is None:
-        print("frontend-lint: npm is missing. Install Node.js (brew install node)")
-        return 1
-    where = place(env)
-    if not install(where, run, npm):
-        return 1
+def commands(where: Path) -> dict[str, list[str]]:
+    """The two tools as crissp runs them: its installed binaries with its configs."""
     bin_ = where / "node_modules" / ".bin"
-    commands = {
+    return {
         "eslint": [str(bin_ / "eslint"), "--config", str(where / "eslint.config.mjs"), "--no-warn-ignored"],
         "stylelint": [
             str(bin_ / "stylelint"),
@@ -194,24 +172,61 @@ def main(
             "--allow-empty-input",
         ],
     }
-    # F-151: the React Compiler's rules only for a project that says it uses the compiler (eslint.config.mjs reads this)
-    tools_env = {**env, "CRISSP_REACT_COMPILER": "1" if "--react-compiler" in flags else "0"}
-    findings, problems = [], []
-    for tool, command in commands.items():
-        names = sources.files(folder, TOOLS[tool][1])
-        found, why = lint(tool, command, folder, run, tools_env, names)
-        findings += found
-        problems += why
-    root = lint_ratchet.root_of(folder, env)
-    key = lint_ratchet.key_of(folder, root)
-    off, wrong = lint_ratchet.exceptions(root)  # F-153: rules switched off for this project, each with why
-    problems += wrong
-    findings, dropped = lint_ratchet.without(findings, off)
+
+
+def without_exceptions(root: Path, findings: list[dict]) -> tuple[list[dict], list[str]]:
+    """F-153: the findings of the rules this project did not switch off; each rule that is off is said, with why."""
+    off, wrong = lint_ratchet.exceptions(root)
+    kept, dropped = lint_ratchet.without(findings, off)
     for e in off:
         print(
             f"frontend-lint: {e['rule']} is off ({lint_ratchet.EXCEPTIONS}): {e['why']} ({e['by']}, since "
             f"{e['since']}); {dropped.get(e['rule'], 0)} not counted"
         )
+    return kept, wrong
+
+
+def _folder(argv: list[str], here: Path) -> Path | int:
+    """The folder to lint, or the exit code when the arguments are wrong (2) or it is no folder (1)."""
+    if len(argv) > 1 or any(a.startswith("-") for a in argv):
+        print("usage: frontend_lint.py [--react-compiler] [--baseline] [<folder>]")
+        return 2
+    folder = here / argv[0] if argv else here
+    if not folder.is_dir():
+        print(f"frontend-lint: {argv[0]} is not a folder")
+        return 1
+    return folder
+
+
+def main(
+    argv: list[str],
+    env: dict,
+    run: Callable[..., int] = call,
+    which: Callable[[str], str | None] = shutil.which,
+    cwd: Path | None = None,
+) -> int:
+    flags = {a for a in argv if a in ("--react-compiler", "--baseline")}
+    folder = _folder([a for a in argv if a not in flags], Path(cwd or os.getcwd()))
+    if isinstance(folder, int):
+        return folder
+    npm = which("npm")
+    if npm is None:
+        print("frontend-lint: npm is missing. Install Node.js (brew install node)")
+        return 1
+    where = place(env)
+    if not install(where, run, npm):
+        return 1
+    # F-151: the React Compiler's rules only for a project that says it uses the compiler (eslint.config.mjs reads this)
+    tools_env = {**env, "CRISSP_REACT_COMPILER": "1" if "--react-compiler" in flags else "0"}
+    findings, problems = [], []
+    for tool, command in commands(where).items():
+        found, why = lint(tool, command, folder, run, tools_env, sources.files(folder, TOOLS[tool][1]))
+        findings += found
+        problems += why
+    root = lint_ratchet.root_of(folder, env)
+    key = lint_ratchet.key_of(folder, root)
+    findings, wrong = without_exceptions(root, findings)
+    problems += wrong
     folders = lint_ratchet.load(root)
     if "--baseline" in flags:
         return write_baseline(root, folder, key, folders, findings, problems)
