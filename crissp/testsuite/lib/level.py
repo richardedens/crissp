@@ -50,11 +50,9 @@ def text_of(path: Path) -> str | None:
 # --- suites: the template's steps, path rules, shared ground and audit block ---
 
 
-def suites(root: Path, data: dict, template: dict) -> tuple[dict | None, list[str], list[str]]:
-    """(the suites.json to write, or None when nothing is added; what is added; what needs a person)."""
-    steps = data.get("steps") or []
-    have = {s.get("key") for s in steps}
-    runs = {s.get("run") for s in steps}
+def _steps(root: Path, steps: list, template: dict) -> tuple[list[dict], list[str]]:
+    """The template's steps the project lacks: (the ones whose part is here, what is said of the others)."""
+    have, runs = {s.get("key") for s in steps}, {s.get("run") for s in steps}
     added, said = [], []
     for step in template.get("steps", []):
         if step["key"] in have or step["key"] in upgrade.NEW or step.get("run") in runs:
@@ -67,29 +65,38 @@ def suites(root: Path, data: dict, template: dict) -> tuple[dict | None, list[st
                 f"suites.json has no {step['key']} step ({step['label'].removeprefix('CRISSP: ')}): its part "
                 f"{part} is not here; add one for the folder your project keeps it in (`run`: {step['run']})"
             )
-    keys = have | {s["key"] for s in added}
+    return added, said
+
+
+def _paths(data: dict, template: dict, keys: set, added: set) -> list[dict]:
+    """The project's path rules, with the added steps where the template's rules run them."""
     paths = [dict(r, steps=list(r.get("steps", []))) for r in data.get("paths", [])]
     for rule in template.get("paths", []):
-        new = [k for k in rule["steps"] if k in {s["key"] for s in added}]
-        if not new:
-            continue
+        new = [k for k in rule["steps"] if k in added]
         own = next((r for r in paths if r.get("match") == rule["match"]), None)
-        if own is None:
+        if new and own is None:
             paths.append({"match": rule["match"], "steps": [k for k in rule["steps"] if k in keys]})
-        else:
+        elif new:
             own["steps"] += [k for k in new if k not in own["steps"]]
+    return paths
+
+
+def suites(root: Path, data: dict, template: dict) -> tuple[dict | None, list[str], list[str]]:
+    """(the suites.json to write, or None when nothing is added; what is added; what needs a person)."""
+    steps = data.get("steps") or []
+    added, said = _steps(root, steps, template)
+    new = {s["key"] for s in added}
     shared = data.get("shared", [])
     more = [r for r in template.get("shared", []) if r["match"] not in {s.get("match") for s in shared}]
     audit = "audit" not in data and "audit" in template
-    what = []
-    if added:
-        what.append(f"the template's steps {', '.join(s['key'] for s in added)} (their parts are here)")
-    if audit:
-        what.append("its audit block (what the audit step scans; a place that is not there is skipped)")
-    if more:
-        what.append(f"its shared ground {', '.join(r['match'] for r in more)}")
+    what = [
+        *[f"the template's steps {', '.join(s['key'] for s in added)} (their parts are here)"] * bool(added),
+        *["its audit block (what the audit step scans; a place that is not there is skipped)"] * audit,
+        *[f"its shared ground {', '.join(r['match'] for r in more)}"] * bool(more),
+    ]
     if not what:
         return None, [], said
+    paths = _paths(data, template, {s.get("key") for s in steps} | new, new)
     out = {**data, "steps": steps + added, "paths": paths, "shared": shared + more}
     if audit:
         out["audit"] = template["audit"]

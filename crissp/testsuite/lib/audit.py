@@ -328,6 +328,15 @@ def local_images(root: Path, conf: dict, run, problems: list) -> dict[str, dict]
     return out
 
 
+def scan_images(root: Path, conf: dict, run, problems: list, scan, roles: dict, trivy: list[str]) -> list[dict]:
+    """trivy image on every image, each named by its role and, for a local copy, its build date (F-163, F-164)."""
+    local = local_images(root, conf, run, problems) if roles else {}
+    for image, role in roles.items():
+        target = image_target(image, role, local.get(image))
+        scan(f"trivy image {image}", [*trivy, "--format", "json", image], root, from_trivy, target)
+    return [{"image": i, "role": r, **local.get(i, {})} for i, r in roles.items()]
+
+
 def image_target(image: str, role: str, local: dict | None) -> str:
     """How a finding names its image: build stage or not, and when it is this machine's copy, from when."""
     notes = ["build stage, never ships"] if role == "build" else []
@@ -459,10 +468,7 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         scan(f"trivy fs {app}", [*trivy("fs"), "--scanners", "vuln", "--format", "json", app], root, from_trivy, app)
     for target in configs if trivy_bin else []:
         scan(f"trivy config {target}", [*trivy("config"), "--format", "json", target], root, from_trivy, target)
-    local = local_images(root, conf, run, problems) if found_images and trivy_bin else {}
-    for image in found_images if trivy_bin else []:
-        target = image_target(image, roles[image], local.get(image))
-        scan(f"trivy image {image}", [*trivy("image"), "--format", "json", image], root, from_trivy, target)
+    found = scan_images(root, conf, run, problems, scan, roles, trivy("image")) if trivy_bin else []
     if not skip and not any(conf.get(k) for k in ("pip", "npm", "fs", "config", "dockerfiles", "images")):
         problems.append("nothing to audit: name what to scan in crissp/testsuite/suites.json (audit)")
     return _report(
@@ -474,7 +480,7 @@ def run_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> d
         accepted,
         not_scanned=own_images(root, conf),
         absent=absent,
-        images=[{"image": i, "role": roles[i], **local.get(i, {})} for i in found_images if trivy_bin],
+        images=found,
     )
 
 
@@ -1146,13 +1152,10 @@ def rules_test(root: Path, run) -> tuple[int, str]:
     return code, (out + err).strip()
 
 
-def render(report: dict) -> str:
-    lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
-    for image in report["not_scanned"]:
-        lines.append(
-            f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above"
-        )
-    for i in report.get("images", []):
+def image_notes(found: list[dict]) -> list[str]:
+    """F-163/F-164: which images never ship, and which were scanned as this machine has them."""
+    lines = []
+    for i in found:
         if i["role"] == "build":
             lines.append(f"note     build stage only, never ships: {i['image']} (its CVEs still count)")
         if i.get("built"):
@@ -1163,6 +1166,16 @@ def render(report: dict) -> str:
                 else "docker pull it for the current one"
             )
             lines.append(f"note     scanned as this machine has it: {i['image']} (local, built {i['built']}); {fresh}")
+    return lines
+
+
+def render(report: dict) -> str:
+    lines = [f"Scanned: {len(report['scanned'])} — " + "; ".join(report["scanned"])]
+    for image in report["not_scanned"]:
+        lines.append(
+            f"note     not scanned yet (needs a Docker build): {image} — its base image and its dependencies are scanned above"
+        )
+    lines += image_notes(report.get("images", []))
     for path in report.get("absent", []):
         lines.append(f"note     not there yet, not scanned: {path}")
     for p in report["problems"]:
