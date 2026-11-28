@@ -297,7 +297,17 @@ def test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool
     _write(b / "done" / "E0-baseline.md", "# E0 · Baseline\n\n### E0-01 · All there   [done] [S]\n")
     _write(b / "notes.md", "not an epic\n")
     _write(b / "E9-draft.md", "no heading yet\n")  # a file without its epic heading is not on the board
+    _write(b / "FINDINGS.md", "| # | Seen | Observation | Goes to |\n|---|---|---|---|\n| F-01 | a scan | dumps in an image | E5-01 |\n"
+                              "| F-02 | the board | no findings on it | — |\n")
+    _write(b / "done" / "FINDINGS.md", "| F-00 | old | fixed thing | fixed (0.1.0) |\n")
+    _write(b / "DECISIONS.md", "| # | Question | Options | Recommendation |\n|---|---|---|---|\n"
+                               "| D-04 | Admin kubeconfigs? | a) keep · b) read-only | **b** |\n| ~~D-01~~ | A private repository. | 2026-10-23 |\n")
     board = collect._backlog()
+    # F-32: the open findings and decisions are on the board, read by the crissp tool too (done ones and taken ones not)
+    assert board["findings"] == [{"id": "F-01", "seen": "a scan", "observation": "dumps in an image", "goes_to": "E5-01", "file": "crissp/backlog/FINDINGS.md"},
+                                 {"id": "F-02", "seen": "the board", "observation": "no findings on it", "goes_to": "—", "file": "crissp/backlog/FINDINGS.md"}]
+    assert board["decisions"] == [{"id": "D-04", "question": "Admin kubeconfigs?", "options": "a) keep · b) read-only",
+                                   "recommendation": "**b**", "file": "crissp/backlog/DECISIONS.md"}]
     assert board["statuses"] == ["todo", "doing", "review", "done", "parked"]
     assert [(e["id"], e["title"], e["done"]) for e in board["epics"]] == [("E1", "Quality", False), ("E8", "Repair", False), ("E0", "Baseline", True)]
     e1, e8, e0 = board["epics"]
