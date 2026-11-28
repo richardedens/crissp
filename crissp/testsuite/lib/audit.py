@@ -20,8 +20,14 @@ The secrets scan is the pinned gitleaks (lib/tools.py) over the git history, or 
 It says where a secret is, never what it is (redacted, and the value is never read). The project's own gitleaks
 configuration counts, as gitleaks reads it: .gitleaks.toml, .gitleaksignore (fingerprints) and gitleaks:allow.
 
+SAST is the pinned Semgrep, offline (metrics off, no registry), with crissp's rules (crissp/testsuite/sast: Python,
+JavaScript, TypeScript, JSX) and the rules folders the project names (sast_rules), on the code it names (sast). An
+ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts.
+
     python3 crissp/testsuite/lib/audit.py run       scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
     python3 crissp/testsuite/lib/audit.py secrets   the git history, into results/secrets.json, exit 1 on a secret
+    python3 crissp/testsuite/lib/audit.py sast      the code (audit.sast), into results/sast.json, exit 1 on an ERROR
+    python3 crissp/testsuite/lib/audit.py rules     crissp's Semgrep rules against their own tests (sast/tests)
 """
 
 import datetime
@@ -41,6 +47,8 @@ BLOCKING = ("CRITICAL", "HIGH")
 MAX_DAYS = 90
 NEEDED = ("id", "package", "why", "by", "since", "until")
 PIP_AUDIT = "pip-audit==2.10.1"
+SEMGREP = "semgrep==1.185.0"  # SAST, run offline with crissp's own rules (never the registry, metrics off)
+RULES = Path(__file__).resolve().parents[1] / "sast"  # crissp's Semgrep rules, with their tests in sast/tests
 PYTHON = "3.14"  # what pip-audit resolves for, unless the project names another
 
 
@@ -293,7 +301,66 @@ NOT_GREEN = {
     "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
                "is no secret goes into .gitleaksignore (its fingerprint, from results/secrets.json, with a comment "
                "saying why).",
+    "sast": "Not green: change the code (each finding says why), or accept it for a while with a reason in "
+            "crissp/testsuite/accepted-risks.json (at most 90 days).",
 }
+
+
+SEVERITY = {"ERROR": "HIGH", "WARNING": "MEDIUM"}
+
+
+def from_semgrep(data: dict, target: str) -> list[dict]:
+    """A finding names the file, the line, the rule and why; never the code it matched."""
+    return [_finding("semgrep", target, r["path"], f"line {r['start']['line']}", r["check_id"].rsplit(".", 1)[-1],
+                     SEVERITY.get(r["extra"]["severity"], "LOW"), "change the code", r["extra"].get("message", ""),
+                     r["extra"]["severity"] == "ERROR")
+            for r in data.get("results", [])]
+
+
+def semgrep(*args: str) -> list[str]:
+    return ["uv", "run", "--quiet", "--no-project", "--with", SEMGREP, "semgrep", *args]
+
+
+def sast_all(root: Path, run, on: datetime.date, accepted: dict, conf: dict) -> dict:
+    """The pinned Semgrep, offline, with crissp's rules and the project's own (audit.sast_rules), on the code the
+    project names (audit.sast). The project's .semgrepignore counts; without one, Semgrep's defaults apply."""
+    findings, problems, scanned, absent = [], [], [], []
+    skip = conf.get("missing") == "skip"
+    paths, own = [], []
+    for path in conf.get("sast", []):
+        if (root / path).exists():
+            paths.append(path)
+        elif skip:
+            absent.append(path)
+        else:
+            problems.append(f"semgrep: {path} is not there")
+    for rules in conf.get("sast_rules", []):
+        if (root / rules).exists():
+            own.append(rules)
+        elif skip:
+            absent.append(rules)
+        else:
+            problems.append(f"semgrep: no rules at {rules}")
+
+    def parse(data: dict, target: str) -> list[dict]:
+        problems.extend(f"semgrep: {e.get('type')}: {e.get('message', '')}".strip() for e in data.get("errors", [])
+                        if e.get("level") == "error")
+        return from_semgrep(data, target)
+
+    if paths:
+        configs = [x for rules in (str(RULES), *own) for x in ("--config", rules)]
+        _scanner(run, findings, problems, scanned)(
+            f"semgrep {' '.join(paths)}", semgrep("scan", *configs, "--json", "--metrics", "off",
+                                                  "--disable-version-check", "--quiet", *paths), root, parse, "code")
+    elif not conf.get("sast") and not skip:
+        problems.append("nothing to scan: name the code in crissp/testsuite/suites.json (audit, sast)")
+    return _report("sast", on, scanned, problems, findings, accepted, absent=absent)
+
+
+def rules_test(root: Path, run) -> tuple[int, str]:
+    """crissp's rules against their own tests (sast/tests): each must match what it should and leave the rest."""
+    code, out, err = run(semgrep("--test", "--metrics", "off", "--config", str(RULES), str(RULES / "tests")), root)
+    return code, (out + err).strip()
 
 
 def render(report: dict) -> str:
@@ -318,13 +385,15 @@ def render(report: dict) -> str:
     elif kind == "secrets":
         lines.append("No secret found.")
     elif not report["scanned"]:
-        lines.append("Nothing to audit yet: none of the places suites.json names is here.")
+        lines.append(f"Nothing to {'scan' if kind == 'sast' else 'audit'} yet: none of the places suites.json names is here.")
+    elif kind == "sast":
+        lines.append(f"No unsafe code blocks ({len(listed)} listed for review).")
     else:
         lines.append(f"No known vulnerability blocks ({len(listed)} listed).")
     return "\n".join(lines)
 
 
-SCANS = {"run": "audit", "secrets": "secrets"}
+SCANS = {"run": "audit", "secrets": "secrets", "sast": "sast", "rules": None}
 
 
 def main(argv: list[str], root: Path | None = None) -> int:
@@ -332,6 +401,10 @@ def main(argv: list[str], root: Path | None = None) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     root = root or project.root()
+    if argv[1] == "rules":  # the engine's own rules: no project needed
+        code, said = rules_test(root, runner)
+        print(said)
+        return 0 if code == 0 else 1
     try:
         conf = project.load(root)["audit"] or {}
     except project.ConfigError as e:
@@ -341,6 +414,8 @@ def main(argv: list[str], root: Path | None = None) -> int:
     accepted = json.loads(risks.read_text()) if risks.is_file() else {"accepted": []}
     if argv[1] == "secrets":
         report = secrets_all(root, runner, today(), accepted)
+    elif argv[1] == "sast":
+        report = sast_all(root, runner, today(), accepted, conf)
     else:
         report = run_all(root, runner, today(), accepted, conf)
     results = project.results(root)

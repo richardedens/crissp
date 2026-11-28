@@ -3,6 +3,7 @@
 import datetime
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -273,8 +274,9 @@ def test_an_audit_with_nothing_to_scan_is_a_problem_never_a_pass(tmp_path):
 
 def test_this_repository_audits_its_pinned_tools_and_its_chart():
     conf = audit.project.load(LIB.parents[2])["audit"]
-    assert conf == {"pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt"],
-                    "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"]}
+    assert {k: conf[k] for k in ("pip", "config")} == {
+        "pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt"],
+        "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"]}
 
 
 SKIP = {**CONF, "missing": "skip"}
@@ -386,3 +388,96 @@ def test_this_repository_scans_its_history_for_secrets():
     conf = audit.project.load(LIB.parents[2])
     step = next(s for s in conf["steps"] if s["key"] == "secrets")
     assert step["run"] == "python3 lib/audit.py secrets" and not step["full_only"]
+
+
+# SAST (E6-F3-01): the pinned Semgrep with crissp's rules (crissp/testsuite/sast) and the project's own.
+SEMGREP = {"results": [
+    {"check_id": "crissp.testsuite.sast.crissp-py-shell", "path": "app/backend/run.py", "start": {"line": 7},
+     "extra": {"severity": "ERROR", "message": "A shell runs a command built from a value (shell injection).",
+               "lines": "subprocess.run(cmd, shell=True)"}},
+    {"check_id": "crissp-js-html-injection", "path": "app/frontend/src/view.js", "start": {"line": 3},
+     "extra": {"severity": "WARNING", "message": "HTML built from a value is put into the page."}},
+    {"check_id": "own-rule", "path": "app/backend/db.py", "start": {"line": 1}, "extra": {"severity": "INFO", "message": "x"}}],
+    "errors": [{"level": "warn", "type": "PartialParsing", "path": "app/frontend/src/odd.js"}]}
+SAST = {"missing": "skip", "sast": ["app/backend", "app/frontend"], "sast_rules": ["rules/semgrep"]}
+
+
+def test_unsafe_code_blocks_on_error_and_is_listed_on_warning(repo):
+    (repo / "rules/semgrep").mkdir(parents=True)
+    runner = Runner({"semgrep": (0, SEMGREP)})
+    report = audit.sast_all(repo, runner, TODAY, accepted={"accepted": []}, conf=SAST)
+    assert [(f["id"], f["severity"], f["blocks"]) for f in report["findings"]] == [
+        ("crissp-py-shell", "HIGH", True), ("crissp-js-html-injection", "MEDIUM", False), ("own-rule", "LOW", False)]
+    f = report["blocking"][0]
+    assert (f["package"], f["installed"], f["target"]) == ("app/backend/run.py", "line 7", "code")
+    assert report["problems"] == []  # a file Semgrep parsed only partly is not a problem
+    (argv, cwd), = runner.calls
+    assert argv[:6] == ["uv", "run", "--quiet", "--no-project", "--with", audit.SEMGREP] and cwd == repo
+    configs = [argv[i + 1] for i, a in enumerate(argv) if a == "--config"]
+    assert configs == [str(audit.RULES), "rules/semgrep"]  # crissp's rules and the project's own
+    assert "--metrics" in argv and argv[argv.index("--metrics") + 1] == "off" and "--disable-version-check" in argv
+    assert argv[-2:] == ["app/backend", "app/frontend"]
+    text = audit.render(report)
+    assert "BLOCKING HIGH     crissp-py-shell  app/backend/run.py line 7" in text and "subprocess.run" not in text
+    assert text.splitlines()[-1].startswith("Not green: change the code")
+
+
+def test_semgrep_errors_and_a_failed_run_are_problems(repo):
+    (repo / "rules/semgrep").mkdir(parents=True)
+    broken = {"results": [], "errors": [{"level": "error", "type": "InvalidRuleSchemaError", "message": "bad rule"}]}
+    report = audit.sast_all(repo, Runner({"semgrep": (2, broken)}), TODAY, accepted={"accepted": []}, conf=SAST)
+    assert report["problems"] == ["semgrep: InvalidRuleSchemaError: bad rule"]
+    report = audit.sast_all(repo, Runner({"semgrep": (2, "no network")}), TODAY, accepted={"accepted": []}, conf=SAST)
+    assert report["problems"][0].startswith("semgrep app/backend app/frontend could not run (exit 2)")
+
+
+def test_sast_on_places_not_there_yet_runs_nothing_and_is_green(tmp_path):
+    runner = Runner({})
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf=SAST)
+    assert runner.calls == [] and report["problems"] == []
+    assert report["absent"] == ["app/backend", "app/frontend", "rules/semgrep"]
+    assert audit.render(report).splitlines()[-1] == "Nothing to scan yet: none of the places suites.json names is here."
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf={})
+    assert report["problems"] == ["nothing to scan: name the code in crissp/testsuite/suites.json (audit, sast)"]
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf={"sast": ["app"], "sast_rules": ["r"]})
+    assert report["problems"] == ["semgrep: app is not there", "semgrep: no rules at r"]
+
+
+def test_clean_code_is_green_and_says_what_is_listed(repo):
+    report = audit.sast_all(repo, Runner({"semgrep": (0, {"results": SEMGREP["results"][1:], "errors": []})}), TODAY,
+                            accepted={"accepted": []}, conf={"sast": ["app/backend"]})
+    assert report["blocking"] == [] and audit.render(report).splitlines()[-1] == "No unsafe code blocks (2 listed for review)."
+
+
+def test_the_rules_have_tests_and_the_rules_command_runs_them(monkeypatch, capsys, tmp_path):
+    for rules in audit.RULES.glob("*.yaml"):
+        tests = list((audit.RULES / "tests").glob(rules.stem + ".*"))
+        assert tests, f"{rules.name} has no tests"
+        ids = re.findall(r"^  - id: (\S+)", rules.read_text(), re.M)
+        text = tests[0].read_text()
+        for rule in ids:  # every rule must match something and leave something alone
+            assert f"ruleid: {rule}" in text and f"ok: {rule}" in text, rule
+    runner = Runner({"semgrep --test": (0, "13/13: All tests passed")})
+    monkeypatch.setattr(audit, "runner", runner)
+    monkeypatch.setenv("CRISSP_ROOT", str(tmp_path))
+    assert audit.main(["audit.py", "rules"]) == 0 and "All tests passed" in capsys.readouterr().out
+    (argv, _), = runner.calls
+    assert argv[-2:] == [str(audit.RULES), str(audit.RULES / "tests")]
+    monkeypatch.setattr(audit, "runner", Runner({"semgrep --test": (1, "1 unit tests did not pass")}))
+    assert audit.main(["audit.py", "rules"]) == 1
+
+
+def test_the_sast_command_line_writes_its_results(repo, monkeypatch):
+    (repo / "crissp/testsuite").mkdir(parents=True)
+    (repo / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "Shop", "audit": {"sast": ["app"]}}))
+    monkeypatch.setenv("CRISSP_ROOT", str(repo))
+    monkeypatch.setattr(audit, "runner", Runner({"semgrep": (0, SEMGREP)}))
+    assert audit.main(["audit.py", "sast"]) == 1
+    assert json.loads((repo / "crissp/testsuite/results/sast.json").read_text())["blocking"][0]["id"] == "crissp-py-shell"
+
+
+def test_this_repository_scans_its_own_code_and_tests_its_rules():
+    conf = audit.project.load(LIB.parents[2])
+    step = next(s for s in conf["steps"] if s["key"] == "sast")
+    assert step["run"] == "python3 lib/audit.py rules && python3 lib/audit.py sast"
+    assert conf["audit"]["sast"] == ["src", "crissp", "site"]

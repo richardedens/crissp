@@ -17,7 +17,7 @@ pinned test tools.
 | `shared` | the product's shared ground (`{match, why}`): a change there needs the full run |
 | `notes` | what needs no test, besides Markdown, the backlog and `docs/` |
 | `setup` | `venvs` (a part's `.venv` from its `requirements-dev.txt`), `npm` (a part's `node_modules`), `needs` (`{command, hint}`: never installed, the hint says how) |
-| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python`; `missing: "skip"` lists a place that is not there yet instead of failing on it (the template names the default places) |
+| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python`; `sast` (the code Semgrep scans) and `sast_rules` (the project's own rules folders); `missing: "skip"` lists a place that is not there yet instead of failing on it (the template names the default places) |
 | `texts` | the dashboard's texts for the product (`e2e`, `journeys`) |
 
 A step's command gets `CRISSP_ROOT`, `RESULTS`, `STEP`, `JUNIT`, `COVERAGE_JSON`, `COVERAGE_FILE`, `TOOLS` and the
@@ -126,6 +126,21 @@ and crissp never reads it. Every finding blocks. The project's own gitleaks conf
 it: `.gitleaks.toml` (rules, allowed paths), `.gitleaksignore` (fingerprints of findings that are no secret, from
 `results/secrets.json`, each with a comment saying why) and `gitleaks:allow` on a line. A real leak is rotated first,
 then removed from the history.
+
+## SAST (lib/audit.py sast, sast/)
+
+`audit sast` runs Semgrep (pinned in `lib/audit.py`, through uv) offline: metrics off, no registry, only crissp's own
+rules (`sast/python.yaml`, `sast/javascript.yaml`: Python, JavaScript, TypeScript and JSX) plus the rules folders the
+project names in `audit.sast_rules`, on the code it names in `audit.sast` (the template: `app`). An ERROR blocks
+(eval or exec of a value, a shell built from a value, `yaml.load`, TLS checks off, a debug server); a WARNING is
+listed for review (pickle, SQL built from strings, HTML put into the page from a value, `dangerouslySetInnerHTML`,
+`mktemp`). A finding names the file, the line, the rule and why, never the code. The project's `.semgrepignore`
+counts; without one, Semgrep's defaults apply (they skip tests). Every rule has tests in `sast/tests/` (a line under
+`ruleid:` must match, one under `ok:` must not): `audit rules` runs them, and this repository's `sast` step does so
+before it scans `src`, `crissp` and `site`.
+
+The backend's lint (`ruff_check`, a helper of `lib/steps.sh`) adds ruff's Bandit rules (`S`) on top of the part's own
+ruff configuration; in tests an `assert`, a made-up password and `random` are allowed.
 
 ## The dashboard (dashboard/, lib/collect.py, lib/serve.py)
 

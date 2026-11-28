@@ -877,6 +877,44 @@
     "test_audit::test_this_repository_scans_its_history_for_secrets",
     "test_template::test_every_project_scans_its_git_history_for_secrets"
    ]
+  },
+  {
+   "id": "sast",
+   "title": "No static security analysis (F-44, E6-F3-01)",
+   "problem": "eval, a shell built from a value, yaml.load, pickle, verify=False, SQL built from strings, innerHTML or child_process.exec in a project's code, or in crissp's own, passed every step.",
+   "fix": "lib/audit.py sast runs Semgrep 1.185.0 (pinned, through uv) offline with crissp's own 13 rules (crissp/testsuite/sast: Python, JavaScript, TypeScript, JSX) plus the project's rules folders (audit.sast_rules), on the code audit.sast names; ERROR blocks, WARNING is listed, a finding never repeats the code. Every rule has tests (sast/tests, ruleid and ok lines), run by audit rules and by crissp's own sast step before it scans src, crissp and site. The template gets a sast step (audit sast on app) and its backend lint becomes ruff_check: ruff's Bandit rules (S) on top of the part's own ruff configuration, with asserts, made-up passwords and random allowed in tests. crissp's own .semgrepignore keeps Semgrep's defaults from skipping crissp/testsuite (the engine).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def sast_all("
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": "def rules_test("
+    },
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "ruff_check()"
+    },
+    {
+     "file": "crissp/testsuite/sast/python.yaml",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/sast/javascript.yaml",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_audit::test_unsafe_code_blocks_on_error_and_is_listed_on_warning",
+    "test_audit::test_semgrep_errors_and_a_failed_run_are_problems",
+    "test_audit::test_sast_on_places_not_there_yet_runs_nothing_and_is_green",
+    "test_audit::test_the_rules_have_tests_and_the_rules_command_runs_them",
+    "test_audit::test_this_repository_scans_its_own_code_and_tests_its_rules",
+    "test_run::test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwords_in_tests",
+    "test_template::test_every_project_s_code_is_scanned_for_unsafe_code",
+    "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
   }
  ],
  "gaps": [

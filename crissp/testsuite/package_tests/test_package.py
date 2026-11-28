@@ -68,9 +68,11 @@ def test_the_wheel_carries_the_licences_and_the_engine_but_no_project_data(wheel
     for needed in ("CRISSP.md", "check.sh", "check-all.sh", "testsuite/lib/check.py", "tool/server.py",
                    "uxsuite/cli.py", "look/look.css", "template/crissp/CLAUDE.md", "deploy/helm/app/Chart.yaml",
                    "deploy/terraform/main.tf", "deploy/check.sh", "testsuite/lib/workers.py",
-                   "testsuite/lib/pytest_plugin/crissp_timing.py", "testsuite/dashboard/workers.html"):
+                   "testsuite/lib/pytest_plugin/crissp_timing.py", "testsuite/dashboard/workers.html",
+                   "testsuite/lib/tools.py", "testsuite/sast/python.yaml", "testsuite/sast/javascript.yaml"):
         assert engine + needed in names, needed
     for never in ("backlog/", "testsuite/results/", "uxsuite/results/", "testsuite/tests/", "testsuite/suites.json",
+                  "testsuite/sast/tests/",
                   "testsuite/coverage-baseline.json", "testsuite/changes.json", "CLAUDE.md", "AGENTS.md"):
         assert not any(n.startswith(engine + never) for n in names), never
     assert not any("__pycache__" in n for n in names)
@@ -135,6 +137,9 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     audited = json.loads((project / "crissp/testsuite/results/audit.json").read_text())  # F-42: every project is audited
     assert "trivy config crissp/deploy/helm/app" in audited["scanned"] and "trivy fs app/backend" in audited["scanned"]
     assert "app/backend/requirements.txt" in audited["absent"]  # a place the tiny product has not got yet
+    sast = json.loads((project / "crissp/testsuite/results/sast.json").read_text())  # F-44: the real Semgrep ran
+    assert sast["scanned"] == ["semgrep app"] and sast["blocking"] == []
+    assert json.loads((project / "crissp/testsuite/results/secrets.json").read_text())["scanned"] == ["gitleaks git history"]
     assert "Green: crissp deploy may go." in said and "crissp/" + "check" not in said and ".sh" not in said, said
     # F-06: the first full run says plainly what is left: commit the baseline it wrote, then crissp check
     assert "This was the first full run" in said and "git add crissp/testsuite/coverage-baseline.json" in said, said

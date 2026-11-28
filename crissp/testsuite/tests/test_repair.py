@@ -135,7 +135,7 @@ def test_old_steps_stay_while_src_is_really_there_and_an_empty_list_gets_the_def
     assert "no steps" in fix.what
     fix.do()
     assert [s["key"] for s in json.loads((root / "crissp/testsuite/suites.json").read_text())["steps"]] == [
-        "backend", "backend-lint", "frontend", "frontend-lint", "audit", "secrets"]
+        "backend", "backend-lint", "frontend", "frontend-lint", "audit", "secrets", "sast"]
 
 
 def test_no_configuration_and_broken_json_are_not_repaired(tmp_path):

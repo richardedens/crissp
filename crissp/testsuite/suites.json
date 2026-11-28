@@ -54,6 +54,13 @@
    "seconds": 5
   },
   {
+   "key": "sast",
+   "label": "Unsafe code (Semgrep with crissp's rules, and the rules' own tests)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py rules && python3 lib/audit.py sast",
+   "seconds": 15
+  },
+  {
    "key": "audit",
    "label": "CVE audit of the pinned test tools (pip-audit)",
    "dir": "crissp/testsuite",
@@ -74,49 +81,56 @@
    "match": "crissp/testsuite/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/uxsuite/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/ux.sh",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/tool/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/look/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/template/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "site/",
    "steps": [
     "tools",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
@@ -137,21 +151,24 @@
    "match": "src/",
    "steps": [
     "package",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "pyproject.toml",
    "steps": [
     "package",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/testsuite/package_tests/",
    "steps": [
     "package",
-    "secrets"
+    "secrets",
+    "sast"
    ]
   }
  ],
@@ -169,6 +186,11 @@
   "config": [
    "crissp/deploy/helm/app",
    "crissp/deploy/terraform"
+  ],
+  "sast": [
+   "src",
+   "crissp",
+   "site"
   ]
  },
  "texts": {}

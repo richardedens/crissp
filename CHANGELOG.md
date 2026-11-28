@@ -4,6 +4,14 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Static security analysis (SAST) for every project (F-44).** A new `sast` step runs Semgrep (pinned, offline, no
+  metrics) with crissp's own rules on `app/`: Python, JavaScript, TypeScript and JSX. It blocks on eval or exec of a
+  value, a shell command built from a value, `yaml.load`, switched-off TLS checks and a debug server, and lists for
+  review pickle, SQL built from strings, HTML put into the page from a value and `dangerouslySetInnerHTML`. A project
+  can add its own rules folders (`"sast_rules"` in `suites.json`'s `audit`); its `.semgrepignore` counts. The
+  backend's lint now also runs ruff's security rules (`S`, from Bandit) on top of the backend's own ruff
+  configuration (`ruff_check .`), with `assert` and made-up passwords allowed in tests. Projects brought in earlier
+  can copy the `sast` step and change their `backend-lint` run to `ruff_check .`.
 - **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit
   and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
   It runs in `crissp check` for every change under `app/`. The project's own `.gitleaks.toml`, `.gitleaksignore` and

@@ -38,12 +38,13 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     assert project.steps(conf, root) == []
     conf, root = configured(tmp_path / "both", "app/backend", "app/frontend/package.json")
     assert [s["key"] for s in project.steps(conf, root)] == ["backend", "gate", "backend-lint", "frontend",
-                                                              "frontend-lint", "audit", "secrets"]
+                                                              "frontend-lint", "audit", "secrets", "sast"]
     assert {s["key"]: s["dir"] for s in conf["steps"]} == {"backend": "app/backend", "backend-lint": "app/backend",
                                                          "frontend": "app/frontend", "frontend-lint": "app/frontend",
-                                                         "audit": ".", "secrets": "."}
+                                                         "audit": ".", "secrets": ".", "sast": "."}
     assert [(r["match"], r["steps"]) for r in conf["paths"]] == [
-        ("app/backend/", ["backend", "backend-lint", "secrets"]), ("app/frontend/", ["frontend", "frontend-lint", "secrets"])]
+        ("app/backend/", ["backend", "backend-lint", "secrets", "sast"]),
+        ("app/frontend/", ["frontend", "frontend-lint", "secrets", "sast"])]
     lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
     assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
@@ -61,7 +62,8 @@ def test_every_project_is_audited_in_its_full_run_on_the_default_places(tmp_path
                              "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
                              "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
                              "own_images": {"values": "crissp/deploy/helm/app/values.yaml",
-                                            "parts": ["backend", "frontend"]}}
+                                            "parts": ["backend", "frontend"]},
+                             "sast": ["app"], "sast_rules": []}
 
 
 def test_every_project_scans_its_git_history_for_secrets(tmp_path):
@@ -69,6 +71,17 @@ def test_every_project_scans_its_git_history_for_secrets(tmp_path):
     conf, root = configured(tmp_path)
     step = next(s for s in conf["steps"] if s["key"] == "secrets")
     assert step["run"] == "audit secrets" and not step["full_only"] and step["when"] == "app"
+
+
+def test_every_project_s_code_is_scanned_for_unsafe_code(tmp_path):
+    """F-44: Semgrep with crissp's rules on app/ (the project's own rules folders can be named in sast_rules), and
+    ruff's Bandit rules (S) on top of the backend's own ruff configuration."""
+    conf, root = configured(tmp_path)
+    step = next(s for s in conf["steps"] if s["key"] == "sast")
+    assert step["run"] == "audit sast" and not step["full_only"] and step["when"] == "app"
+    assert conf["audit"]["sast"] == ["app"]
+    lint = next(s for s in conf["steps"] if s["key"] == "backend-lint")
+    assert lint["run"] == "ruff_check ."
 
 
 def test_the_ux_suite_walks_the_local_stack_the_deploy_template_names():

@@ -1,6 +1,6 @@
 # Every push and pull request: the framework's own tests at 100% coverage, the coverage gate, the deploy template
 # (helm lint and template, its tests), the package (build, install, init a project, that project's full run) and the
-# git history scanned for secrets (gitleaks, pinned).
+# git history scanned for secrets (gitleaks, pinned) and the code for unsafe code (Semgrep, crissp's rules).
 name: ci
 
 on:
@@ -22,8 +22,8 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Git can commit (the package test commits in a throwaway project)
         run: git config --global user.name "ci" && git config --global user.email "ci@example.org"
-      - name: Tools, gate, deploy template, package and secrets
-        run: crissp/testsuite/run.sh --quick tools gate deploy package secrets
+      - name: Tools, gate, deploy template, package, secrets and SAST
+        run: crissp/testsuite/run.sh --quick tools gate deploy package secrets sast
       - name: The logs of a red run
         if: failure()
         run: tail -n 60 crissp/testsuite/results/*.log

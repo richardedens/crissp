@@ -104,10 +104,11 @@ def test_a_file_name_rule_matches_the_exact_name_anywhere(shop):
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the audit of its pinned tools. Every part's
-    change is also scanned for secrets (F-43)."""
+    change is also scanned for secrets (F-43), and a change to its code for unsafe code (F-44)."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
-    assert not p["full"] and sorted(p["suites"]) == sorted([*steps, "secrets"]), p
+    code = ["sast"] if "tools" in steps else []
+    assert not p["full"] and sorted(p["suites"]) == sorted([*steps, "secrets", *code]), p
 
 
 def test_this_repository_s_mcp_registration_is_shared_ground():
