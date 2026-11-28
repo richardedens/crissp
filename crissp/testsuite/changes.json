@@ -2060,6 +2060,18 @@
     "test_template.py::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
     "test_template.py::test_the_root_agents_file_gives_an_agent_its_first_moves"
    ]
+  },
+  {
+   "id": "site-rebuilt-on-version",
+   "title": "F-141: the website is rebuilt when VERSION changes",
+   "problem": "The Pages workflow ran only on changes to site/, docs/images/ and crissp/look/, so the bump to 0.2.0 left the published site naming 0.1.10.",
+   "fix": "VERSION is in the workflow's paths; a test checks that every input of site/build.sh is there.",
+   "sources": [
+    ".github/workflows/pages.yml"
+   ],
+   "tests": [
+    "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
+   ]
   }
  ],
  "gaps": [
