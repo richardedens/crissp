@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "92dd1d7b38ba2115794be091749173977ca04251",
+ "commit": "5fdbe9e289189a282ad6e6bf690cb32fd68641c1",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -110,6 +110,10 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_backlog.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_cards.py": {
      "branch": 100.0,
      "line": 100.0
     },
