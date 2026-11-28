@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ux_kit import ROUND, WALK, add_shots, finish, make_product, ux_config  # noqa: F401
+from ux_kit import ROUND, WALK, add_shots, finish, make_product, ux_config
 
 # isort: split
 import api  # ux_kit put the uxsuite on sys.path
