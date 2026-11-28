@@ -316,6 +316,9 @@ def test_the_real_runner_runs_a_command_in_its_folder(tmp_path, capfd):
     assert frontend_lint.call(report, tmp_path) == 0
     out, err = capfd.readouterr()
     assert "report" not in out and "why" in err  # the report is in its file; why a tool failed stays in sight
+    copy = [sys.executable, "-c", "import sys; print('[{}]', file=sys.stderr)", "--output-file", "x"]
+    assert frontend_lint.call(copy, tmp_path) == 0
+    assert capfd.readouterr().err == ""  # stylelint's copy of its report, on stderr: left out
 
 
 def test_the_step_helper_runs_it_with_the_pinned_python(tmp_path):

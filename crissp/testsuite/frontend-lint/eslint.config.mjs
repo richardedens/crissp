@@ -1,4 +1,5 @@
 // crissp: the frontend lint (ESLint 9, flat config), run by lib/frontend_lint.py with crissp's own tools.
+import process from "node:process";
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import jsxA11y from "eslint-plugin-jsx-a11y";

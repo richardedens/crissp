@@ -2067,7 +2067,10 @@
    "problem": "The Pages workflow ran only on changes to site/, docs/images/ and crissp/look/, so the bump to 0.2.0 left the published site naming 0.1.10.",
    "fix": "VERSION is in the workflow's paths; a test checks that every input of site/build.sh is there.",
    "sources": [
-    ".github/workflows/pages.yml"
+    {
+     "file": ".github/workflows/pages.yml",
+     "symbol": ""
+    }
    ],
    "tests": [
     "test_site.py::test_the_site_is_rebuilt_when_anything_it_is_built_from_changes"
@@ -2079,9 +2082,18 @@
    "problem": "crissp's frontend lint passed its configs from crissp's cache, so stylelint's ignoreFiles and ESLint's ignores never matched a project's git-ignored dist/: thousands of findings in minified bundles. Semgrep and trivy fs looked into build folders too.",
    "fix": "lib/sources.py lists the project's own files (git ls-files with the .gitignore, never a build folder) and frontend_lint.py hands ESLint and stylelint those files, in batches; Semgrep gets --exclude and trivy fs --skip-dirs for the build folders.",
    "sources": [
-    "crissp/testsuite/lib/sources.py",
-    "crissp/testsuite/lib/frontend_lint.py",
-    "crissp/testsuite/lib/audit.py"
+    {
+     "file": "crissp/testsuite/lib/sources.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/audit.py",
+     "symbol": ""
+    }
    ],
    "tests": [
     "test_sources.py::test_only_the_projects_own_files_are_listed_never_its_build_output",
@@ -2095,9 +2107,18 @@
    "problem": "The project kit extended stylelint-config-standard (layout rules, descending specificity) and the hooks plugin's recommended set with the React Compiler's rules: thousands of findings a project could not fix safely.",
    "fix": "stylelint-config-recommended with no-descending-specificity off, as crissp's own CSS; rules-of-hooks and exhaustive-deps only, the compiler's rules with frontend_lint --react-compiler (CRISSP_REACT_COMPILER for eslint.config.mjs).",
    "sources": [
-    "crissp/testsuite/frontend-lint/stylelint.config.mjs",
-    "crissp/testsuite/frontend-lint/eslint.config.mjs",
-    "crissp/testsuite/lib/frontend_lint.py"
+    {
+     "file": "crissp/testsuite/frontend-lint/stylelint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/frontend-lint/eslint.config.mjs",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    }
    ],
    "tests": [
     "test_frontend_lint.py::test_the_project_kit_lints_css_as_crissp_lints_its_own_mistakes_not_layout",
@@ -2111,8 +2132,14 @@
    "problem": "A project with code could not switch the frontend lint on: every existing finding was red at once.",
    "fix": "ESLint and stylelint write JSON reports that frontend_lint.py reads. frontend_lint --baseline writes crissp/testsuite/lint-baseline.json, per folder and file the sha256 and the count per rule. Then a count that rises in an unchanged file blocks, a new or changed file must be clean, and a green run with fewer findings shrinks the baseline; --baseline refuses a folder that has one. A tool that writes no report is red, never a pass.",
    "sources": [
-    "crissp/testsuite/lib/lint_ratchet.py",
-    "crissp/testsuite/lib/frontend_lint.py"
+    {
+     "file": "crissp/testsuite/lib/lint_ratchet.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    }
    ],
    "tests": [
     "test_lint_ratchet.py::test_without_a_baseline_every_finding_blocks_and_the_baseline_switches_the_lint_on",
@@ -2128,10 +2155,22 @@
    "problem": "A project had no way to switch one lint rule off for a reason, short of disabling it line by line.",
    "fix": "lint_ratchet.exceptions reads crissp/testsuite/lint-exceptions.json ({rule, why, by, since}); frontend_lint.py leaves those rules' findings out and says how many per run; collect.py passes the rules off (and what is wrong in the file) to the dashboard, whose Lint tile lists them with why.",
    "sources": [
-    "crissp/testsuite/lib/lint_ratchet.py",
-    "crissp/testsuite/lib/frontend_lint.py",
-    "crissp/testsuite/lib/collect.py",
-    "crissp/testsuite/dashboard/app.js"
+    {
+     "file": "crissp/testsuite/lib/lint_ratchet.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/frontend_lint.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": ""
+    }
    ],
    "tests": [
     "test_lint_exceptions.py::test_a_rule_switched_off_with_a_reason_is_not_counted_and_the_run_says_so",

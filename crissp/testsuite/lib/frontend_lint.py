@@ -57,10 +57,20 @@ def place(env: dict) -> Path:
 
 
 def call(argv: list[str], cwd: Path, env: dict | None = None) -> int:
-    """Run a command in its folder. A tool that writes its report to a file (--output-file) also prints it: that copy
-    is left out, what it says on stderr (why it could not run) stays."""
-    quiet = subprocess.DEVNULL if "--output-file" in argv else None
-    return subprocess.call(argv, cwd=cwd, env=env, stdout=quiet)
+    """Run a command in its folder. A tool that writes its report to a file (--output-file) also prints it (stylelint
+    on stderr): that copy is left out; anything else it says (why it could not run) is passed on."""
+    if "--output-file" not in argv:
+        return subprocess.call(argv, cwd=cwd, env=env)
+    done = subprocess.run(
+        argv, cwd=cwd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=False
+    )
+    try:
+        copy = isinstance(json.loads(done.stderr), list)
+    except ValueError:
+        copy = False
+    if done.stderr and not copy:
+        sys.stderr.write(done.stderr)
+    return done.returncode
 
 
 def install(where: Path, run: Callable[[list[str], Path], int], npm: str) -> bool:

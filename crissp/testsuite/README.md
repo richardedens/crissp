@@ -27,7 +27,16 @@ covered …` runs it in a part's own venv; without `PY` it runs with the pinned 
 through `uv`. The helper `frontend_lint` (`lib/frontend_lint.py`) lints the step's folder with crissp's own tools:
 [frontend-lint/](frontend-lint/) pins ESLint 9 and stylelint with their plugins at exact versions, with the lockfile and
 the configs. They are installed once per toolkit with `npm ci` into crissp's cache (`CRISSP_CACHE`, else
-`$XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`), never into the project, and both always run (no warning allowed).
+`$XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`), never into the project, and both always run (a warning counts
+too). They lint the project's own files only (`lib/sources.py`): what git lists, so every `.gitignore` counts, and
+never a build folder (`dist`, `build`, `node_modules`, `coverage`, `.next`, …). ESLint holds React hooks to
+`rules-of-hooks` and `exhaustive-deps` (`frontend_lint --react-compiler` adds the React Compiler's rules); stylelint
+uses its recommended rules, as crissp's own CSS: mistakes, not layout.
+A project that already has code switches the lint on with `frontend_lint --baseline`: it writes what is found now into
+`crissp/testsuite/lint-baseline.json` (commit it), and from then on the findings only go down (`lib/lint_ratchet.py`:
+an unchanged file keeps at most its counts per rule, a new or changed file is clean, a green run with fewer shrinks
+it). A rule the project switches off goes into `crissp/testsuite/lint-exceptions.json`, `{"exceptions": [{"rule",
+"why", "by", "since"}]}`: its findings are not counted, every run and the dashboard's Lint tile say so.
 A product's other frontend commands are its own (`npm test`, …).
 
 **A parallel step** (`"parallel": true`) gets `WORKERS` and `WORKERS_WHY` from `lib/workers.py`: the tightest of the
