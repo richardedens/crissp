@@ -915,6 +915,54 @@
    ]
   },
   {
+   "id": "own-lint-step",
+   "title": "This repository lints its own bash and JavaScript (F-38)",
+   "problem": "crissp's own plain JavaScript (the shared look, the Tests dashboard, the UX suite's page) and its bash scripts (the guards, run.sh, setup.sh, steps.sh, deploy/check.sh, site/build.sh) were never linted, locally or in CI.",
+   "fix": "A `lint` step (crissp/testsuite/lint/lint.sh): shellcheck (shellcheck-py, pinned in lint/requirements.txt, run with uv) on every tracked bash script, ESLint (pinned in lint/package.json and package-lock.json, npm ci when stale) on every tracked JavaScript file, with eslint.config.js declaring the shared window.Look. The paths map runs it for a change to a JavaScript or bash file, CI sets up Node.js and runs it, the audit covers the lint tools. Dev-only: nothing of it is in the wheel.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lint/eslint.config.js",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": ""
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_lint.py::test_this_repository_has_a_lint_step_with_its_own_dev_only_tools",
+    "test_lint.py::test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repository",
+    "test_lint.py::test_a_change_to_a_linted_file_runs_the_lint_step",
+    "test_lint.py::test_ci_sets_up_node_and_runs_the_lint_step",
+    "test_lint.py::test_the_lint_tools_are_never_in_the_wheel_and_their_versions_are_audited",
+    "test_impact.py::test_this_repository_maps_its_own_parts",
+    "test_audit.py::test_this_repository_audits_its_pinned_tools_and_its_chart"
+   ]
+  },
+  {
+   "id": "ux-dead-open",
+   "title": "ux.js proposals() no longer reads a key it never uses (F-39)",
+   "problem": "proposals() read the ?key= of the design to open into a variable it never used (the scroll to that design is in render()).",
+   "fix": "The dead variable is removed; ESLint's no-unused-vars in the lint step keeps it from coming back.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "proposals"
+    }
+   ],
+   "tests": [
+    "test_lint.py::test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repository"
+   ]
+  },
+  {
    "id": "pinned-scanners",
    "title": "trivy ran as whatever version a machine had on its PATH (F-42, E6-F1-01)",
    "problem": "lib/audit.py called trivy from the PATH: an old trivy, a missing one, or a replaced release (as happened to trivy's own releases in 2026) decided what was green, and two machines could disagree.",

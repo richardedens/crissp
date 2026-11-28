@@ -45,6 +45,14 @@
    ]
   },
   {
+   "key": "lint",
+   "label": "Lint: shellcheck on the bash scripts, ESLint on the JavaScript",
+   "dir": ".",
+   "run": "crissp/testsuite/lint/lint.sh",
+   "seconds": 10,
+   "tests": []
+  },
+  {
    "key": "package",
    "label": "The package: build, install, init a project, its full run",
    "dir": ".",
@@ -86,10 +94,44 @@
    ]
   },
   {
+   "match": "crissp/testsuite/lint/",
+   "steps": [
+    "lint",
+    "secrets"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/dashboard/",
+   "steps": [
+    "tools",
+    "lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/frontend-lint/",
+   "steps": [
+    "tools",
+    "lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
    "match": "crissp/testsuite/",
    "steps": [
     "tools",
     "python-lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/uxsuite/web/",
+   "steps": [
+    "tools",
+    "lint",
     "secrets",
     "sast"
    ]
@@ -107,6 +149,7 @@
    "match": "crissp/ux.sh",
    "steps": [
     "tools",
+    "lint",
     "secrets",
     "sast"
    ]
@@ -124,6 +167,16 @@
    "match": "crissp/look/",
    "steps": [
     "tools",
+    "lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/template/githooks/",
+   "steps": [
+    "tools",
+    "lint",
     "secrets",
     "sast"
    ]
@@ -140,9 +193,18 @@
    "match": "site/",
    "steps": [
     "tools",
+    "lint",
     "python-lint",
     "secrets",
     "sast"
+   ]
+  },
+  {
+   "match": "crissp/deploy/check.sh",
+   "steps": [
+    "deploy",
+    "lint",
+    "secrets"
    ]
   },
   {
@@ -157,6 +219,7 @@
    "match": "crissp/deploy.sh",
    "steps": [
     "deploy",
+    "lint",
     "secrets"
    ]
   },
@@ -191,6 +254,7 @@
    "match": ".githooks/",
    "steps": [
     "tools",
+    "lint",
     "secrets",
     "sast"
    ]
@@ -205,7 +269,11 @@
  "audit": {
   "pip": [
    "crissp/testsuite/requirements.txt",
-   "crissp/deploy/requirements.txt"
+   "crissp/deploy/requirements.txt",
+   "crissp/testsuite/lint/requirements.txt"
+  ],
+  "npm": [
+   "crissp/testsuite/lint"
   ],
   "config": [
    "crissp/deploy/helm/app",

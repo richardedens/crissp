@@ -274,8 +274,9 @@ def test_an_audit_with_nothing_to_scan_is_a_problem_never_a_pass(tmp_path):
 
 def test_this_repository_audits_its_pinned_tools_and_its_chart():
     conf = audit.project.load(LIB.parents[2])["audit"]
-    assert {k: conf[k] for k in ("pip", "config")} == {
-        "pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt"],
+    assert {k: conf[k] for k in ("pip", "npm", "config")} == {
+        "pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt",
+                "crissp/testsuite/lint/requirements.txt"], "npm": ["crissp/testsuite/lint"],
         "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"]}
 
 

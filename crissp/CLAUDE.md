@@ -49,14 +49,18 @@ This project's steps (`crissp/testsuite/suites.json`):
   (`[tool.ruff]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
+- `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script and ESLint on every tracked
+  JavaScript file (the look, the dashboard, the uxsuite's page). Dev-only tools, pinned in `crissp/testsuite/lint/`
+  (`requirements.txt` for shellcheck-py, `package.json` and its lock for ESLint) and never in the wheel; it needs uv
+  and Node.js (20 or newer), and says FAILED, never a silent pass, without them.
 - `package`: builds the wheel, installs it into a throwaway venv, runs `crissp init` in an empty git repository, and
   then that project's full run.
 - `secrets`: gitleaks (pinned) over the whole git history; it says where a secret is, never its value. A finding that
   is no secret goes into `.gitleaksignore` by fingerprint, with a comment saying why.
 - `sast`: Semgrep (pinned) with crissp's own rules on `src`, `crissp` and `site`, after the rules' own tests
   (`crissp/testsuite/sast/tests`). An ERROR blocks, a WARNING is listed for review.
-- `audit`: pip-audit of the pinned tools and trivy config of the deploy chart and Terraform (full run only; trivy is
-  pinned and checksum-checked, `crissp/testsuite/lib/tools.py`).
+- `audit`: pip-audit and npm audit of the pinned tools, the lint tools too, and trivy config of the deploy chart and
+  Terraform (full run only; trivy is pinned and checksum-checked, `crissp/testsuite/lib/tools.py`).
 
 What `crissp/check.sh` runs per change:
 
@@ -64,17 +68,21 @@ What `crissp/check.sh` runs per change:
 - `CHANGELOG.md`/`VERSION` → a file check;
 - every part below → also secrets, and its code (everything that runs tools or package) → sast;
 - `crissp/testsuite/`, `uxsuite/`, `tool/`, `look/`, `template/`, the website (`site/`) → tools (and python-lint, except
-  `look/` and `template/`);
-- `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`);
+  `look/` and `template/`); the JavaScript and bash among them (the dashboard, `look/`, `uxsuite/web/`, `ux.sh`,
+  `site/`, `testsuite/frontend-lint/`) → lint instead of python-lint;
+- `crissp/testsuite/lint/` → lint;
+- `crissp/deploy*` → deploy (and python-lint for `crissp/deploy/`; `deploy.sh` and `deploy/check.sh` → lint instead);
 - `src/`, `pyproject.toml` → package and python-lint;
+- `.githooks/` and `crissp/template/githooks/` → tools and lint;
 - shared ground (the check scripts, the gate, the certificate, `.mcp.json`, anything unmapped) → it stops and asks
   for `crissp/check-all.sh`.
 
-- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy package secrets sast`. CI
+- Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy lint package secrets sast`. CI
   (`.github/workflows/ci.yml`) runs the same.
 - **The lint runs before every commit**: `.githooks/pre-commit` (the template's, the same file) runs the lint steps
-  with the engine in this checkout. Turn it on once per clone: `python3 crissp/testsuite/lib/repair.py --yes` (here
-  it only sets `core.hooksPath .githooks`). Never `--no-verify` to get past a red lint; fix it.
+  (`python-lint` and `lint`) with the engine in this checkout. Turn it on once per clone:
+  `python3 crissp/testsuite/lib/repair.py --yes` (here it only sets `core.hooksPath .githooks`). Never `--no-verify`
+  to get past a red lint; fix it.
 - **Commit first**: the scripts test what is committed. **One run at a time** (a lock in `crissp/testsuite/results/`).
   Claude may run `crissp/check.sh` for its own work; the full run is the product owner's to start unless they ask.
 - Tests never read a developer's `.env`, never touch a real cluster, registry or PyPI, and never start a real Claude
