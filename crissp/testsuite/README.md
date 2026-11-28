@@ -17,7 +17,7 @@ pinned test tools.
 | `shared` | the product's shared ground (`{match, why}`): a change there needs the full run |
 | `notes` | what needs no test, besides Markdown, the backlog and `docs/` |
 | `setup` | `venvs` (a part's `.venv` from its `requirements-dev.txt`), `npm` (a part's `node_modules`), `needs` (`{command, hint}`: never installed, the hint says how) |
-| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python` |
+| `audit` | what `lib/audit.py` scans: `pip`, `npm`, `fs`, `config`, `dockerfiles`, `images`, `own_images`, `python`; `sast` (the code Semgrep scans) and `sast_rules` (the project's own rules folders); `missing: "skip"` lists a place that is not there yet instead of failing on it (the template names the default places) |
 | `texts` | the dashboard's texts for the product (`e2e`, `journeys`) |
 
 A step's command gets `CRISSP_ROOT`, `RESULTS`, `STEP`, `JUNIT`, `COVERAGE_JSON`, `COVERAGE_FILE`, `TOOLS` and the
@@ -114,7 +114,39 @@ stale), a part's `node_modules`; it asks for `uv` and for what `setup.needs` nam
 The scanners the product names, decided from their JSON, never their exit codes: pip-audit on resolved requirements
 (every finding blocks: PyPI gives no severity), npm audit (high and critical block), trivy fs, config and image (high
 and critical block when a fix exists). A scanner that cannot run is a problem, never a pass. `accepted-risks.json`
-accepts a finding for at most 90 days, with why and by whom.
+accepts a finding for at most 90 days, with why and by whom. A project's own `.trivyignore` is read by trivy as usual.
+A project's step runs it as `audit run` (a helper of `lib/steps.sh`); the template has it as a full-run step.
+
+trivy (and gitleaks, below) are pinned in `lib/tools.py`: one version, fetched once from its release for this system
+(Linux or macOS, x86_64 or arm64), checked against the SHA-256 written there and kept in the crissp cache
+(`CRISSP_CACHE`, else `XDG_CACHE_HOME/crissp`, else `~/.cache/crissp`). A download that differs is refused. The version
+on a machine's `PATH` is never used. `python3 crissp/testsuite/lib/tools.py path trivy` says where it is.
+
+## Secrets (lib/audit.py secrets)
+
+`audit secrets` runs the pinned gitleaks over the whole git history (over the files when there is no git) and writes
+`results/secrets.json`. A finding says where (file, line, commit) and which rule, never the value: gitleaks redacts it
+and crissp never reads it. Every finding blocks. The project's own gitleaks configuration counts, as gitleaks reads
+it: `.gitleaks.toml` (rules and allowlists), `.gitleaksignore` (fingerprints) and `gitleaks:allow` on a line. A finding
+that is no secret is best allowed in `.gitleaks.toml` by its file and value (`[[allowlists]]` with `condition = "AND"`,
+`paths` and `regexes`, and a description saying why). A fingerprint names a commit, and a shallow clone (CI, a cloud
+container) sees the line in its top commit instead, so there it no longer matches. A real leak is rotated first,
+then removed from the history.
+
+## SAST (lib/audit.py sast, sast/)
+
+`audit sast` runs Semgrep (pinned in `lib/audit.py`, through uv) offline: metrics off, no registry, only crissp's own
+rules (`sast/python.yaml`, `sast/javascript.yaml`: Python, JavaScript, TypeScript and JSX) plus the rules folders the
+project names in `audit.sast_rules`, on the code it names in `audit.sast` (the template: `app`). An ERROR blocks
+(eval or exec of a value, a shell built from a value, `yaml.load`, TLS checks off, a debug server); a WARNING is
+listed for review (pickle, SQL built from strings, HTML put into the page from a value, `dangerouslySetInnerHTML`,
+`mktemp`). A finding names the file, the line, the rule and why, never the code. The project's `.semgrepignore`
+counts; without one, Semgrep's defaults apply (they skip tests). Every rule has tests in `sast/tests/` (a line under
+`ruleid:` must match, one under `ok:` must not): `audit rules` runs them, and this repository's `sast` step does so
+before it scans `src`, `crissp` and `site`.
+
+The backend's lint (`ruff_check`, a helper of `lib/steps.sh`) adds ruff's Bandit rules (`S`) on top of the part's own
+ruff configuration; in tests an `assert`, a made-up password and `random` are allowed.
 
 ## The dashboard (dashboard/, lib/collect.py, lib/serve.py)
 

@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "5fdbe9e289189a282ad6e6bf690cb32fd68641c1",
+ "commit": "0af0a91d2e8eebc04784386a0d4545af69f278b0",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -86,6 +86,10 @@
      "line": 100.0
     },
     "crissp/testsuite/lib/setup_plan.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/tools.py": {
      "branch": 100.0,
      "line": 100.0
     },

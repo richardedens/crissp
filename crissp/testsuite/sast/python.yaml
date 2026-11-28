@@ -1,0 +1,83 @@
+# crissp's own Semgrep rules for Python (lib/audit.py sast). ERROR blocks a release; WARNING is listed for review.
+# Each rule has its tests in tests/python.py (ruleid: must match, ok: must not); semgrep --test runs them.
+rules:
+  - id: crissp-py-eval
+    languages: [python]
+    severity: ERROR
+    message: eval or exec on a value that is not a fixed string runs whatever that value holds.
+    patterns:
+      - pattern-either:
+          - pattern: eval($X, ...)
+          - pattern: exec($X, ...)
+      - pattern-not: eval("...", ...)
+      - pattern-not: exec("...", ...)
+
+  - id: crissp-py-shell
+    languages: [python]
+    severity: ERROR
+    message: A shell runs a command built from a value (shell injection). Pass a list of arguments without a shell.
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$F($CMD, ..., shell=True, ...)
+          - pattern: os.system($CMD)
+          - pattern: os.popen($CMD, ...)
+      - pattern-not: subprocess.$F("...", ..., shell=True, ...)
+      - pattern-not: os.system("...")
+      - pattern-not: os.popen("...", ...)
+
+  - id: crissp-py-yaml-load
+    languages: [python]
+    severity: ERROR
+    message: yaml.load without a safe loader can build any Python object from the document. Use yaml.safe_load.
+    patterns:
+      - pattern-either:
+          - pattern: yaml.load(...)
+          - pattern: yaml.load_all(...)
+          - pattern: yaml.unsafe_load(...)
+          - pattern: yaml.unsafe_load_all(...)
+      - pattern-not: yaml.$L(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.$L(..., Loader=yaml.CSafeLoader, ...)
+      - pattern-not: yaml.$L(..., Loader=SafeLoader, ...)
+
+  - id: crissp-py-tls-off
+    languages: [python]
+    severity: ERROR
+    message: The TLS certificate is not checked, so anyone in between can read and change the traffic.
+    pattern-either:
+      - pattern: requests.$M(..., verify=False, ...)
+      - pattern: httpx.$M(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+
+  - id: crissp-py-debug-server
+    languages: [python]
+    severity: ERROR
+    message: A debug server runs code that is sent to it. Never start one with debug=True outside a developer's machine.
+    pattern: $APP.run(..., debug=True, ...)
+
+  - id: crissp-py-pickle
+    languages: [python]
+    severity: WARNING
+    message: Unpickling runs code from the data. Only load what this program wrote itself, never what came in.
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: marshal.loads(...)
+      - pattern: shelve.open(...)
+
+  - id: crissp-py-sql-string
+    languages: [python]
+    severity: WARNING
+    message: SQL built from a string with values in it (SQL injection). Pass the values as parameters.
+    pattern-either:
+      - pattern: $CUR.execute(f"...", ...)
+      - pattern: $CUR.execute("..." % $V, ...)
+      - pattern: $CUR.execute("...".format(...), ...)
+      - pattern: $CUR.execute("..." + $V, ...)
+      - pattern: $CUR.execute("..." + $V + "...", ...)
+      - pattern: $CUR.executemany(f"...", ...)
+
+  - id: crissp-py-mktemp
+    languages: [python]
+    severity: WARNING
+    message: tempfile.mktemp names a file another process can create first. Use tempfile.mkstemp or NamedTemporaryFile.
+    pattern: tempfile.mktemp(...)

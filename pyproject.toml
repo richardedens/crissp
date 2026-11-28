@@ -54,6 +54,7 @@ only-include = [
   "crissp/template",
   "crissp/testsuite/lib",
   "crissp/testsuite/dashboard",
+  "crissp/testsuite/sast",
   "crissp/testsuite/frontend-lint",
   "crissp/testsuite/run.sh",
   "crissp/testsuite/setup.sh",
@@ -67,6 +68,7 @@ exclude = [
   "**/*.pyc",
   "**/results",
   "crissp/uxsuite/tests",
+  "crissp/testsuite/sast/tests",
   "crissp/uxsuite/team.json",
   "crissp/uxsuite/walks",
   "crissp/uxsuite/personas",
@@ -89,6 +91,8 @@ exclude = ["**/__pycache__", "**/*.pyc", "**/results", "crissp/testsuite/dashboa
 [tool.ruff]
 target-version = "py312"
 line-length = 120
+# crissp's Semgrep rules' tests: unsafe code on purpose (each line must or must not match a rule)
+extend-exclude = ["crissp/testsuite/sast/tests"]
 
 [tool.ruff.lint]
 extend-select = ["E402", "E731", "N802"]

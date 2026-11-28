@@ -129,11 +129,13 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
     (".githooks/pre-commit", ["tools", "gate", "lint"]), ("crissp/template/githooks/pre-commit", ["tools", "gate", "lint"]),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
-    """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its bash and JavaScript (F-38),
-    the audit of its pinned tools."""
+    """The framework is a product of its own: its tests, its deploy template, the lint of its Python (F-35) and of its
+    bash and JavaScript (F-38), the audit of its pinned tools. Every part's change is also scanned for secrets (F-43),
+    and a change to its code for unsafe code (F-44)."""
     conf = impact.project.load(REPO)
     p = impact.plan([path], conf, REPO)
-    assert not p["full"] and sorted(p["suites"]) == sorted(steps), p
+    code = ["sast"] if "tools" in steps else []
+    assert not p["full"] and sorted(p["suites"]) == sorted([*steps, "secrets", *code]), p
 
 
 def test_this_repository_s_mcp_registration_is_shared_ground():

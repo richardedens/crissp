@@ -3,6 +3,7 @@
 import datetime
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -133,6 +134,12 @@ def test_the_images_are_every_one_the_dockerfiles_compose_and_chart_name(tmp_pat
     assert audit.own_images(tmp_path, CONF) == ["example/shop:backend-0.1.0", "example/shop:frontend-0.1.0"]
 
 
+@pytest.fixture(autouse=True)
+def pinned(monkeypatch):
+    """The pinned scanners (lib/tools.py), stood in: never a download in a test."""
+    monkeypatch.setattr(audit, "binary", lambda name: f"/cache/tools/{name}")
+
+
 class Runner:
     """The scanners, stood in: answers per command name; records every call."""
 
@@ -196,6 +203,30 @@ def test_a_clean_run_scans_everything_and_passes(repo):
     assert all("--exit-code" not in c for c in commands)  # the verdict is ours, from the JSON
 
 
+def test_trivy_is_the_pinned_one_never_the_one_on_the_path(repo):
+    runner = Runner(CLEAN)
+    audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf=CONF)
+    trivy = [argv for argv, _ in runner.calls if "trivy" in " ".join(argv)]
+    assert trivy and all(argv[0] == "/cache/tools/trivy" for argv in trivy)
+
+
+def test_a_trivy_that_cannot_be_had_is_a_problem_and_the_rest_still_scans(repo, monkeypatch):
+    def refused(name):
+        raise audit.tools.ToolError("trivy_0.76.2_Linux-64bit.tar.gz: the checksum differs")
+
+    monkeypatch.setattr(audit, "binary", refused)
+    runner = Runner(CLEAN)
+    report = audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf=CONF)
+    assert report["problems"] == ["trivy: trivy_0.76.2_Linux-64bit.tar.gz: the checksum differs"]
+    assert report["scanned"] == ["pip-audit app/backend/requirements.txt", "npm audit app/frontend"]
+
+
+def test_the_pinned_tool_comes_from_lib_tools(monkeypatch, tmp_path):
+    monkeypatch.undo()
+    monkeypatch.setattr(audit.tools, "ensure", lambda name, env: tmp_path / name)
+    assert audit.binary("trivy") == str(tmp_path / "trivy")
+
+
 def test_findings_block_and_say_what_to_do(repo):
     image, config = {"Results": TRIVY["Results"][:1]}, {"Results": TRIVY["Results"][1:2]}
     runner = Runner({**CLEAN, "pip-audit": (1, PIP), "trivy image": (0, image), "trivy config": (0, config)})
@@ -241,10 +272,40 @@ def test_an_audit_with_nothing_to_scan_is_a_problem_never_a_pass(tmp_path):
     assert audit.own_images(tmp_path, {"own_images": {"values": "missing.yaml", "parts": ["x"]}}) == []
 
 
-def test_this_repository_audits_its_pinned_tools():
+def test_this_repository_audits_its_pinned_tools_and_its_chart():
     conf = audit.project.load(LIB.parents[2])["audit"]
-    assert conf == {"pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt",
-                            "crissp/testsuite/lint/requirements.txt"], "npm": ["crissp/testsuite/lint"]}
+    assert {k: conf[k] for k in ("pip", "npm", "config")} == {
+        "pip": ["crissp/testsuite/requirements.txt", "crissp/deploy/requirements.txt",
+                "crissp/testsuite/lint/requirements.txt"], "npm": ["crissp/testsuite/lint"],
+        "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"]}
+
+
+SKIP = {**CONF, "missing": "skip"}
+
+
+def test_a_place_the_project_does_not_have_yet_is_said_not_red(repo):
+    """The template names the default places (D-02); a project that has only some of them is audited on those."""
+    (repo / "app/frontend/package-lock.json").unlink()
+    (repo / "app/backend/requirements.txt").unlink()
+    runner = Runner(CLEAN)
+    report = audit.run_all(repo, runner, TODAY, accepted={"accepted": []}, conf={**SKIP, "fs": ["app/backend", "app/web"],
+                                                                                  "config": ["helm/shop", "helm/none"]})
+    assert report["problems"] == []
+    assert report["absent"] == ["app/backend/requirements.txt", "app/frontend/package-lock.json", "app/web", "helm/none"]
+    assert "pip-audit" not in " ".join(report["scanned"]) and "trivy fs app/backend" in report["scanned"]
+    assert "not there yet, not scanned: app/backend/requirements.txt" in audit.render(report)
+
+
+def test_a_project_with_none_of_the_places_yet_has_nothing_to_audit_and_is_green(tmp_path):
+    runner = Runner(CLEAN)
+    report = audit.run_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf=SKIP)
+    assert report["problems"] == [] and report["scanned"] == [] and runner.calls == []
+    assert audit.render(report).splitlines()[-1] == "Nothing to audit yet: none of the places suites.json names is here."
+
+
+def test_without_skip_a_missing_place_stays_a_problem(repo):
+    report = audit.run_all(repo, Runner(CLEAN), TODAY, accepted={"accepted": []}, conf={"fs": ["app/web"]})
+    assert report["problems"] == ["trivy fs app/web: app/web is not there"] and report["absent"] == []
 
 
 def test_the_real_runner_returns_code_and_output(tmp_path):
@@ -263,8 +324,162 @@ def test_the_accepted_risks_file_in_the_repository_is_valid_and_names_no_one_s_p
 
 def test_the_report_shows_problems_and_what_was_accepted_and_why():
     found, _ = audit.apply_accepted(audit.from_trivy(TRIVY, "image"), {"accepted": [risk()]}, TODAY)
-    text = audit.render({"scanned": ["trivy image x"], "not_scanned": [], "problems": ["npm audit app/frontend: no package-lock.json"],
+    text = audit.render({"scanned": ["trivy image x"], "not_scanned": [], "absent": [], "problems": ["npm audit app/frontend: no package-lock.json"],
                          "findings": found, "blocking": [f for f in found if f["blocks"]]})
     assert "PROBLEM  npm audit app/frontend: no package-lock.json" in text
     assert "accepted: the product owner until 2026-12-01: the TLS code" in text
     assert text.splitlines()[-1].startswith("Not green")
+
+
+# The secrets scan (E6-F2-01): gitleaks over the git history; a finding names where, never the secret.
+FAKE = "ghp_" + "0123456789abcdefABCDEF0123456789abcd"  # made up, and split so it is no token in git either
+LEAKS = [{"RuleID": "github-pat", "Description": "Found a GitHub Personal Access Token", "StartLine": 3, "EndLine": 3,
+          "File": "app/backend/settings.py", "Commit": "4930073bb07a5f25b0c52ef663fc29f64e28ecb5",
+          "Secret": FAKE, "Match": f"TOKEN = '{FAKE}'",
+          "Fingerprint": "4930073bb07a5f25b0c52ef663fc29f64e28ecb5:app/backend/settings.py:github-pat:3"}]
+
+
+def test_a_secret_in_the_history_blocks_and_its_value_is_never_kept_or_said(repo):
+    (repo / ".git").mkdir()
+    runner = Runner({"gitleaks": (0, LEAKS)})
+    report = audit.secrets_all(repo, runner, TODAY, accepted={"accepted": []})
+    (f,) = report["blocking"]
+    assert (f["id"], f["package"], f["installed"]) == ("github-pat", "app/backend/settings.py", "line 3 in 4930073bb07a")
+    assert report["scanned"] == ["gitleaks git history"]
+    said = json.dumps(report) + audit.render(report)
+    assert "ghp_0123" not in said and "TOKEN =" not in said  # where it is, never what it is
+    assert "rotate" in audit.render(report) and ".gitleaks.toml" in audit.render(report)
+    assert "never by its commit" in audit.render(report)  # a fingerprint misses in a shallow clone (F-51)
+    (argv, cwd), = runner.calls
+    assert argv[:2] == ["/cache/tools/gitleaks", "git"] and "--redact" in argv and cwd == repo
+    assert argv[argv.index("--report-path") + 1] == "-" and argv[-1] == "."
+
+
+def test_without_git_the_files_are_scanned(repo):
+    runner = Runner({"gitleaks": (0, [])})
+    report = audit.secrets_all(repo, runner, TODAY, accepted={"accepted": []})
+    assert runner.calls[0][0][1] == "dir" and report["scanned"] == ["gitleaks files"]
+    assert report["blocking"] == [] and audit.render(report).splitlines()[-1] == "No secret found."
+
+
+def test_a_secrets_scan_that_cannot_run_is_a_problem(repo, monkeypatch):
+    report = audit.secrets_all(repo, Runner({"gitleaks": (1, "fatal")}), TODAY, accepted={"accepted": []})
+    assert report["problems"][0].startswith("gitleaks files could not run (exit 1)")
+
+    def refused(name):
+        raise audit.tools.ToolError("no pinned build for linux-riscv64")
+
+    monkeypatch.setattr(audit, "binary", refused)
+    report = audit.secrets_all(repo, Runner({}), TODAY, accepted={"accepted": []})
+    assert report["problems"] == ["gitleaks: no pinned build for linux-riscv64"]
+    assert audit.render(report).splitlines()[-1].startswith("Not green")
+
+
+def test_the_command_line_runs_each_scan_into_its_own_results(repo, monkeypatch, capsys):
+    (repo / "crissp/testsuite").mkdir(parents=True)
+    (repo / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "Shop"}))
+    monkeypatch.setenv("CRISSP_ROOT", str(repo))
+    monkeypatch.setattr(audit, "runner", Runner({"gitleaks": (0, LEAKS)}))
+    assert audit.main(["audit.py", "secrets"]) == 1
+    saved = (repo / "crissp/testsuite/results/secrets.json").read_text()
+    assert "github-pat" in saved and "ghp_" not in saved
+    assert "BLOCKING" in capsys.readouterr().out
+
+
+def test_this_repository_scans_its_history_for_secrets():
+    conf = audit.project.load(LIB.parents[2])
+    step = next(s for s in conf["steps"] if s["key"] == "secrets")
+    assert step["run"] == "python3 lib/audit.py secrets" and not step["full_only"]
+
+
+# SAST (E6-F3-01): the pinned Semgrep with crissp's rules (crissp/testsuite/sast) and the project's own.
+SEMGREP = {"results": [
+    {"check_id": "crissp.testsuite.sast.crissp-py-shell", "path": "app/backend/run.py", "start": {"line": 7},
+     "extra": {"severity": "ERROR", "message": "A shell runs a command built from a value (shell injection).",
+               "lines": "subprocess.run(cmd, shell=True)"}},
+    {"check_id": "crissp-js-html-injection", "path": "app/frontend/src/view.js", "start": {"line": 3},
+     "extra": {"severity": "WARNING", "message": "HTML built from a value is put into the page."}},
+    {"check_id": "own-rule", "path": "app/backend/db.py", "start": {"line": 1}, "extra": {"severity": "INFO", "message": "x"}}],
+    "errors": [{"level": "warn", "type": "PartialParsing", "path": "app/frontend/src/odd.js"}]}
+SAST = {"missing": "skip", "sast": ["app/backend", "app/frontend"], "sast_rules": ["rules/semgrep"]}
+
+
+def test_unsafe_code_blocks_on_error_and_is_listed_on_warning(repo):
+    (repo / "rules/semgrep").mkdir(parents=True)
+    runner = Runner({"semgrep": (0, SEMGREP)})
+    report = audit.sast_all(repo, runner, TODAY, accepted={"accepted": []}, conf=SAST)
+    assert [(f["id"], f["severity"], f["blocks"]) for f in report["findings"]] == [
+        ("crissp-py-shell", "HIGH", True), ("crissp-js-html-injection", "MEDIUM", False), ("own-rule", "LOW", False)]
+    f = report["blocking"][0]
+    assert (f["package"], f["installed"], f["target"]) == ("app/backend/run.py", "line 7", "code")
+    assert report["problems"] == []  # a file Semgrep parsed only partly is not a problem
+    (argv, cwd), = runner.calls
+    assert argv[:6] == ["uv", "run", "--quiet", "--no-project", "--with", audit.SEMGREP] and cwd == repo
+    configs = [argv[i + 1] for i, a in enumerate(argv) if a == "--config"]
+    assert configs == [str(audit.RULES), "rules/semgrep"]  # crissp's rules and the project's own
+    assert "--metrics" in argv and argv[argv.index("--metrics") + 1] == "off" and "--disable-version-check" in argv
+    assert argv[-2:] == ["app/backend", "app/frontend"]
+    text = audit.render(report)
+    assert "BLOCKING HIGH     crissp-py-shell  app/backend/run.py line 7" in text and "subprocess.run" not in text
+    assert text.splitlines()[-1].startswith("Not green: change the code")
+
+
+def test_semgrep_errors_and_a_failed_run_are_problems(repo):
+    (repo / "rules/semgrep").mkdir(parents=True)
+    broken = {"results": [], "errors": [{"level": "error", "type": "InvalidRuleSchemaError", "message": "bad rule"}]}
+    report = audit.sast_all(repo, Runner({"semgrep": (2, broken)}), TODAY, accepted={"accepted": []}, conf=SAST)
+    assert report["problems"] == ["semgrep: InvalidRuleSchemaError: bad rule"]
+    report = audit.sast_all(repo, Runner({"semgrep": (2, "no network")}), TODAY, accepted={"accepted": []}, conf=SAST)
+    assert report["problems"][0].startswith("semgrep app/backend app/frontend could not run (exit 2)")
+
+
+def test_sast_on_places_not_there_yet_runs_nothing_and_is_green(tmp_path):
+    runner = Runner({})
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf=SAST)
+    assert runner.calls == [] and report["problems"] == []
+    assert report["absent"] == ["app/backend", "app/frontend", "rules/semgrep"]
+    assert audit.render(report).splitlines()[-1] == "Nothing to scan yet: none of the places suites.json names is here."
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf={})
+    assert report["problems"] == ["nothing to scan: name the code in crissp/testsuite/suites.json (audit, sast)"]
+    report = audit.sast_all(tmp_path, runner, TODAY, accepted={"accepted": []}, conf={"sast": ["app"], "sast_rules": ["r"]})
+    assert report["problems"] == ["semgrep: app is not there", "semgrep: no rules at r"]
+
+
+def test_clean_code_is_green_and_says_what_is_listed(repo):
+    report = audit.sast_all(repo, Runner({"semgrep": (0, {"results": SEMGREP["results"][1:], "errors": []})}), TODAY,
+                            accepted={"accepted": []}, conf={"sast": ["app/backend"]})
+    assert report["blocking"] == [] and audit.render(report).splitlines()[-1] == "No unsafe code blocks (2 listed for review)."
+
+
+def test_the_rules_have_tests_and_the_rules_command_runs_them(monkeypatch, capsys, tmp_path):
+    for rules in audit.RULES.glob("*.yaml"):
+        tests = list((audit.RULES / "tests").glob(rules.stem + ".*"))
+        assert tests, f"{rules.name} has no tests"
+        ids = re.findall(r"^  - id: (\S+)", rules.read_text(), re.MULTILINE)
+        text = tests[0].read_text()
+        for rule in ids:  # every rule must match something and leave something alone
+            assert f"ruleid: {rule}" in text and f"ok: {rule}" in text, rule
+    runner = Runner({"semgrep --test": (0, "13/13: All tests passed")})
+    monkeypatch.setattr(audit, "runner", runner)
+    monkeypatch.setenv("CRISSP_ROOT", str(tmp_path))
+    assert audit.main(["audit.py", "rules"]) == 0 and "All tests passed" in capsys.readouterr().out
+    (argv, _), = runner.calls
+    assert argv[-2:] == [str(audit.RULES), str(audit.RULES / "tests")]
+    monkeypatch.setattr(audit, "runner", Runner({"semgrep --test": (1, "1 unit tests did not pass")}))
+    assert audit.main(["audit.py", "rules"]) == 1
+
+
+def test_the_sast_command_line_writes_its_results(repo, monkeypatch):
+    (repo / "crissp/testsuite").mkdir(parents=True)
+    (repo / "crissp/testsuite/suites.json").write_text(json.dumps({"product": "Shop", "audit": {"sast": ["app"]}}))
+    monkeypatch.setenv("CRISSP_ROOT", str(repo))
+    monkeypatch.setattr(audit, "runner", Runner({"semgrep": (0, SEMGREP)}))
+    assert audit.main(["audit.py", "sast"]) == 1
+    assert json.loads((repo / "crissp/testsuite/results/sast.json").read_text())["blocking"][0]["id"] == "crissp-py-shell"
+
+
+def test_this_repository_scans_its_own_code_and_tests_its_rules():
+    conf = audit.project.load(LIB.parents[2])
+    step = next(s for s in conf["steps"] if s["key"] == "sast")
+    assert step["run"] == "python3 lib/audit.py rules && python3 lib/audit.py sast"
+    assert conf["audit"]["sast"] == ["src", "crissp", "site"]
