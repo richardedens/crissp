@@ -70,7 +70,7 @@ def cache(env: dict) -> Path:
 
 
 def fetch(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=TIMEOUT) as answer:  # a fixed https release URL, never a value from outside
+    with urllib.request.urlopen(url, timeout=TIMEOUT) as answer:  # noqa: S310 - a pinned https release URL, never from outside
         return answer.read()
 
 
@@ -99,7 +99,7 @@ def ensure(name: str, env: dict, fetcher=None, where: str | None = None) -> Path
     folder.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=folder, delete=False) as tmp:
         tmp.write(body)
-    os.chmod(tmp.name, 0o755)
+    os.chmod(tmp.name, 0o755)  # noqa: S103 - a program: everyone may run it, only its owner may change it
     os.replace(tmp.name, binary)  # whole or not at all: a stopped download never leaves half a tool
     return binary
 

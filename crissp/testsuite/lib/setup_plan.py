@@ -140,7 +140,7 @@ def apply(root: Path, conf: dict, runner=subprocess.run, which=shutil.which, bre
             return runner(argv, cwd=cwd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL).returncode == 0
 
     for line in plan(root, conf, version, which, brew):
-        what, target, state = (line.split(" ", 2) + ["", ""])[:3]
+        what, target, state = ([*line.split(" ", 2), "", ""])[:3]
         if what == "python":
             return fail(f"this is Python {state}; the testsuite needs {'.'.join(map(str, MIN_PYTHON))} or newer "
                         "(set CRISSP_PYTHON, or run it with a newer python3)")

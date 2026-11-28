@@ -233,7 +233,7 @@ def steps(conf: dict, project: Path) -> list[dict]:
     if not gated:
         return present
     last = max(i for i, s in enumerate(present) if s["gate"])
-    return present[: last + 1] + [gate_step(gated)] + present[last + 1:]
+    return [*present[:last + 1], gate_step(gated), *present[last + 1:]]
 
 
 def main(argv: list[str]) -> int:

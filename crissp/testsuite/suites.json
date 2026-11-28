@@ -13,7 +13,8 @@
    "sources": [
     "crissp/testsuite/lib",
     "crissp/tool",
-    "crissp/uxsuite"
+    "crissp/uxsuite",
+    "crissp/testsuite/lint"
    ],
    "omit": [
     "*/tests/*"
@@ -27,9 +28,9 @@
   },
   {
    "key": "python-lint",
-   "label": "Lint of crissp's own Python (the pinned ruff, pyproject.toml [tool.ruff])",
+   "label": "Lint of crissp's own Python (ruff with pyproject.toml's rules, standard library only, no duplicate code)",
    "dir": ".",
-   "run": "py -m ruff check --no-cache src crissp site",
+   "run": "py crissp/testsuite/lint/python_lint.py",
    "seconds": 5,
    "tests": []
   },
@@ -90,6 +91,23 @@
    "match": "crissp/testsuite/accepted-risks.json",
    "steps": [
     "audit",
+    "secrets"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/lint/python_lint.py",
+   "steps": [
+    "tools",
+    "python-lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
+   "match": "crissp/testsuite/lint/requirements.txt",
+   "steps": [
+    "lint",
+    "python-lint",
     "secrets"
    ]
   },
@@ -285,5 +303,8 @@
    "site"
   ]
  },
- "texts": {}
+ "texts": {},
+ "notes": [
+  ".editorconfig"
+ ]
 }

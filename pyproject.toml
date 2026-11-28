@@ -85,9 +85,9 @@ exclude = [
 only-include = ["src", "crissp", "LICENSE", "NOTICE", "VERSION", "README.md", "CHANGELOG.md", "pyproject.toml"]
 exclude = ["**/__pycache__", "**/*.pyc", "**/results", "crissp/testsuite/dashboard/data.js", "**/.DS_Store"]
 
-# The lint of crissp's own Python (the `python-lint` step in crissp/testsuite/suites.json, also in CI): the ruff pinned in
-# crissp/testsuite/requirements.txt, over src/, crissp/ and site/. Its default rules, plus the ones the code already
-# names in its `noqa` comments (imports after sys.path, assigned lambdas, test-style function names).
+# crissp's own Python standard (the `python-lint` step in crissp/testsuite/suites.json, also in CI and before every
+# commit): the ruff pinned in crissp/testsuite/requirements.txt, over src/, crissp/ and site/. The rules live here, not in
+# the step, so an editor, a hand-run `ruff check`, Claude and Vibe give the answer the step gives (F-92).
 [tool.ruff]
 target-version = "py312"
 line-length = 120
@@ -95,8 +95,44 @@ line-length = 120
 extend-exclude = ["crissp/testsuite/sast/tests"]
 
 [tool.ruff.lint]
-extend-select = ["E402", "E731", "N802"]
+select = [
+  "E", "W",   # pycodestyle, line length included
+  "F",        # pyflakes
+  "B",        # bugbear: likely bugs
+  "S",        # bandit: security
+  "SIM",      # simpler forms
+  "I",        # import order
+  "N",        # names
+  "UP",       # Python 3.12 forms
+  "C4",       # comprehensions
+  "RUF",      # ruff's own: RUF043 (an ambiguous pytest.raises pattern, F-90), RUF100 (a noqa that suppresses nothing)
+  "PLW1510",  # subprocess.run says whether a non-zero exit is an error (check=True or check=False)
+  "D100",     # every module says what it is
+]
+ignore = [
+  "S603", "S607",  # the guards run git, bash and helm by design, as argument lists; a shell (S602) stays forbidden
+  "E501",  # line length: comes with the one layout pass (ruff format), which waits until the open pull requests are in
+]
+# crissp's messages use typographic dashes and the multiplication sign on purpose
+allowed-confusables = ["–", "×"]
 
 [tool.ruff.lint.per-file-ignores]
-# The uxsuite's tests import the `product` fixture from ux_kit and ask for it by name: pytest's way, not a redefinition.
-"crissp/uxsuite/tests/*" = ["F811"]
+# Tests assert, use fixed throwaway secrets, paths and addresses, open their own local servers and import after their
+# sys.path setup. The uxsuite's tests import the `product` fixture from ux_kit and ask for it by name (F811): pytest's way.
+"**/tests/*" = ["S101", "S104", "S105", "S106", "S108", "S310", "E402", "F811"]
+"**/package_tests/*" = ["S101", "S104", "S105", "S106", "S108", "S310", "E402"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 130  # code is held at 120; a docstring, comment or message may run a little longer
+
+# The python-lint step's duplicate-code check (crissp/testsuite/lint/python_lint.py, F-93): pylint's R0801 alone, six
+# similar lines or more, over the same Python as ruff. Here, so a hand-run pylint gives the step's answer.
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = ["duplicate-code"]
+
+[tool.pylint.similarities]
+min-similarity-lines = 6
+
+[tool.pylint.reports]
+score = false

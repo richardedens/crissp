@@ -45,8 +45,9 @@ This project's steps (`crissp/testsuite/suites.json`):
 - `tools`: the testsuite's, uxsuite's and crissp tool's own tests, held at **100% lines and branches**, spread over
   the workers this machine has (`parallel`: on a 16-CPU Mac 15 workers, about 11 s instead of 37 s).
 - `gate`: the coverage gate (coverage only goes up).
-- `python-lint`: the pinned ruff over this repository's Python (`src/`, `crissp/`, `site/`), configured in `pyproject.toml`
-  (`[tool.ruff]`).
+- `python-lint`: `crissp/testsuite/lint/python_lint.py`, over this repository's Python (`src/`, `crissp/`, `site/`): the
+  pinned ruff with the rules in `pyproject.toml` (`[tool.ruff]`), an import scan that holds the engine to the standard
+  library, and pylint's duplicate-code check (pinned in `crissp/testsuite/lint/requirements.txt`, `[tool.pylint]`).
 - `deploy`: `crissp/deploy/check.sh`, with helm lint and template, `terraform fmt` and `validate` when Terraform is
   installed (otherwise a visible "skipped"), and the chart's structure tests.
 - `lint`: `crissp/testsuite/lint/lint.sh`, shellcheck on every tracked bash script and ESLint on every tracked

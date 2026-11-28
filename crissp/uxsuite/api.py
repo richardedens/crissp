@@ -117,7 +117,7 @@ def _post(handler, path: str, suite: ux_config.Suite) -> None:
             raise ValueError("too large")
         body = json.loads(handler.rfile.read(size) or b"{}")
         if not isinstance(body, dict):
-            raise ValueError("send one JSON object")  # noqa: TRY004  (a bad request: answered 400, like the rest)
+            raise ValueError("send one JSON object")
         if path in ("/ux/api/persona", "/ux/api/rule"):
             return _json(handler, 200, _card(suite, path.rsplit("/", 1)[1], body))
         conf = ux_config.load(suite)
@@ -148,7 +148,7 @@ def work(suite: ux_config.Suite, stop: threading.Event, interval: float) -> None
         try:
             conf = ux_config.load(suite)
             ux_team.drain(suite, conf, lambda e: ux_team.start(suite, conf, e["kind"], e["walk"], e.get("focus", "")))  # noqa: B023  (drain calls it now)
-        except Exception as e:  # noqa: BLE001  the queue must not stop; the reason goes to the log
+        except Exception as e:
             print("ux queue:", e, file=sys.stderr)
 
 

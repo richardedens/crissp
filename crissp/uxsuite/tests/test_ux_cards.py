@@ -3,6 +3,7 @@ checked with clear errors, written by the page, and the old places (team.json's 
 still read until the first write moves them into files."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -76,7 +77,7 @@ def test_without_files_team_json_still_holds_the_personas(suite):
     assert (first["on"], first["jobs"]) == (False, ["Pay"])
     team["personas"][0]["jobs"] = "Pay"
     (suite.here / "team.json").write_text(json.dumps(team))
-    with pytest.raises(ux_config.ConfigError, match="team.json: persona 1: jobs must be a list of texts"):
+    with pytest.raises(ux_config.ConfigError, match=re.escape("team.json: persona 1: jobs must be a list of texts")):
         ux_config.load(suite)
 
 

@@ -4,6 +4,18 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **crissp's own lint holds the engine to the standard library and finds copied code (F-93).** The `python-lint`
+  step also scans every import in the engine's runtime code (anything outside the standard library and the engine's
+  own modules fails, by file and line) and runs pylint's duplicate-code check (six similar lines or more).
+- **crissp's own Python is held to more of ruff's rules (F-92).** Besides the defaults: bugbear's likely bugs, bandit's
+  security rules (a shell stays forbidden), simpler forms, import order, names, comprehensions, ruff's own rules (a
+  `noqa` that suppresses nothing fails) and a docstring per module. The rules live in `pyproject.toml` alone, so an
+  editor or a hand-run `ruff check` gives the step's answer.
+- **The crissp tool only probes this machine's dashboard (F-91).** Checking whether the dashboard is up, it now opens
+  only `http://127.0.0.1` addresses, never a file or another host named in the dashboard's log.
+- **A test that could not fail now can (F-90).** A `pytest.raises(match="cannot hold a |")` matched every message,
+  since `match=` is a regular expression. ruff's RUF043 is now part of crissp's own lint, and 19 patterns are escaped
+  or made raw.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share

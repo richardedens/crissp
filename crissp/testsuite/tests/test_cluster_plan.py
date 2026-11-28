@@ -123,10 +123,10 @@ def test_each_wrong_setting_stops_it_by_name(change, stop):
 
 
 def test_a_missing_or_broken_deploy_json_is_said_plainly(tmp_path):
-    with pytest.raises(ValueError, match="deploy.json is missing"):
+    with pytest.raises(ValueError, match=re.escape("deploy.json is missing")):
         cp.load_config(tmp_path / "deploy.json")
     (tmp_path / "deploy.json").write_text("{nope")
-    with pytest.raises(ValueError, match="deploy.json is not valid JSON"):
+    with pytest.raises(ValueError, match=re.escape("deploy.json is not valid JSON")):
         cp.load_config(tmp_path / "deploy.json")
 
 
