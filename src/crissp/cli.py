@@ -194,7 +194,9 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         print(f"  kept  {rel}", file=out)
     print("\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you, and first asks how many backends\n"
           "and frontends the product has: a large one is better split into parts of its own), name the product's parts\n"
-          "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.", file=out)
+          "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.\n"
+          "Every Claude or Vibe session then opens with the stage the work is in (Discover, Plan, Build, Verify,\n"
+          "Review, Release) and offers help with it; `crissp dashboard` shows the same on its Stages page.", file=out)
     return 0
 
 

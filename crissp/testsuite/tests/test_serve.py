@@ -316,3 +316,21 @@ def test_activity_is_the_page_and_its_data_is_this_project_s_live_sessions(world
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_stages_is_the_page_and_its_data_is_where_the_work_is(world, monkeypatch):  # F-130
+    root, engine, _ = world
+    (engine / "dashboard" / "stages.html").write_text("<title>Stages</title>")
+    asked = []
+    monkeypatch.setattr(sv.stages, "state", lambda r: asked.append(r) or {"current": "plan", "stages": []})
+    httpd, base, _ = _serve(world, False)
+    try:
+        code, headers, _ = _get(base + "/stages")
+        assert code == 302 and headers["Location"] == "/dashboard/stages.html"
+        assert _get(base + "/dashboard/stages.html")[2] == b"<title>Stages</title>"
+        code, headers, body = _get(base + "/dashboard/stages.json")
+        assert code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body)["current"] == "plan"
+        assert asked == [root]
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

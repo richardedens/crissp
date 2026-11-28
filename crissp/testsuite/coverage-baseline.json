@@ -89,11 +89,19 @@
      "branch": 100.0,
      "line": 100.0
     },
+    "crissp/testsuite/lib/stages.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
     "crissp/testsuite/lib/tools.py": {
      "branch": 100.0,
      "line": 100.0
     },
     "crissp/testsuite/lib/vibe.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/testsuite/lib/vibesessions.py": {
      "branch": 100.0,
      "line": 100.0
     },
@@ -150,10 +158,6 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_verdicts.py": {
-     "branch": 100.0,
-     "line": 100.0
-    },
-    "crissp/testsuite/lib/vibesessions.py": {
      "branch": 100.0,
      "line": 100.0
     }

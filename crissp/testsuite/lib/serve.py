@@ -15,6 +15,9 @@ What it serves, only on 127.0.0.1:
 - /activity     the Activity page (dashboard/activity.html, E3-F3-01): what this repository's Claude sessions, their
                 orchestrator and their agents do now; its data is /dashboard/activity.json (lib/activity.py state(),
                 from Claude Code's transcripts), asked for every two seconds while the page is open.
+- /stages       the Stages page (dashboard/stages.html, F-130): where the work is in the six stages (Discover, Plan,
+                Build, Verify, Review, Release) and how to ask Claude or Mistral Vibe to help with each; its data is
+                /dashboard/stages.json (lib/stages.py state(), from the backlog, the certificate, git and the UX suite).
 - /results/     the project's run output: the dashboard's data (results/data.js, lib/collect.py), the Claude session
                 pages (results/sessions/) and what the dashboard links to (screenshots).
 - /look/        the shared look (crissp/look: the tokens, the font, the theme, the water).
@@ -36,6 +39,7 @@ ENGINE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE))
 import activity  # noqa: E402
 import project  # noqa: E402
+import stages  # noqa: E402
 import workers  # noqa: E402
 
 SUITE = ENGINE.parent  # the engine's own files: the dashboard page (dashboard/), the look is crissp/look beside it
@@ -124,7 +128,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/workers", "/activity"):
+        if path in ("/", "/workers", "/activity", "/stages"):
             self.send_response(302)
             self.send_header("Location", "/dashboard/" if path == "/" else f"/dashboard{path}.html")
             self.send_header("Content-Length", "0")
@@ -134,6 +138,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(200, workers.state(self.live.root))
         if path == "/dashboard/activity.json":
             return self._json(200, activity.state(self.live.root))
+        if path == "/dashboard/stages.json":
+            return self._json(200, stages.state(self.live.root))
         if path == "/dashboard/stamp":
             stamp = self.live.stamp()  # whose (F-09), and why it is not current when it is not (F-32)
             return self._json(200, {"stamp": stamp, "root": str(self.live.root.resolve()), "error": self.live.error})

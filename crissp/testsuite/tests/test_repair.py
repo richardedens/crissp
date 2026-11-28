@@ -81,7 +81,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 9" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 10" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
@@ -96,6 +96,7 @@ def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, caps
     agreement = (old / "crissp/CLAUDE.md").read_text()
     assert "`crissp/tool`" not in agreement and "the crissp MCP server, registered\nin `.mcp.json`" in agreement
     assert repair.SESSIONS in agreement  # F-21: both repairs of the agreement land, the tool's first
+    assert repair.STAGES in agreement  # F-130
     assert (old / "crissp/backlog/FINDINGS.md").read_text() == "| F-01 | here | kept as it is | E1 |\n"
     # the crissp/ folder: what the template has and it lacked is made, filled in; the framework's text is this crissp's
     assert (old / "crissp/uxsuite/.gitignore").read_text() == (repair.TEMPLATE / "crissp/uxsuite/.gitignore").read_text()
@@ -290,7 +291,8 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
     write(agreement, "# shop\n\n## Own rules\n\nkept\n\n## Working with the product owner\n\n- ask\n")
     repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
     assert "sessions" in capsys.readouterr().out
-    assert agreement.read_text() == ("# shop\n\n## Own rules\n\nkept\n\n" + section
+    stages = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.STAGES)  # F-130 lands too
+    assert agreement.read_text() == ("# shop\n\n## Own rules\n\nkept\n\n" + stages + section
                                      + "## Working with the product owner\n\n- ask\n")
     assert "sessions" not in keys(root)
 
@@ -308,6 +310,36 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
 
     agreement.unlink()
     assert "sessions" not in keys(root)  # no agreement: `missing` makes it from the template
+
+
+def test_the_agreement_gets_this_crissps_six_stages(tmp_path, capsys):
+    """F-130: crissp/CLAUDE.md's 'The six stages' is crissp's (a session says the stage on a <!-- CRISSP --> prompt):
+    added before 'Sessions that stay small' when missing, else before 'Working with the product owner', else at the
+    end; replaced when it differs."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    agreement = root / "crissp/CLAUDE.md"
+    section = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.STAGES)
+    assert section.startswith(repair.STAGES) and "<!-- CRISSP" in section and "call `stage`" in section
+    assert "stages" not in keys(root)  # as init made it: in place
+    sessions = repair.section(agreement.read_text(), repair.SESSIONS)
+
+    write(agreement, f"# shop\n\n{sessions}## Working with the product owner\n\n- ask\n")
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
+    assert "The six stages" in capsys.readouterr().out
+    assert agreement.read_text() == f"# shop\n\n{section}{sessions}## Working with the product owner\n\n- ask\n"
+
+    write(agreement, f"# shop\n\n{repair.STAGES}\n\nan old text\n\n{sessions}")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\n{section}{sessions}"
+
+    write(agreement, "# shop\n\n## Working with the product owner\n\n- ask\n")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\n{section}## Working with the product owner\n\n- ask\n"
+
+    write(agreement, "# shop\n\nno sections")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\nno sections\n\n{section}"
 
 
 def test_vibe_config_and_trust_are_put_in_place(tmp_path):

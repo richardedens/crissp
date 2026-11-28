@@ -38,7 +38,7 @@ instead of reading the backlog files; write findings, decisions, epics, features
 | `crissp/check.sh --plan` | Shows what changed since the last green state, what it would run and how long |
 | `crissp/check.sh` | Runs only what the changes can affect (`crissp/testsuite/lib/impact.py`, from `suites.json`), then moves the release certificate to this commit |
 | `crissp/check-all.sh` | The full run: every step below, plus the CVE audit of the pinned tools |
-| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`; this project's dashboard is reused, another project's is left alone and the next free port taken): the Tests dashboard, the backlog board (with how it moved), the UX suite, `/workers` (the run spread over this machine, live; never runs a test) and `/activity` (what Claude's sessions and their agents do now), one top bar on every page |
+| `crissp/test.sh --dashboard` | One local server (127.0.0.1:8766, `CRISSP_DASHBOARD_PORT`; this project's dashboard is reused, another project's is left alone and the next free port taken): `/stages` (where the work is in the six stages, with Ask Claude and Ask Vibe), the Tests dashboard, the backlog board (with how it moved), the UX suite, `/workers` (the run spread over this machine, live; never runs a test) and `/activity` (what Claude's sessions and their agents do now), one top bar on every page |
 
 This project's steps (`crissp/testsuite/suites.json`):
 
@@ -147,6 +147,23 @@ What `crissp/check.sh` runs per change:
 - Status: `todo` · `doing` · `review` (built, waiting for the product owner) · `done`. Only the product owner accepts;
   accepted work moves to `crissp/backlog/done/`.
 - New observations go to FINDINGS.md right away (`F-next | where seen | what | goes to`).
+
+## The six stages
+
+The work moves through six stages, the agentic SDLC (CRISSP.md, *The six stages*): **Discover** (the UX team walks the
+product and finds what its users need) → **Plan** (findings and approved needs become PBIs, choices become decisions)
+→ **Build** (the next PBI, test-first) → **Verify** (`crissp/check.sh`) → **Review** (what waits for the product
+owner) → **Release** (the release notes; the product owner tags). The crissp tool `stage` says where the work is,
+read from the backlog, the release certificate, git and the UX suite; the Stages page of the dashboard (`crissp
+dashboard`, `/stages`) shows the same, with Ask Claude and Ask Vibe per stage.
+
+- **At the start of a session, and on every `<!-- CRISSP … -->` prompt** (bringing the project in, filling a block):
+  call `stage`, open with the stage the work is in and why, in a sentence or two, and offer the help for that stage;
+  for example, when Discover is not set up yet, offer to set up the UX suite with the product owner.
+- **"crissp: help me with <stage>"** (what Ask Claude and Ask Vibe start): call `stage` with that stage and do what it
+  says.
+- Mistral Vibe works the same: its crissp tools (`.vibe/config.toml`) include `stage`.
+- Helping with a stage never pushes, tags, publishes or deploys, and never moves work to done.
 
 ## Sessions that stay small
 
