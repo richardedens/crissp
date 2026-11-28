@@ -26,7 +26,7 @@ PINS = {
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",
     "stylelint": "17.16.0",
-    "stylelint-config-standard": "40.0.0",
+    "stylelint-config-recommended": "18.0.0",
 }
 
 
@@ -38,21 +38,52 @@ def test_the_toolkit_pins_every_tool_at_one_exact_version_and_its_lockfile_agree
     for name, version in PINS.items():
         assert lock["packages"][f"node_modules/{name}"]["version"] == version, name
     eslint = (KIT / "eslint.config.mjs").read_text()
-    for name in set(PINS) - {"eslint", "typescript", "stylelint", "stylelint-config-standard"}:
+    for name in set(PINS) - {"eslint", "typescript", "stylelint", "stylelint-config-recommended"}:
         assert f'from "{name}"' in eslint, name  # every ESLint package pinned is used by the config
     assert '"react/no-danger": "error"' in eslint and "react.configs" not in eslint  # React's plugin: no-danger only
-    assert '"stylelint-config-standard"' in (KIT / "stylelint.config.mjs").read_text()
+
+
+
+def test_the_project_kit_lints_css_as_crissp_lints_its_own_mistakes_not_layout():
+    """F-151: the kit extended stylelint's standard set: about 7,800 findings in one project's hand-written CSS, nearly
+    all layout (one declaration per line, empty lines before rules) or descending specificity. Now it holds the rules
+    crissp holds its own CSS to (F-96)."""
+    kit = (KIT / "stylelint.config.mjs").read_text()
+    own = (LIB.parent / "lint" / "stylelint.config.mjs").read_text()
+    for config in (kit, own):
+        assert 'extends: ["stylelint-config-recommended"]' in config and '"no-descending-specificity": null' in config
+    assert "standard" not in kit
+
+
+def test_react_hooks_are_held_to_their_two_rules_and_the_compiler_rules_are_opt_in():
+    """F-151: the hooks plugin's recommended set (v7) brings the React Compiler's rules (set-state-in-effect, refs,
+    immutability, purity, …): hundreds of findings in code that does not use the compiler. Without --react-compiler only
+    rules-of-hooks and exhaustive-deps apply."""
+    eslint = (KIT / "eslint.config.mjs").read_text()
+    assert '"react-hooks/rules-of-hooks": "error", "react-hooks/exhaustive-deps": "error"' in eslint
+    assert 'process.env.CRISSP_REACT_COMPILER === "1"\n    ? reactHooks.configs.flat.recommended' in eslint
+    assert "jsxA11y.flatConfigs.recommended" in eslint and "tseslint.configs.recommended" in eslint
+
+
+def test_a_project_that_uses_the_react_compiler_says_so_and_gets_its_rules(tmp_path, frontend):
+    npm = Npm()
+    assert lint(tmp_path, npm) == 0
+    assert npm.envs[1]["CRISSP_REACT_COMPILER"] == "0"
+    npm = Npm()
+    assert lint(tmp_path, npm, ["--react-compiler", "app/frontend"]) == 0
+    assert [e["CRISSP_REACT_COMPILER"] for e in npm.envs] == ["1", "1"]  # installed already: eslint, stylelint
 
 
 class Npm:
     """Stand-in for npm and the two tools: records each call, and npm ci makes the binaries it would install."""
 
     def __init__(self, fail: set[str] = frozenset()):
-        self.calls, self.fail = [], fail
+        self.calls, self.envs, self.fail = [], [], fail
 
-    def __call__(self, argv: list[str], cwd: Path) -> int:
+    def __call__(self, argv: list[str], cwd: Path, env: dict | None = None) -> int:
         tool = Path(argv[0]).name
         self.calls.append((tool, argv[1:], Path(cwd)))
+        self.envs.append(env)
         if tool == "npm" and "npm" not in self.fail:
             (Path(cwd) / "node_modules/.bin").mkdir(parents=True)
         return 1 if tool in self.fail else 0
@@ -162,8 +193,8 @@ def test_many_files_are_linted_in_batches_and_one_red_batch_makes_the_step_red(t
     )
 
     class RedOnce(Npm):
-        def __call__(self, argv, cwd):
-            code = super().__call__(argv, cwd)
+        def __call__(self, argv, cwd, env=None):
+            code = super().__call__(argv, cwd, env)
             return 1 if Path(argv[0]).name == "eslint" and len(self.calls) == 2 else code
 
     assert lint(tmp_path, RedOnce()) == 1
@@ -209,6 +240,7 @@ def test_without_npm_or_a_frontend_it_says_so(tmp_path, frontend, capsys):
     assert "app/gone is not a folder" in capsys.readouterr().out
     assert lint(tmp_path, Npm(), ["a", "b"]) == 2
     assert "usage" in capsys.readouterr().out
+    assert lint(tmp_path, Npm(), ["--strict"]) == 2
 
 
 def test_with_no_folder_it_lints_the_current_one(tmp_path, frontend):

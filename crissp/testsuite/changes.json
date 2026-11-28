@@ -2088,6 +2088,22 @@
     "test_frontend_lint.py::test_git_ignored_build_output_and_build_folders_are_never_linted",
     "test_audit.py::test_unsafe_code_blocks_on_error_and_is_listed_on_warning"
    ]
+  },
+  {
+   "id": "frontend-lint-mistakes-not-layout",
+   "title": "F-151: the frontend lint finds mistakes, not layout",
+   "problem": "The project kit extended stylelint-config-standard (layout rules, descending specificity) and the hooks plugin's recommended set with the React Compiler's rules: thousands of findings a project could not fix safely.",
+   "fix": "stylelint-config-recommended with no-descending-specificity off, as crissp's own CSS; rules-of-hooks and exhaustive-deps only, the compiler's rules with frontend_lint --react-compiler (CRISSP_REACT_COMPILER for eslint.config.mjs).",
+   "sources": [
+    "crissp/testsuite/frontend-lint/stylelint.config.mjs",
+    "crissp/testsuite/frontend-lint/eslint.config.mjs",
+    "crissp/testsuite/lib/frontend_lint.py"
+   ],
+   "tests": [
+    "test_frontend_lint.py::test_the_project_kit_lints_css_as_crissp_lints_its_own_mistakes_not_layout",
+    "test_frontend_lint.py::test_react_hooks_are_held_to_their_two_rules_and_the_compiler_rules_are_opt_in",
+    "test_frontend_lint.py::test_a_project_that_uses_the_react_compiler_says_so_and_gets_its_rules"
+   ]
   }
  ],
  "gaps": [

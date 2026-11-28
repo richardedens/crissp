@@ -11,6 +11,10 @@ What 0.2.0 showed on a real project: the frontend lint now works on a project th
   project. ESLint and stylelint now get the project's own files by name, as git lists them (every `.gitignore`
   counts), and never a build folder (`dist`, `build`, `node_modules`, `coverage`, `.next`, `.nuxt`, `.svelte-kit`,
   `.turbo`), even where nothing ignores it. Semgrep and `trivy fs` leave the build folders out as well.
+- **The frontend lint finds mistakes, not layout (F-151).** stylelint uses its recommended rules, as crissp's own
+  CSS does (no layout rules, no `no-descending-specificity`), and React hooks are held to `rules-of-hooks` and
+  `exhaustive-deps`. A project that uses the React Compiler gets the compiler's rules too: `frontend_lint
+  --react-compiler` in its `frontend-lint` step.
 
 ## 0.2.0 — 2026-11-28
 
