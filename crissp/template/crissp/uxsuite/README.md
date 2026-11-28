@@ -11,7 +11,8 @@ To fill in when CRISSPifying (the `CRISSP:` hints in `team.json`):
    five personas into the product's own people; keep one moderator.
 2. `walks/`: one file per path a person takes through the product (`goto`, `click`, `fill`, `press`, `wait`, `shot`).
    `first-visit.json` is the first.
-3. `PRINCIPLES.md`: the design principles, in the product owner's words.
+3. `PRINCIPLES.md`: the design principles, in the product owner's words. A line `Measured by the browser: <checks>.`
+   under a principle has the browser check that part itself at every shoot.
 4. Optional: let the E2E tests list the screenshots they take in `results/test-shots/screens.json`
    (`[{"path", "file", "title", "device", "test"}]`, each picture beside it); the map adds them as screens.
 
@@ -25,6 +26,9 @@ crissp/ux.sh --round first-visit       # the first round
 crissp/ux.sh --discover                # can every persona do their jobs on the mapped screens? what is missing?
 crissp/ux.sh                           # the suite, next to the Tests dashboard
 ```
+
+In the suite, the **Review** tab goes through the screens that wait for the product owner, one at a time, with the
+keyboard (`1 2 3` decide, `← →` screens, `↑ ↓` items, `s` decides for the whole screen, area or rule).
 
 What the suite makes goes to `results/` (git-ignored by `.gitignore` here): screenshots, rounds, designs, the queue and
 the verdicts. No real customer data goes into a walk.

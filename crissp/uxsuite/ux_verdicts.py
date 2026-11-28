@@ -11,6 +11,10 @@ which stays in the file as history. What a verdict sets going:
 - send it back: its PBI moves to doing, and the reason becomes a finding that goes to it
 A disagreement, a redo and a rejection need a reason: that is what the team learns from.
 
+A verdict on a rule, an area or a screen ("rule/<id>", "area/<area>", "screen/<walk>": agree · disagree · later) holds
+for its advice that has none of its own (ux_review.held); a proposed rule ("proposed/<theme>": approve · reject),
+approved, becomes a rule file.
+
 Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>", what was built "<walk>#v<version>/built".
 """
 
@@ -20,7 +24,9 @@ import json
 import re
 
 import ux_backlog
+import ux_cards
 import ux_discovery
+import ux_review
 import ux_team
 from ux_config import Suite, speak
 
@@ -32,6 +38,9 @@ NEED = ("approve", "reject")
 BUILT = ("accept", "send-back")
 BUILT_ID = re.compile(r"([a-z0-9][a-z0-9-]*)#v(\d+)/built")
 NEED_ID = re.compile(rf"{ux_team.PRODUCT}/d(\d+)/n(\d+)")
+TREE_ID = re.compile(r"(rule|area|screen)/([a-z0-9][a-z0-9-]*)")
+PROPOSED_ID = re.compile(r"proposed/([a-z0-9][a-z0-9-]*)")
+PROPOSED = ("approve", "reject")
 NEEDS_A_REASON = {"disagree", "redo", "reject", "send-back"}
 
 
@@ -58,6 +67,23 @@ def _built(suite: Suite, conf: dict, walk: str, n: int, verdict) -> str:
     if not shot or shot <= held["at"]:
         raise ValueError(speak(f"shoot the walk again once it is built: crissp/ux.sh --shoot {walk}"))
     return found.get("title", "")
+
+
+def _node(suite: Suite, conf: dict, level: str, key: str) -> str:
+    """A rule, an area or a screen a verdict holds for, by its title."""
+    if level == "rule":
+        names = {r["id"]: r["title"] for r in ux_cards.rules(suite)}
+    elif level == "area":
+        names = {ux_review.area_of(w): ux_review.area_of(w) for w in conf["walks"].values()}
+    else:
+        names = {w["id"]: w["title"] for w in conf["walks"].values()}
+    if key not in names:
+        raise ValueError(f"unknown {level}")
+    return names[key]
+
+
+def _proposed(suite: Suite, conf: dict) -> list[dict]:
+    return ux_review.proposed(suite, conf, latest(suite), ux_cards.rules(suite))
 
 
 def record(suite: Suite, conf: dict, body: dict) -> dict:
@@ -90,6 +116,17 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         if verdict not in DESIGN:
             raise ValueError("a verdict on a design is approve, redo or reject")
         level, title = "design", found.get("title", "")
+    elif (m := TREE_ID.fullmatch(item)):
+        level, title = m.group(1), _node(suite, conf, m.group(1), m.group(2))
+        if verdict not in ADVICE:
+            raise ValueError("a verdict on a rule, an area or a screen is agree, disagree or later")
+    elif PROPOSED_ID.fullmatch(item):
+        found = next((p for p in _proposed(suite, conf) if p["id"] == item), None)
+        if not found:
+            raise ValueError("unknown proposal")
+        if verdict not in PROPOSED:
+            raise ValueError("a verdict on a proposed rule is approve or reject")
+        level, title = "proposed", found["title"]
     else:
         raise ValueError("unknown item")
     if verdict in NEEDS_A_REASON and not reason:
@@ -125,6 +162,13 @@ def after(suite: Suite, conf: dict, line: dict) -> dict:
     approved need; {} for the rest."""
     if line["level"] == "built":
         return _move(suite, line)
+    if line["level"] == "proposed":
+        if line["verdict"] != "approve":
+            return {}
+        p = next(p for p in _proposed(suite, conf) if p["id"] == line["id"])
+        rid = line["id"].split("/", 1)[1]
+        ux_cards.save_rule(suite, {"id": rid, "title": p["title"], "severity": p["severity"], "text": p["text"]})
+        return {"rule": rid}
     if line["verdict"] == "reject" or line["level"] not in ("design", "need"):
         return {}
     if line["level"] == "need":

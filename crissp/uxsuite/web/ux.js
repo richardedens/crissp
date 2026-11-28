@@ -160,7 +160,7 @@
   function verdictButtons(id, options) {
     const held = S.verdicts[id];
     return `<div class="verdicts">${options.map(([v, label]) => `<button class="ghost small" data-verdict="${v}" data-id="${esc(id)}" aria-pressed="${v === "approve-remark" ? held?.verdict === "approve" && !!held?.reason : v === "approve" ? held?.verdict === "approve" && !held?.reason : held?.verdict === v}">${label}</button>`).join("")}
-      ${held?.reason ? `<span class="small muted">“${esc(held.reason)}”</span>` : ""}</div>`;
+      ${held?.reason ? `<span class="small muted">“${esc(held.reason)}”</span>` : ""}${!held && S.held[id] ? `<span class="small muted">${esc(S.held[id].verdict)}, by your verdict on ${esc(S.held[id].by.replace("/", " "))}</span>` : ""}</div>`;
   }
 
   function rounds() {
@@ -373,8 +373,12 @@
     const e = editing();
     return `<div class="toolbar"><button class="primary" data-goto="rules?edit=new">Add a rule</button><span class="small muted">Every round judges by the rules that hold, and every design follows them. They live in <code>crissp/uxsuite/rules/</code>, one file each${S.rules_from === "PRINCIPLES.md" ? " (the first change moves them out of PRINCIPLES.md)" : ""}.</span></div>
       ${e === "new" ? ruleForm(null) : ""}
+      ${S.proposed.map(p => `<article class="card rule proposed"><div class="row">${badge("area", "proposed")}${badge(p.severity, p.severity)}<h3>${esc(p.title)}</h3></div>
+        <p class="small">${esc(p.text)}</p><p class="small muted">You agreed with this on ${p.walks.length} screens: ${p.walks.map(x => esc(walkOf(x)?.title || x)).join(", ")}.</p>
+        ${verdictButtons(p.id, [["approve", "Make it a rule"], ["reject", "Reject…"]])}</article>`).join("")}
       ${S.rules.map(r => e === r.id ? ruleForm(r) : `<article class="card rule ${r.on ? "" : "off"}"><div class="row">${badge(r.severity, r.severity)}<h3>${esc(r.title)}</h3><code class="small muted">${esc(r.id)}</code>${r.on ? "" : badge("missing", "off")}</div>
         <p class="small">${esc(r.text)}</p>
+        ${S.verdicts["rule/" + r.id] ? `<p class="small muted">Your verdict on all its advice: ${esc(S.verdicts["rule/" + r.id].verdict)}</p>` : ""}
         ${(r.measure || []).length ? `<div class="row small"><span class="muted">Measured by the browser:</span>${r.measure.map(m => badge("ver", measureName(m))).join("")}</div>` : ""}
         <div class="row"><a href="#rules?edit=${encodeURIComponent(r.id)}">Edit</a>
           <button class="ghost small" data-toggle="rule" data-id="${esc(r.id)}">${r.on ? "Switch off" : "Switch on"}</button>
@@ -403,7 +407,7 @@
     const R = S.review, screens = R.screens;
     const at = Math.max(0, screens.findIndex(x => x.walk === query.get("walk")));
     const sc = screens[at], w = sc && walkOf(sc.walk), items = sc ? reviewItems(w, sc) : [];
-    const firstOpen = items.findIndex(x => !S.verdicts[x.id]);
+    const firstOpen = items.findIndex(x => !S.verdicts[x.id] && !S.held[x.id]);
     const i = query.has("i") ? Math.min(items.length - 1, Number(query.get("i"))) : Math.max(0, firstOpen);
     return { R, screens, at, sc, w, items, i, item: items[i] };
   }
@@ -422,7 +426,12 @@
     const p = w.proposals.find(x => x.key === sc.design);
     const ref = item?.a?.shot, device = ref ? ref.split(" ")[0] : null;
     const shot = w.shots.find(x => x.url && (ref ? `${x.device} ${x.n}` === ref : true)) || w.shots.find(x => x.url && x.device === device) || w.shots.find(x => x.url);
-    const held = item && S.verdicts[item.id];
+    /* Decide once (E7-F4-02): the verdict on a piece of advice can go to its screen, its area or its rule instead, and
+       then holds for every piece of advice under it without a verdict of its own (s switches). */
+    const scopes = item?.kind === "advice" ? [["", "This advice", item.id], ["screen", "Its screen", `screen/${w.id}`], ["area", "Its area", `area/${sc.area}`]]
+      .concat(item.a.rule ? [["rule", `Rule ${item.a.rule}`, `rule/${item.a.rule}`]] : []) : [["", "", item?.id]];
+    const scope = scopes.find(x => x[0] === (query.get("scope") || "")) || scopes[0];
+    const held = item && S.verdicts[scope[2]];
     return `<div class="progress card"><div class="row"><b>${R.progress.accepted} of ${R.total} screen(s) accepted</b><span class="small muted">${R.waiting} wait for you</span></div>
         <div class="progressbar" role="img" aria-label="${R.steps.map(st => `${R.progress[st]} ${st}`).join(", ")}" style="--total:${total}">${bar}</div></div>
       <div class="review">
@@ -441,16 +450,17 @@
           <ol class="items">${items.map((x, k) => {
             const v = S.verdicts[x.id];
             return `<li class="${k === i ? "on" : ""} ${x.a ? esc(x.a.priority) : ""}"><a href="#review?walk=${encodeURIComponent(w.id)}&i=${k}">
-              <span class="row">${x.a ? badge(x.a.priority, x.a.priority) : badge("area", x.kind === "design" ? "design" : "built")}<b>${esc(x.title)}</b>${v ? badge(v.verdict === "agree" || v.verdict === "approve" || v.verdict === "accept" ? "passed" : v.verdict === "later" ? "missing" : "failed", v.verdict) : ""}</span>
+              <span class="row">${x.a ? badge(x.a.priority, x.a.priority) : badge("area", x.kind === "design" ? "design" : "built")}<b>${esc(x.title)}</b>${v ? badge(v.verdict === "agree" || v.verdict === "approve" || v.verdict === "accept" ? "passed" : v.verdict === "later" ? "missing" : "failed", v.verdict) : S.held[x.id] ? `<span class="small muted">${esc(S.held[x.id].verdict)} · by ${esc(S.held[x.id].by.replace("/", " "))}</span>` : ""}</span>
               ${k === i && x.a ? `<span class="small">${esc(x.a.detail || "")}${x.a.rule ? ` · rule <code>${esc(x.a.rule)}</code>` : ""}</span>` : ""}</a></li>`;
           }).join("") || '<li class="small muted">Nothing to decide on this screen yet.</li>'}</ol>
         </section>
       </div>
       <div class="verdict-bar" role="region" aria-label="Your verdict">
         ${item ? `<span class="what"><b>${i + 1}/${items.length}</b> ${esc(item.title)}${held ? ` · now: ${esc(held.verdict)}` : ""}</span>
-          <span class="keys">${OPTIONS[item.kind].map(([v, l], k) => `<button class="${k ? "ghost" : "primary"}" data-verdict="${v}" data-id="${esc(item.id)}" data-key-n="${k + 1}" aria-pressed="${held?.verdict === v}"><kbd>${k + 1}</kbd> ${l}</button>`).join("")}</span>`
+          ${scopes.length > 1 ? `<span class="seg" role="group" aria-label="The verdict holds for (s)">${scopes.map(([k, l]) => `<button class="ghost small" data-scope="${k}" aria-pressed="${k === scope[0]}">${esc(l)}</button>`).join("")}</span>` : ""}
+          <span class="keys">${OPTIONS[item.kind].map(([v, l], k) => `<button class="${k ? "ghost" : "primary"}" data-verdict="${v}" data-id="${esc(scope[2])}" data-key-n="${k + 1}" aria-pressed="${held?.verdict === v}"><kbd>${k + 1}</kbd> ${l}</button>`).join("")}</span>`
           : `<span class="what muted">Nothing to decide here.</span>`}
-        <span class="small muted nav">← → screen · ↑ ↓ item</span></div>`;
+        <span class="small muted nav">← → screen · ↑ ↓ item${scopes.length > 1 ? " · s for" : ""}</span></div>`;
   }
   document.addEventListener("keydown", e => {
     if (tab !== "review" || !S || S.error || document.querySelector("dialog[open]") || e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -461,6 +471,7 @@
     else if (e.key === "ArrowLeft" && at > 0) { e.preventDefault(); go(at - 1); }
     else if (e.key === "ArrowDown" && i < items.length - 1) { e.preventDefault(); go(at, i + 1); }
     else if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); go(at, i - 1); }
+    else if (e.key === "s") { const all = [...document.querySelectorAll(".verdict-bar [data-scope]")], k = all.findIndex(b => b.getAttribute("aria-pressed") === "true"); if (all.length) all[(k + 1) % all.length].click(); }
   });
 
   function render() {
@@ -517,6 +528,8 @@
       }
       return;
     }
+    const sp = e.target.closest("[data-scope]");
+    if (sp) { if (sp.dataset.scope) query.set("scope", sp.dataset.scope); else query.delete("scope"); history.replaceState(null, "", "#review?" + query); render(); return; }
     const mt = e.target.closest("[data-mode-to]");
     if (mt) { view.mode = mt.dataset.modeTo; drawViewer(); return; }
     const zm = e.target.closest("[data-zoom]");
@@ -554,13 +567,13 @@
         remark ? "It goes into the backlog item, before the changes: the builder reads it first." : "The team reads this next time.") : "";
       if (reason === null || (remark && !reason.trim())) return;
       if (tab === "review") {  // on to the next open item after this one
-        const { items, i } = reviewState(), open = items.map((x, k) => k).filter(k => k !== i && !S.verdicts[items[k].id]);
+        const { items, i } = reviewState(), open = items.map((x, k) => k).filter(k => k !== i && !S.verdicts[items[k].id] && !S.held[items[k].id]);
         const to = open.find(k => k > i) ?? open[0];
         if (to === undefined) query.delete("i"); else query.set("i", to);
         history.replaceState(null, "", "#review?" + query);
       }
       try { const out = await api("api/verdict", { id: v.dataset.id, verdict, reason });
-        tell(out.moved ? `${out.pbi} moved to ${verdict === "accept" ? "review" : "doing"}${out.finding ? `, ${out.finding} written` : ""}` : out.not_moved ? out.not_moved : out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
+        tell(out.rule ? `Rule ${out.rule} written: it holds from the next round` : out.moved ? `${out.pbi} moved to ${verdict === "accept" ? "review" : "doing"}${out.finding ? `, ${out.finding} written` : ""}` : out.not_moved ? out.not_moved : out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
       } catch (err) { tell(err.message); }
       return load();
     }

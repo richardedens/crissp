@@ -322,7 +322,8 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
    "consensus": [], "disputes": [{{"topic", "positions": [{{"persona", "position"}}]}}], "advice": [{{"title", "detail",
    "priority": "must|should|could", "effort": "S|M|L", "personas": [keys of who asked], "shot": "<device> <n>",
    "rule": "<the id of the rule it is about, from rules.md, or empty>",
-   "where": {{"x", "y", "w", "h"}} (where on that shot it is, in the screenshot's pixels, when it is one place; else leave it out)}}]}},
+   "where": {{"x", "y", "w", "h"}} (where on that shot it is, in the screenshot's pixels, when it is one place; else leave it out),
+   "theme": "<two to four words naming the kind of problem, the same words for the same problem on any screen>"}}]}},
    the advice worst first, each piece something a developer can act on.
 4. done — status.json with phase "done" and a one-line note.
 """ + FOREGROUND

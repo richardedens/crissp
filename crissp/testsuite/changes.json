@@ -1599,6 +1599,38 @@
     "test_ux_review::test_the_area_of_a_screen_comes_from_its_walk_s_first_page",
     "test_ux_review::test_the_team_is_asked_to_pin_advice_to_a_place_on_the_shot"
    ]
+  },
+  {
+   "id": "ux-decide-once",
+   "title": "Every piece of advice needed its own verdict, and agreed advice never became a rule",
+   "problem": "Hundreds of pieces of advice each needed their own verdict, and advice the product owner agreed with on screen after screen was never turned into a rule (E7-F4-02).",
+   "fix": "A verdict on a rule, an area or a screen (rule/<id>, area/<area>, screen/<walk>: agree, disagree or later) holds for every piece of advice under it without a verdict of its own, the nearest first (ux_review.held); the review screen's verdict bar sends the verdict to the advice, its screen, its area or its rule (s switches). Agreed advice without a rule that comes back on two screens or more under one theme is proposed as a rule (ux_review.proposed, shown in the Rules tab); approved, it is written as a rule file. The round's advice carries a theme.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def held("
+    },
+    {
+     "file": "crissp/uxsuite/ux_review.py",
+     "symbol": "def proposed("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _node("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function reviewTab("
+    }
+   ],
+   "tests": [
+    "test_ux_tree::test_a_verdict_on_a_rule_holds_for_its_advice",
+    "test_ux_tree::test_the_nearest_verdict_holds_and_the_advice_s_own_wins",
+    "test_ux_tree::test_a_wrong_verdict_up_the_tree_is_refused",
+    "test_ux_tree::test_agreed_advice_on_several_screens_is_proposed_as_a_rule",
+    "test_ux_tree::test_an_approved_proposal_is_a_rule_file_and_a_rejected_one_stays_away",
+    "test_ux_tree::test_a_theme_or_else_the_title_groups_advice"
+   ]
   }
  ],
  "gaps": [

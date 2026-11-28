@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Decide once, for a whole rule, area or screen (E7-F4-02).** In the review screen's verdict bar, press `s` to give
+  your verdict to the advice's screen, its area or its rule instead: it then holds for every piece of advice under it
+  that has no verdict of its own (the nearest one wins, and your verdict on one piece of advice always wins). Advice you
+  agreed with that comes back on two screens or more is proposed as a rule in the **Rules** tab; make it a rule and it
+  is written to `crissp/uxsuite/rules/`.
 - **One screen at a time, from the keyboard (E7-F4-01).** The UX page's new **Review** tab shows how far the product
   is (every screen new, seen, discussed, decided, designed, approved, built or accepted, as one bar) and goes through
   the screens that wait for you first. Per screen: the shot with the team's advice pinned where it is, next to the

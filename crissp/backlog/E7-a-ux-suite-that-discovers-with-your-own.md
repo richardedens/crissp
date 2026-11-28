@@ -82,7 +82,7 @@ Done when  The product owner can go through every open screen with the keyboard 
 Tests      uxsuite tests at 100%, and the page walked by the suite itself.
 Depends    E7-F3-01
 
-### E7-F4-02 · Decide once on a rule; advice that keeps coming back becomes a rule       [todo] [M]
+### E7-F4-02 · Decide once on a rule; advice that keeps coming back becomes a rule       [review] [M]
 Why        Hundreds of pieces of advice each need their own verdict, and agreed advice is never turned into a rule.
 What       A decision tree: rule, area, screen, advice; a verdict higher up holds below it unless changed; agreed advice
            seen on several screens is proposed as a rule, which the product owner approves into rules/.

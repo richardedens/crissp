@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "4c640a39cde725bbabe9160cc9adf622fc32e300",
+ "commit": "48cc97a9c1a28089cdc9d7b53124339c1d4dd0e1",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -134,6 +134,10 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_map.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_review.py": {
      "branch": 100.0,
      "line": 100.0
     },

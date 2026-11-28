@@ -1,5 +1,10 @@
 """The review screen (E7-F4-01): where every screen stands, from new to accepted, and what it waits for.
 
+Decide once (E7-F4-02): a verdict on a rule ("rule/<id>"), an area ("area/<area>") or a screen ("screen/<walk>") holds
+for every piece of advice under it that has no verdict of its own, the nearest one first (screen, area, rule). Advice the
+product owner agreed with that comes back on several screens under the same theme (or title) is proposed as a rule
+("proposed/<theme>"); approved, it becomes a rule file.
+
 A screen is a walk's screen: what its shots show, the team's advice on it, its designs and what was built from them. Its
 status is the furthest step it reached:
 
@@ -13,7 +18,10 @@ owner first, the must-advice first, one verdict at a time.
 
 from __future__ import annotations
 
+import re
+
 import ux_map
+import ux_team
 
 STEPS = ("new", "seen", "discussed", "decided", "designed", "approved", "built", "accepted")
 PRIORITY = {"must": 0, "should": 1, "could": 2}
@@ -107,3 +115,52 @@ def review(conf: dict, walks: list[dict], verdicts: dict, m: dict | None) -> dic
             "waiting": sum(1 for s in screens if s["waits"] == "you"),
             "map": map_status(m, {s["walk"]: s["status"] for s in screens})}
 
+
+
+# ------------------------------------------------------------------------------------------------------- decide once
+
+def theme(advice: dict) -> str:
+    """What a piece of advice is about, as a key: its theme when the team gave one, else its title."""
+    return "-".join(re.findall(r"[a-z0-9]+", str(advice.get("theme") or advice.get("title") or "").lower()))[:60]
+
+
+def _advice(suite, conf: dict):
+    """Every piece of advice of every finished round: (walk id, advice id, advice)."""
+    for wid in conf["walks"]:
+        for r in ux_team.versions(suite, "round", wid):
+            for i, a in enumerate((r["result"] or {}).get("advice") or []):
+                yield wid, f"{wid}/r{r['version']}/a{i}", a
+
+
+def held(suite, conf: dict, verdicts: dict) -> dict:
+    """Per piece of advice without a verdict of its own, the verdict higher up that holds for it."""
+    out = {}
+    for wid, aid, a in _advice(suite, conf):
+        if aid in verdicts:
+            continue
+        up = [f"screen/{wid}", f"area/{area_of(conf['walks'][wid])}"] + ([f"rule/{a['rule']}"] if a.get("rule") else [])
+        by = next((u for u in up if u in verdicts), None)
+        if by:
+            out[aid] = {"verdict": verdicts[by]["verdict"], "reason": verdicts[by].get("reason", ""), "by": by}
+    return out
+
+
+def proposed(suite, conf: dict, verdicts: dict, rules: list[dict]) -> list[dict]:
+    """Agreed advice without a rule, on two screens or more under one theme: proposed as a rule (not when that rule is
+    there already)."""
+    groups: dict[str, list] = {}
+    for wid, aid, a in _advice(suite, conf):
+        if not a.get("rule") and (verdicts.get(aid) or {}).get("verdict") == "agree" and theme(a):
+            groups.setdefault(theme(a), []).append((wid, aid, a))
+    have = {r["id"] for r in rules}
+    out = []
+    for key, found in groups.items():
+        walks = list(dict.fromkeys(w for w, _, _ in found))
+        if len(walks) < 2 or key in have:
+            continue
+        first = found[0][2]
+        out.append({"id": f"proposed/{key}", "title": str(first.get("theme") or first.get("title")).strip(),
+                    "severity": min((a.get("priority") for _, _, a in found), key=lambda p: PRIORITY.get(p, 3)),
+                    "text": "\n".join(dict.fromkeys(str(a.get("detail") or a.get("title")).strip() for _, _, a in found)),
+                    "walks": walks, "advice": [i for _, i, _ in found], "verdict": verdicts.get(f"proposed/{key}")})
+    return out

@@ -64,11 +64,13 @@ def state(suite: ux_config.Suite) -> dict:
         walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"),
                       "shot_at": ux_team.shot_at(suite, w["id"]), "shots": ux_team.shots(suite, w["id"]),
                       "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
-    found = ux_map.load(suite)
+    found, rules = ux_map.load(suite), ux_cards.rules(suite)
+    held = ux_review.held(suite, conf, verdicts)
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
-            "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
+            "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": rules,
             "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "map": found, "review": ux_review.review(conf, walks, verdicts, found), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
+            "walks": walks, "map": found, "review": ux_review.review(conf, walks, {**held, **verdicts}, found),
+            "held": held, "proposed": ux_review.proposed(suite, conf, verdicts, rules), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
             "team": ux_team.state(suite, conf)}
 
 

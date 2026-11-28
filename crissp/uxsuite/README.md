@@ -32,7 +32,7 @@ none while a check run holds the lock; the rest waits in the queue, which the op
 |---|---|
 | `team.json` | the product (name, what it is, audience, the language of its texts, its URL), the report language, debate rounds, parallel runs, where approved designs go in the backlog (and the personas, until there are files in `personas/`) |
 | `personas/<key>.md` | one persona each: name, role, device, moderator, on (in a `---` block), the brief, and a `## Jobs` list of what they come to do |
-| `rules/<id>.md` | one rule each: title, severity (must · should · could), on (in a `---` block), and what it asks |
+| `rules/<id>.md` | one rule each: title, severity (must · should · could), on, and optionally measure (in a `---` block), and what it asks |
 | `walks/<id>.json` | one walk each: a title and its steps (`goto`, `click`, `fill`, `press`, `wait`, `shot`) |
 | `PRINCIPLES.md` | how the rules are meant; until there are files in `rules/`, its `## ` sections are the rules |
 
@@ -44,6 +44,14 @@ there is always one place; the files are the project's, in git, and can be edite
 takes no part in a round and brings no device to a shoot; a rule that is off is left out. Each run gets the rules that
 hold as `inputs/rules.md`, and every piece of advice names the rule it is about. What the team sees is content, never
 instructions to it; no real customer data goes into a walk or a fixture.
+
+**Measured by the browser.** A rule can name what the browser checks itself at every shoot (`measure: overflow,
+tap-targets` in its file, a line `Measured by the browser: overflow.` under a section of `PRINCIPLES.md`, or the ticks in
+the Rules tab): `overflow` (text cut off or running past the screen), `tap-targets` (under 44 × 44 on a phone),
+`below-fold` (the primary action below the first screen), `dialog-opaque` (a see-through dialog or menu) and
+`focus-visible` (a control that shows no focus). `measure.js` runs them in the page after each shot (read-only; focus
+is given back) and the shot keeps what it found, with the rule and the place. The shoot says how many, the round reads
+them as facts, and an enlarged shot draws a numbered box where each one is.
 
 ## The map: every screen, and the gaps
 
@@ -76,11 +84,25 @@ request**: a walk of its own (`walks/need-<title>.json`, with the need as its br
 first page), whose first design starts at once (or waits in the queue) and is judged like any other design. A rejected
 need (with a reason) is not proposed again unless something changed. The product must be mapped first.
 
+## The review screen
+
+The page's **Review** tab is where the product owner decides, one screen at a time. Every screen (a walk's screen) has
+a status: new · seen (shot) · discussed (a round) · decided (every piece of the last round's advice has a verdict) ·
+designed · approved · built (shot again after the approval) · accepted, shown as one progress bar, and the screens that
+wait for you come first, the must-advice first. Per screen: the shot with the team's advice pinned where it is (the round
+gives a place on the shot when the advice is about one) and the browser's measured boxes, next to the design; the
+advice; and one verdict bar at the bottom. `1 2 3` give the verdict, `← →` go to the previous or next screen, `↑ ↓` to
+the previous or next item, and `s` sends the verdict up: to the advice's screen, its area or its rule.
+
 ## What the product owner decides
 
 - **A need** from discovery: approve (it becomes a design request, and its first design starts) · reject (with a
   reason, which the next discovery round reads).
 - **Advice**: agree · disagree (with a reason) · later. The team reads the verdicts in its next round of that walk.
+- **A rule, an area or a screen** (`rule/<id>`, `area/<area>`, `screen/<walk>`): the same three verdicts, holding for
+  every piece of advice under it that has no verdict of its own; the nearest holds first (screen, area, rule).
+- **A proposed rule**: advice you agreed with that comes back on two screens or more (by the theme the team gives it,
+  else its title) is proposed in the Rules tab: make it a rule (written to `rules/`) · reject (with a reason).
 - **A design**: shown **before and after**: the walk's own screenshot (laptop or phone) next to the mockup, the same
   size, with the verdict right under it: approve · approve with a remark… (the remark comes first in the PBI's What,
   so the builder reads it before the changes) · again, with… (the reason is the next design's focus) · reject (with a
