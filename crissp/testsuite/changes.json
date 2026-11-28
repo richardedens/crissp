@@ -797,6 +797,32 @@
     "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
     "test_crissp_tool::test_the_dashboard_is_served_and_its_address_answered"
    ]
+  },
+  {
+   "id": "own-python-lint",
+   "title": "crissp lints its own Python with the pinned ruff (F-35)",
+   "problem": "ruff was pinned in crissp/testsuite/requirements.txt, but no step of crissp's own ran it: the Python in src/, crissp/ and site/ was never linted, locally or in CI.",
+   "fix": "pyproject.toml has [tool.ruff] (Python 3.12, 120 columns, ruff's default rules plus E402, E731 and N802, which the code's noqa comments already name). suites.json has a `python-lint` step, `py -m ruff check --no-cache src crissp site` with the pinned tools, and every path rule for Python under src/, crissp/ and site/ (and pyproject.toml) brings it. CI runs it with the other quick steps.",
+   "sources": [
+    {
+     "file": "pyproject.toml",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": ""
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_python_lint.py::test_ruff_is_configured_in_pyproject_for_the_python_crissp_supports",
+    "test_python_lint.py::test_the_lint_step_runs_the_pinned_ruff_over_src_crissp_and_site",
+    "test_python_lint.py::test_every_change_to_linted_python_brings_the_lint_step",
+    "test_python_lint.py::test_ci_runs_the_lint_step"
+   ]
   }
  ],
  "gaps": [
