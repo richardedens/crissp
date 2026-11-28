@@ -1,0 +1,32 @@
+# The editor's part of crissp's code standard (F-95): every editor writes files the way crissp's own checks hold them
+# (pyproject.toml for ruff and pylint, crissp/testsuite/lint/ for shellcheck and ESLint). https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+[*.py]
+indent_size = 4
+
+# crissp writes its JSON itself (json.dumps(..., indent=1)); an editor keeps that layout
+[*.json]
+indent_size = 1
+
+# a trailing double space is a line break in Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{png,jpg,woff2}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+max_line_length = unset

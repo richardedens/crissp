@@ -190,3 +190,21 @@ def test_a_change_to_the_lint_tools_runs_their_tests_and_the_python_lint():
     assert "python-lint" in impact.classify("crissp/testsuite/lint/requirements.txt", _conf())[1]  # pylint's pin
     tools = next(s for s in _conf()["steps"] if s["key"] == "tools")
     assert "crissp/testsuite/lint" in tools["sources"]  # held at 100% lines and branches with the rest
+
+
+def test_an_editor_writes_files_the_way_the_checks_hold_them():
+    """F-95: no .editorconfig, so an editor wrote crissp's files with its own defaults (tabs, CRLF, no final newline,
+    4-space JSON) and the lint said so only afterwards. It says UTF-8, LF and a final newline everywhere, 4 spaces for
+    Python and ruff's line length, crissp's own JSON layout, and costs a run nothing (a note)."""
+    import configparser
+
+    conf = configparser.ConfigParser()
+    conf.read_string("[top]\n" + (ROOT / ".editorconfig").read_text())
+    assert conf["top"]["root"] == "true"
+    every = conf["*"]
+    assert (every["charset"], every["end_of_line"], every["insert_final_newline"]) == ("utf-8", "lf", "true")
+    assert every["indent_style"] == "space" and every["trim_trailing_whitespace"] == "true"
+    ruff = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["ruff"]
+    assert int(every["max_line_length"]) == ruff["line-length"] and conf["*.py"]["indent_size"] == "4"
+    assert conf["*.json"]["indent_size"] == "1" and conf["*.md"]["trim_trailing_whitespace"] == "false"
+    assert impact.classify(".editorconfig", _conf()) == ("nothing", "")

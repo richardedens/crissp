@@ -1385,6 +1385,25 @@
    "tests": [
     "test_measure::test_the_session_pages_css_and_script_live_in_files_a_linter_reads"
    ]
+  },
+  {
+   "id": "editorconfig",
+   "title": "Editors write crissp's files the way its checks hold them (F-95)",
+   "problem": "Nothing told an editor crissp's layout: each wrote files with its own defaults, and only the lint caught the difference.",
+   "fix": ".editorconfig at the root: UTF-8, LF, a final newline and no trailing spaces everywhere (not in Markdown, where two spaces break a line), spaces, 4 for Python, lines of 120 like ruff, indent 1 for the JSON crissp writes itself; binaries left alone. suites.json lists it as a note: a change to it runs nothing.",
+   "sources": [
+    {
+     "file": ".editorconfig",
+     "symbol": "max_line_length = 120"
+    },
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": "\"notes\""
+    }
+   ],
+   "tests": [
+    "test_python_lint::test_an_editor_writes_files_the_way_the_checks_hold_them"
+   ]
   }
  ],
  "gaps": [

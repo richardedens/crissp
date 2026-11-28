@@ -303,5 +303,8 @@
    "site"
   ]
  },
- "texts": {}
+ "texts": {},
+ "notes": [
+  ".editorconfig"
+ ]
 }
