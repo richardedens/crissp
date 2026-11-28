@@ -155,6 +155,15 @@
    ]
   },
   {
+   "match": "crissp/uxsuite/measure.js",
+   "steps": [
+    "tools",
+    "lint",
+    "secrets",
+    "sast"
+   ]
+  },
+  {
    "match": "crissp/uxsuite/",
    "steps": [
     "tools",

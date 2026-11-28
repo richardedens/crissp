@@ -7,7 +7,9 @@ request under /ux): its page, what the team did and does, and the product owner'
                                    queue and what the team does now
     GET  /ux/results/shots/…       the walks' screenshots
     GET  /ux/results/proposals/…   the team's designs; their HTML in a sandbox of its own (never this origin)
+    GET  /ux/results/map/…         the map's pictures: the crawl's and the copied test screenshots (ux_map)
     POST /ux/api/verdict           {id, verdict, reason}: a verdict (ux_verdicts), and what it sets going
+    POST /ux/api/request           {kind: discovery, walk: product}: a discovery round on the whole product
     POST /ux/api/request           {kind: round|proposal, walk, focus}: start it now, or queue it
     POST /ux/api/persona           {persona: {key?, name, role, device, moderator, on, brief, jobs}} or {remove: key}:
                                    the Team tab (ux_cards: a file per persona in personas/)
@@ -32,6 +34,8 @@ if str(HERE) not in sys.path:
 import ux_backlog  # noqa: E402
 import ux_cards  # noqa: E402
 import ux_config  # noqa: E402
+import ux_map  # noqa: E402
+import ux_review  # noqa: E402
 import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
 
@@ -62,7 +66,12 @@ def state(suite: ux_config.Suite) -> dict:
     walks = []
     for w in conf["walks"].values():
         designs = [
-            {**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"])}
+            {
+                **v,
+                "verdict": verdicts.get(v["key"]),
+                "pbi": pbis.get(v["key"]),
+                "built": verdicts.get(v["key"] + "/built"),
+            }
             for v in ux_team.versions(suite, "proposal", w["id"])
         ]
         walks.append(
@@ -70,11 +79,15 @@ def state(suite: ux_config.Suite) -> dict:
                 "id": w["id"],
                 "title": w["title"],
                 "steps": len(w["steps"]),
+                "need": w.get("need"),
+                "shot_at": ux_team.shot_at(suite, w["id"]),
                 "shots": ux_team.shots(suite, w["id"]),
                 "rounds": ux_team.versions(suite, "round", w["id"]),
                 "proposals": designs,
             }
         )
+    found, rules = ux_map.load(suite), ux_cards.rules(suite)
+    held = ux_review.held(suite, conf, verdicts)
     return {
         "product": conf["product"],
         "monogram": conf["monogram"],
@@ -82,13 +95,27 @@ def state(suite: ux_config.Suite) -> dict:
         "url": conf["url"],
         "personas": conf["personas"],
         "personas_from": conf["personas_from"],
-        "rules": ux_cards.rules(suite),
+        "rules": rules,
         "rules_from": ux_cards.rules_from(suite),
         "walks": walks,
+        "map": found,
+        "review": ux_review.review(conf, walks, {**held, **verdicts}, found),
+        "held": held,
+        "proposed": ux_review.proposed(suite, conf, verdicts, rules),
+        "discovery": _discovery(suite, verdicts),
         "verdicts": verdicts,
         "queue": ux_team.queue(suite),
         "team": ux_team.state(suite, conf),
     }
+
+
+def _discovery(suite: ux_config.Suite, verdicts: dict) -> list[dict]:
+    """The discovery rounds, each need with the verdict that holds on it."""
+    out = []
+    for v in ux_team.versions(suite, "discovery", ux_team.PRODUCT):
+        ids = [f"{ux_team.PRODUCT}/d{v['version']}/n{i}" for i in range(len((v["result"] or {}).get("needs", [])))]
+        out.append({**v, "needs": [{"id": i, "verdict": verdicts.get(i)} for i in ids]})
+    return out
 
 
 def _send(handler, code: int, body: bytes, ctype: str = "application/json", extra: dict | None = None) -> None:
@@ -127,7 +154,9 @@ def handle(handler, method: str, suite: ux_config.Suite | None = None) -> None:
         return _json(handler, 200, state(suite))
     if path.startswith("/ux/results/"):
         rest = path[len("/ux/results/") :]
-        return _file(handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals"))
+        return _file(
+            handler, suite.results / rest, (suite.results / "shots", suite.results / "proposals", suite.results / "map")
+        )
     return _file(handler, WEB / path[len("/ux/") :], (WEB,))
 
 

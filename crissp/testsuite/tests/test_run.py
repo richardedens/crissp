@@ -175,7 +175,12 @@ def test_audit_runs_the_engines_security_scans_for_the_project(tmp_path):
     """A project's step names `audit run` (or secrets, sast): the engine's lib/audit.py, wherever crissp is installed."""
     (tmp_path / "crissp/testsuite").mkdir(parents=True)
     (tmp_path / "crissp/testsuite/suites.json").write_text('{"audit": {"missing": "skip", "fs": ["app/backend"]}}')
-    env = {"PATH": "/usr/bin:/bin", "BASH_ENV": str(LIB / "steps.sh"), "CRISSP_ROOT": str(tmp_path)}
+    # F-106: the python running the tests first, as a terminal with crissp has it: a Mac's /usr/bin/python3 is 3.9
+    env = {
+        "PATH": f"{Path(sys.executable).parent}:/usr/bin:/bin",
+        "BASH_ENV": str(LIB / "steps.sh"),
+        "CRISSP_ROOT": str(tmp_path),
+    }
     done = subprocess.run(
         ["bash", "-c", "audit run"], capture_output=True, text=True, env=env, cwd=tmp_path, check=False
     )

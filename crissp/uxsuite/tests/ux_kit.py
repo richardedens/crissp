@@ -127,4 +127,6 @@ def product(tmp_path, monkeypatch):
     monkeypatch.setattr(ux_team, "_running", {})
     monkeypatch.delenv("UXSUITE_PARALLEL", raising=False)
     monkeypatch.delenv("CRISSP_UX_MODEL", raising=False)
+    monkeypatch.delenv("CRISSP_UX_CLI", raising=False)
+    monkeypatch.setattr(ux_team, "which", lambda name: f"/usr/bin/{name}" if name == "claude" else None)
     return make_product(tmp_path / "repo")

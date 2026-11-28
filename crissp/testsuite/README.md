@@ -162,6 +162,14 @@ made while the data was being rebuilt is picked up by the next ask, and a rebuil
 **The board's decisions and findings**: above the lanes, the open decisions (`DECISIONS.md`, not yet taken) and the
 findings (`FINDINGS.md`, newest first, with how many are not fixed yet), read with the crissp tool's own parser.
 
+**/stages** (`dashboard/stages.html`, its data `/dashboard/stages.json` from `lib/stages.py`, F-130): where the work is
+in the six stages of the agentic SDLC (Discover, Plan, Build, Verify, Review, Release), read from the backlog (with the
+crissp tool's own parser), the release certificate, git, VERSION and CHANGELOG.md, and the UX suite's state. Per stage
+what is in it and whose move it is (to set up, work to do, waits for you, clear), and Ask Claude, Ask Vibe and Copy the
+sentence: they copy `claude "crissp: help me with Plan"`, `vibe "…"` or the sentence for an open session, and the
+crissp tool `stage` gives that session the stage's instructions. Discover can start the UX team's rounds there (as the
+UX page does); nothing on the page starts a check, tags, pushes or publishes. The page asks every five seconds.
+
 **/activity** (`dashboard/activity.html`, its data `/dashboard/activity.json` from `lib/activity.py`): what this
 repository's Claude Code sessions do now, read from their transcripts (the ones written in the last half hour): per
 session its title, the last prompt, the orchestrator's latest step and since when (busy while it wrote in the last two
@@ -172,7 +180,7 @@ masked like the session pages. The page asks every two seconds while it is open.
 (with the crissp tool's own parser) plus what the working tree holds beyond the last commit. The board shows "Moved
 recently" and, per card, how long it has stood in its column.
 
-**One top bar**: the sections (Tests · Backlog · UX · Workers · Activity · Sessions) are one list in `crissp/look/look.js`;
+**One top bar**: the sections (Stages · Tests · Backlog · UX · Workers · Activity · Sessions) are one list in `crissp/look/look.js`;
 every page has an empty `<nav class="sections" data-current="…">` that it fills.
 
 **/workers** (`dashboard/workers.html`, its data `/dashboard/workers.json` from `lib/workers.py`): this machine's CPUs,

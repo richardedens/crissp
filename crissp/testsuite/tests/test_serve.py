@@ -102,6 +102,11 @@ def test_a_failed_rebuild_keeps_the_last_good_data(world, capsys):
     before = live.built()
     assert live.stamp() == before and live.data.read_text() == "window.SUITE = {};\n"
     assert "dashboard data not rebuilt: changes.json is not JSON" in capsys.readouterr().err
+    tries = []
+    live.rebuild = lambda: tries.append(1) or broken()
+    assert live.stamp() == before and tries == []  # F-108: not tried again on every request while nothing changed …
+    (root / "crissp/testsuite/changes.json").write_text("{}")
+    assert live.stamp() == before and tries == [1]  # … but again once something did
 
 
 def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
@@ -146,8 +151,10 @@ def test_a_failed_rebuild_is_said_on_the_page(world):
         (root / "crissp/testsuite/changes.json").write_text("{")
         assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == "changes.json is not JSON"
         live.rebuild = lambda: (_ for _ in ()).throw(RuntimeError())
+        (root / "crissp/testsuite/changes.json").write_text("{ ")  # F-108: tried again once something changed
         assert live.stamp() and live.error == "RuntimeError"  # a reason without words still names itself
         live.rebuild = build
+        (root / "crissp/testsuite/changes.json").write_text("{}")
         assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == ""  # rebuilt: current again
     finally:
         httpd.shutdown()
@@ -333,6 +340,24 @@ def test_activity_is_the_page_and_its_data_is_this_project_s_live_sessions(world
         assert (
             code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body) == {"sessions": [], "now": 1.0}
         )
+        assert asked == [root]
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_stages_is_the_page_and_its_data_is_where_the_work_is(world, monkeypatch):  # F-130
+    root, engine, _ = world
+    (engine / "dashboard" / "stages.html").write_text("<title>Stages</title>")
+    asked = []
+    monkeypatch.setattr(sv.stages, "state", lambda r: asked.append(r) or {"current": "plan", "stages": []})
+    httpd, base, _ = _serve(world, False)
+    try:
+        code, headers, _ = _get(base + "/stages")
+        assert code == 302 and headers["Location"] == "/dashboard/stages.html"
+        assert _get(base + "/dashboard/stages.html")[2] == b"<title>Stages</title>"
+        code, headers, body = _get(base + "/dashboard/stages.json")
+        assert code == 200 and headers["Cache-Control"] == "no-store" and json.loads(body)["current"] == "plan"
         assert asked == [root]
     finally:
         httpd.shutdown()

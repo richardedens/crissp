@@ -40,6 +40,7 @@ def bring_in(root: Path) -> None:
                 src.read_text().replace("{{PRODUCT}}", "x"),
             )
     write(root / "crissp/CRISSP.md", (repair.ENGINE / "CRISSP.md").read_text())
+    write(root / repair.SKILL, (repair.TEMPLATE / "agents/skills/crissp/SKILL.md").read_text())
     write(root / ".gitignore", (repair.TEMPLATE / "gitignore.crissp").read_text())
     write(root / ".githooks/pre-commit", (repair.TEMPLATE / "githooks/pre-commit").read_text())
     (root / ".githooks/pre-commit").chmod(0o755)
@@ -112,7 +113,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 9" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 11" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
@@ -131,6 +132,7 @@ def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, caps
     agreement = (old / "crissp/CLAUDE.md").read_text()
     assert "`crissp/tool`" not in agreement and "the crissp MCP server, registered\nin `.mcp.json`" in agreement
     assert repair.SESSIONS in agreement  # F-21: both repairs of the agreement land, the tool's first
+    assert repair.STAGES in agreement  # F-130
     assert (old / "crissp/backlog/FINDINGS.md").read_text() == "| F-01 | here | kept as it is | E1 |\n"
     # the crissp/ folder: what the template has and it lacked is made, filled in; the framework's text is this crissp's
     assert (old / "crissp/uxsuite/.gitignore").read_text() == (
@@ -362,8 +364,9 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
     write(agreement, "# shop\n\n## Own rules\n\nkept\n\n## Working with the product owner\n\n- ask\n")
     repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
     assert "sessions" in capsys.readouterr().out
+    stages = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.STAGES)  # F-130 lands too
     assert agreement.read_text() == (
-        "# shop\n\n## Own rules\n\nkept\n\n" + section + "## Working with the product owner\n\n- ask\n"
+        "# shop\n\n## Own rules\n\nkept\n\n" + stages + section + "## Working with the product owner\n\n- ask\n"
     )
     assert "sessions" not in keys(root)
 
@@ -381,6 +384,36 @@ def test_the_agreement_gets_this_crissps_sessions_section(tmp_path, capsys):
 
     agreement.unlink()
     assert "sessions" not in keys(root)  # no agreement: `missing` makes it from the template
+
+
+def test_the_agreement_gets_this_crissps_six_stages(tmp_path, capsys):
+    """F-130: crissp/CLAUDE.md's 'The six stages' is crissp's (a session says the stage on a <!-- CRISSP --> prompt):
+    added before 'Sessions that stay small' when missing, else before 'Working with the product owner', else at the
+    end; replaced when it differs."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    agreement = root / "crissp/CLAUDE.md"
+    section = repair.section((repair.TEMPLATE / "crissp/CLAUDE.md").read_text(), repair.STAGES)
+    assert section.startswith(repair.STAGES) and "<!-- CRISSP" in section and "call `stage`" in section
+    assert "stages" not in keys(root)  # as init made it: in place
+    sessions = repair.section(agreement.read_text(), repair.SESSIONS)
+
+    write(agreement, f"# shop\n\n{sessions}## Working with the product owner\n\n- ask\n")
+    repair.main(["--yes"], {"CRISSP_ROOT": str(root)})
+    assert "The six stages" in capsys.readouterr().out
+    assert agreement.read_text() == f"# shop\n\n{section}{sessions}## Working with the product owner\n\n- ask\n"
+
+    write(agreement, f"# shop\n\n{repair.STAGES}\n\nan old text\n\n{sessions}")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\n{section}{sessions}"
+
+    write(agreement, "# shop\n\n## Working with the product owner\n\n- ask\n")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\n{section}## Working with the product owner\n\n- ask\n"
+
+    write(agreement, "# shop\n\nno sections")
+    [r.do() for r in repair.find(root) if r.key == "stages"]
+    assert agreement.read_text() == f"# shop\n\nno sections\n\n{section}"
 
 
 def test_vibe_config_and_trust_are_put_in_place(tmp_path):
@@ -535,3 +568,111 @@ def test_the_frameworks_own_checkout_gets_the_hook_turned_on_only(tmp_path, monk
     assert fix.key == "git-hook" and "not there" not in fix.what
     fix.do()
     assert repair.hook.state(tmp_path / "eng") == "on" and not (tmp_path / "eng/.githooks").exists()
+
+
+OLD_VIBE = '[[mcp_servers]]\nname = "crissp"\ntransport = "stdio"\ncommand = "uvx"\nargs = ["crissp==9.9.9", "mcp"]\n'
+
+
+def test_a_vibe_config_that_does_not_name_the_folder_is_written_anew(tmp_path):
+    """F-100: the config crissp wrote before names no folder, so Vibe's desktop app gets no tools: repair writes it
+    anew, with cwd and CRISSP_ROOT for this folder and the pin it had."""
+    root = tmp_path / "p"
+    bring_in(root)
+    write(root / ".vibe/config.toml", OLD_VIBE)
+    fix = next(r for r in repair.find(root, "9.9.9") if r.key == "vibe")
+    assert "does not name this folder" in fix.what
+    fix.do()
+    server = repair.tomllib.loads((root / ".vibe/config.toml").read_text())["mcp_servers"][0]
+    assert server["cwd"] == str(root) and server["env"] == {"CRISSP_ROOT": str(root), "PATH": repair.os.environ["PATH"]}
+    assert server["args"] == ["crissp==9.9.9", "mcp"]
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+
+
+def test_a_vibe_config_with_servers_of_its_own_is_said_not_written(tmp_path):
+    """F-100: other servers, or anything crissp did not write, stay: what to add by hand is said instead."""
+    root = tmp_path / "p"
+    bring_in(root)
+    write(
+        root / ".vibe/config.toml", OLD_VIBE + '\n[[mcp_servers]]\nname = "other"\ntransport = "stdio"\ncommand = "x"\n'
+    )
+    assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+    assert any("servers of its own" in n and str(root) in n for n in repair.needs(root))
+    for text in ("not = [toml", 'model = "x"\n' + OLD_VIBE):  # unreadable, or settings of its own: left alone
+        write(root / ".vibe/config.toml", text)
+        assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+    assert not any("vibe" in n for n in repair.needs(root))
+
+
+def test_a_vibe_config_in_git_is_said(tmp_path):
+    """F-100: the config names one machine's folder now: one that is still in git is to be removed from it."""
+    root = tmp_path / "p"
+    bring_in(root)
+    git(root, "init", "-q")
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+    git(root, "add", "-f", ".vibe/config.toml")
+    assert any("git rm --cached .vibe/config.toml" in n for n in repair.needs(root))
+
+
+def test_the_frameworks_own_checkout_gets_a_vibe_config_for_its_own_server(tmp_path, monkeypatch):
+    """F-100: in the framework's checkout Vibe starts the checkout's server, with the Python that repairs."""
+    monkeypatch.setattr(repair, "ENGINE", tmp_path / "eng" / "crissp")
+    write(tmp_path / "eng/crissp/tool/server.py", "")
+    fix = next(r for r in repair.find(tmp_path / "eng") if r.key == "vibe")
+    fix.do()
+    server = repair.tomllib.loads((tmp_path / "eng/.vibe/config.toml").read_text())["mcp_servers"][0]
+    assert server["command"] == sys.executable
+    assert server["args"] == ["-I", str(tmp_path / "eng/crissp/tool/server.py")]
+    assert not any("vibe" in n for n in repair.needs(tmp_path / "eng"))
+
+
+def test_without_git_a_vibe_config_is_not_said_to_be_in_git(tmp_path, monkeypatch):
+    root = tmp_path / "p"
+    bring_in(root)
+    write(root / ".vibe/config.toml", repair.vibe.config(root, "uvx", ["crissp==9.9.9", "mcp"]))
+
+    def no_git(*args, **kwargs):
+        raise OSError("no git")
+
+    monkeypatch.setattr(repair.subprocess, "run", no_git)
+    assert repair.vibe_needs(root) == []
+
+
+OLD_AGENTS = (
+    "# shop — for agents\n\nRead `crissp/AGENTS.md` (what an agent next to the main session must know) and "
+    "`crissp/CLAUDE.md` (the agreement).\n"
+)
+OLD_INTRO = (
+    "The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
+    "specific to\nworking as an agent next to the main session.\n"
+)
+
+
+def test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill(tmp_path):
+    """F-110/F-111: a project brought in earlier has the old pointer AGENTS.md, the old crissp/AGENTS.md intro and no
+    crissp skill: repair brings all three, each only where it is crissp's own text."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    write(root / "AGENTS.md", OLD_AGENTS)
+    sub = root / "crissp/AGENTS.md"
+    write(sub, sub.read_text().split("\n\n", 1)[0] + "\n\n" + OLD_INTRO + "\n" + sub.read_text().split("\n\n", 2)[2])
+    (root / repair.SKILL).unlink()
+    fix = next(r for r in repair.find(root) if r.key == "agents")
+    assert "AGENTS.md" in fix.what and "crissp/AGENTS.md" in fix.what and repair.SKILL in fix.what
+    fix.do()
+    text = (root / "AGENTS.md").read_text()
+    assert text.startswith("# shop — for agents\n") and "`brief`" in text and "{{" not in text
+    assert "ignores this file" in sub.read_text() and OLD_INTRO not in sub.read_text()
+    assert (root / repair.SKILL).read_text() == (repair.TEMPLATE / "agents/skills/crissp/SKILL.md").read_text()
+    assert "agents" not in keys(root)
+
+
+def test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current(tmp_path):
+    root = tmp_path / "own"
+    bring_in(root)
+    write(root / "AGENTS.md", "# own rules\n")
+    write(root / repair.SKILL, "an older skill\n")
+    fix = next(r for r in repair.find(root) if r.key == "agents")
+    assert fix.what.startswith(repair.SKILL)
+    fix.do()
+    assert (root / "AGENTS.md").read_text() == "# own rules\n" and "agents" not in keys(root)

@@ -5,6 +5,8 @@
     python3 crissp/uxsuite/cli.py round <walk>             a round on a walk: now when a place is free, else queued
     python3 crissp/uxsuite/cli.py propose <walk> [focus]   a design for a walk, with an optional focus
     python3 crissp/uxsuite/cli.py shoot <walk>             take the walk's screenshots (the product must be running)
+    python3 crissp/uxsuite/cli.py map                      map the product's screens: a crawl, the tests' screenshots, the walks
+    python3 crissp/uxsuite/cli.py discover                 a discovery round: can every persona do their jobs on the map?
 
 A queued request is started by the open suite (crissp/ux.sh, or crissp/test.sh --dashboard): its worker takes the queue.
 """
@@ -19,6 +21,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import ux_config  # noqa: E402
+import ux_map  # noqa: E402
 import ux_shoot  # noqa: E402
 import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
@@ -28,8 +31,7 @@ def listing(conf: dict) -> str:
     lines = [f"{conf['product']}: {conf['about']}".rstrip(": "), f"Runs against {conf['url']}.", "", "The team:"]
     lines += [
         f"  {p['key']:<10} {p['name']}, {p['role']} ({p['device']})"
-        + (" — moderator" if p["moderator"] else "")
-        + ("" if p.get("on", True) else " — off")
+        f"{' — moderator' if p['moderator'] else ''}{'' if p.get('on', True) else ' — off'}"
         for p in conf["personas"]
     ]
     lines += ["", "The walks:"] + [f"  {w['id']:<18} {w['title']}" for w in conf["walks"].values()]
@@ -59,7 +61,7 @@ def ask(suite: ux_config.Suite, conf: dict, kind: str, walk: str, focus: str) ->
 def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int:
     suite = suite or ux_config.default_suite()
     cmd, args = (argv[0] if argv else ""), argv[1:]
-    if cmd not in ("list", "status", "round", "propose", "shoot") or (
+    if cmd not in ("list", "status", "round", "propose", "shoot", "map", "discover") or (
         cmd in ("round", "propose", "shoot") and not args
     ):
         print(__doc__, file=sys.stderr)
@@ -70,10 +72,16 @@ def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int
             print(listing(conf))
         elif cmd == "status":
             print(status(suite, conf))
+        elif cmd == "map":
+            code, text = ux_map.crawl(suite, conf, *([run] if run else []))
+            print(text)
+            return code
         elif cmd == "shoot":
             code, text = ux_shoot.shoot(suite, conf, args[0], *([run] if run else []))
             print(text)
             return code
+        elif cmd == "discover":
+            print(ask(suite, conf, "discovery", ux_team.PRODUCT, ""))
         else:
             print(ask(suite, conf, "round" if cmd == "round" else "proposal", args[0], " ".join(args[1:])))
     except ValueError as e:  # a wrong configuration, an unknown walk, the team busy with this very walk

@@ -80,6 +80,23 @@ template's testsuite is in place); what may never appear in public docs (real da
 - New observations go to FINDINGS.md right away (`F-next | where seen | what | goes to`).
 - A security scanner writes its findings here as F-rows, with `docs/stories/NN-<slug>/STORY.md` as their plan.
 
+## The six stages
+
+The work moves through six stages, the agentic SDLC (CRISSP.md, *The six stages*): **Discover** (the UX team walks the
+product and finds what its users need) → **Plan** (findings and approved needs become PBIs, choices become decisions)
+→ **Build** (the next PBI, test-first) → **Verify** (`crissp/check.sh`) → **Review** (what waits for the product
+owner) → **Release** (the release notes; the product owner tags). The crissp tool `stage` says where the work is,
+read from the backlog, the release certificate, git and the UX suite; the Stages page of the dashboard (`crissp
+dashboard`, `/stages`) shows the same, with Ask Claude and Ask Vibe per stage.
+
+- **At the start of a session, and on every `<!-- CRISSP … -->` prompt** (bringing the project in, filling a block):
+  call `stage`, open with the stage the work is in and why, in a sentence or two, and offer the help for that stage;
+  for example, when Discover is not set up yet, offer to set up the UX suite with the product owner.
+- **"crissp: help me with <stage>"** (what Ask Claude and Ask Vibe start): call `stage` with that stage and do what it
+  says.
+- Mistral Vibe works the same: its crissp tools (`.vibe/config.toml`) include `stage`.
+- Helping with a stage never pushes, tags, publishes or deploys, and never moves work to done.
+
 ## Sessions that stay small
 
 Every step Claude takes resends the whole conversation so far, so a long session costs more with every step; the fixed
@@ -94,8 +111,18 @@ context (this agreement, the tools) is small. Keeping sessions short saves the m
   history for the rest of the session.
 - **Agents on separate parts**, each briefed narrowly, so they do not each rediscover the same files.
 - **The lighter model and effort for routine work** (release notes, small fixes), the strongest for design and hard bugs.
-- The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
-  fresh.
+- The Activity page (`crissp dashboard`, `/activity`) shows each session's history, Claude Code's and Vibe sessions too;
+  past 300k tokens it says to start fresh.
+
+The same in **Mistral Vibe** (the same habits, its own commands):
+
+- A fresh session per item: `/clear` in the terminal, or a new session in the desktop app; `/compact <what to keep>`
+  in the middle of a long item. Vibe compacts by itself at `auto_compact_threshold` (400k tokens unless set lower in
+  `~/.vibe/config.toml`): start fresh before that, a summary loses what a new session asks for again.
+- Heavy output in a subagent: the `task` tool starts one that reports text (the `explore` agent for searching the
+  code, another for a browser check and its screenshots), so its files and images stay out of the main session.
+- The crissp tools come from `.vibe/config.toml` (crissp repair writes it for this machine): `brief` and `backlog`
+  instead of reading the backlog files; restart Vibe after a change to it.
 
 ## Working with the product owner
 

@@ -132,6 +132,8 @@ def test_a_walk_s_screenshots_are_listed_with_where_it_got_stuck(product):
         "n": 1,
         "title": "The first screen",
         "error": "Stuck at step 2",
+        "at": None,
+        "measured": [],
         "path": None,
         "url": None,
     }
@@ -276,6 +278,45 @@ def test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_h
     finish(product, "round", "first-visit", 1, ROUND)
     ux_team.request(product, _conf(product), "proposal", "first-visit")
     assert '"principles": [{"rule", "how"}]' in ux_team.popen.started[1].cmd[2].replace("{{", "{").replace("}}", "}")
+
+
+def test_a_round_runs_on_mistral_vibe_read_only_without_mcp(product, monkeypatch):
+    """F-103: the team walks on any installed agent CLI. On Vibe the run works in its own folder (Vibe's working
+    directory: writes outside it are refused), reads only the UX suite and the agreement (never a .env), has no shell,
+    no web and no MCP server, and plays the personas itself (no agents there)."""
+    add_shots(product)
+    (product.root / "CLAUDE.md").write_text("# rules\n")
+    monkeypatch.setenv("CRISSP_UX_CLI", "vibe")
+    monkeypatch.setenv("CRISSP_UX_MODEL", "a-model")
+    ux_team.start(product, _conf(product), "round", "first-visit")
+    proc = ux_team.popen.started[0]
+    vdir = product.results / "rounds" / "first-visit" / "r1"
+    cmd, env = proc.cmd, proc.kw["env"]
+    assert cmd[:2] == ["vibe", "-p"] and cmd[-2:] == ["--model", "a-model"]
+    tools = [cmd[i + 1] for i, a in enumerate(cmd) if a == "--enabled-tools"]
+    assert tools == ["read_file", "write_file", "edit"] and "--add-dir" not in cmd
+    assert cmd[cmd.index("--approval-policy") + 1] == "accept-edits"
+    assert proc.kw["cwd"] == vdir and proc.kw["start_new_session"] is True
+    assert env["VIBE_ENABLE_MCP"] == "false" and env["VIBE_OUTSIDE_WORKDIR"] == "deny"
+    assert json.loads(env["VIBE_TOOLS__READ_FILE__ALLOWLIST"]) == [
+        f"vibe-path:directory_recursive:{product.here}",
+        f"vibe-path:exact:{product.root / 'CLAUDE.md'}",
+    ]
+    assert "**/.env" in json.loads(env["VIBE_TOOLS__READ_FILE__DENYLIST"])
+    assert "play every persona and the moderator yourself" in cmd[2] and "01-the-first-screen.png" in cmd[2]
+
+
+def test_the_runner_is_the_one_asked_for_else_the_one_installed(product, monkeypatch):
+    """F-103: CRISSP_UX_CLI picks claude or vibe; without it, Claude Code when it is installed, else Vibe."""
+    add_shots(product)
+    monkeypatch.setattr(ux_team, "which", lambda name: "/usr/bin/vibe" if name == "vibe" else None)
+    assert ux_team.runner() == "vibe"
+    monkeypatch.setattr(ux_team, "which", lambda name: None)
+    assert ux_team.runner() == "claude"  # neither: Claude Code, whose missing command the run log then shows
+    monkeypatch.setenv("CRISSP_UX_CLI", "copilot")
+    with pytest.raises(ValueError, match="CRISSP_UX_CLI"):
+        ux_team.start(product, _conf(product), "round", "first-visit")
+    assert ux_team.popen.started == []
 
 
 def test_a_round_carries_its_debate_as_it_grows(product):

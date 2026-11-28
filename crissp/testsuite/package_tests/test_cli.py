@@ -1,6 +1,7 @@
 """The crissp command passes every option of a guard on to it untouched (crissp check --plan, crissp deploy --cluster,
 crissp ux --shoot <walk>), for the project it is started in. Fast: the scripts are stood in, nothing is run."""
 
+import os
 import subprocess
 import sys
 import tomllib
@@ -193,19 +194,24 @@ def test_init_asks_before_trusting_the_folder_in_vibe(tmp_path, capsys):
     assert "already trusts" in capsys.readouterr().out
 
 
-def test_the_vibe_config_is_committed_like_mcp_json_and_the_rest_of_vibe_is_ignored(tmp_path, monkeypatch):
-    """F-29: .vibe/config.toml holds the same pin as the committed .mcp.json, so it is committed too (a teammate's
-    Vibe gets the tools without crissp repair); whatever else Vibe keeps in .vibe/ stays out of git."""
+def test_the_vibe_config_names_this_folder_and_stays_out_of_git(tmp_path, monkeypatch):
+    """F-100 (was F-29): .vibe/config.toml names this machine's folder (cwd, CRISSP_ROOT) and uvx by its full path,
+    so Vibe's desktop app finds the server and the project; it is no file to share, so all of .vibe/ stays out of
+    git and each clone's crissp repair --yes writes its own."""
     project = tmp_path / "proj"
     project.mkdir()
     monkeypatch.chdir(project)
     assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
     (project / ".vibe" / "cache.json").write_text("{}")
+    server = tomllib.loads((project / ".vibe" / "config.toml").read_text())["mcp_servers"][0]
+    assert server["cwd"] == str(project.resolve())
+    assert server["env"] == {"CRISSP_ROOT": str(project.resolve()), "PATH": os.environ["PATH"]}  # F-107
+    assert server["args"] == [f"crissp=={cli.__version__}", "mcp"]
 
     def ignored(rel: str) -> bool:
         return subprocess.run(["git", "-C", str(project), "check-ignore", "-q", rel], check=False).returncode == 0
 
-    assert not ignored(".vibe/config.toml") and ignored(".vibe/cache.json")
+    assert ignored(".vibe/config.toml") and ignored(".vibe/cache.json")
 
 
 def test_init_on_windows_says_the_guards_run_in_wsl(tmp_path, monkeypatch, capsys):
@@ -282,3 +288,13 @@ def test_hook_runs_the_engines_hook_for_the_project(monkeypatch, tmp_path):
     assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "hook.py")] and str(cwd) == root == str(
         tmp_path.resolve()
     )
+
+
+def test_init_gives_an_agent_its_first_moves_and_the_crissp_skill(tmp_path, monkeypatch):
+    """F-110/F-111: a project crissp brings in starts with the root AGENTS.md's first moves and the crissp skill."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    assert "`brief`" in (project / "AGENTS.md").read_text()
+    assert (project / ".agents/skills/crissp/SKILL.md").read_text().startswith("---\nname: crissp\n")

@@ -166,3 +166,67 @@ def test_the_framework_and_the_agreement_say_how_a_session_stays_small():
             "Explore agent",
         ):
             assert words in text, (doc.name, words)
+
+
+def test_the_sessions_section_names_the_vibe_way_too():
+    """F-102: 'Sessions that stay small' spoke only Claude Code; a Vibe session gets its own equivalents, in the same
+    section repair keeps in step (F-21), so projects brought in earlier get them with crissp repair --yes."""
+    for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "CLAUDE.md"):
+        text = doc.read_text()
+        start = text.index("## Sessions that stay small")
+        section = " ".join(text[start : text.index("\n## ", start + 1)].split())
+        for words in (
+            "Mistral Vibe",
+            "a new session in the desktop app",
+            "`/compact <what to keep>`",
+            "`task` tool",
+            "`explore` agent",
+            "auto_compact_threshold",
+            "Vibe sessions too",
+        ):
+            assert words in section, (doc.name, words)
+
+
+def test_the_root_agents_file_gives_an_agent_its_first_moves():
+    """F-110: Vibe reads AGENTS.md as its instructions. A pointer to two long files made it explore for ten steps and
+    start the full run on "use crissp fully"; the root file now says the first moves itself, short, in the template and
+    in this repository alike, and crissp/AGENTS.md says it is not for the main session."""
+    for agents in (REPO / "AGENTS.md", REPO / "crissp/template/AGENTS.md"):
+        text = agents.read_text()
+        assert len(text.splitlines()) <= 25, agents
+        for needed in (
+            "`brief`",
+            "`stage`",
+            "`backlog`",
+            "`run`",
+            "`status`",
+            "`check-all`",
+            "search_tool_functions",
+            ".agents/skills/crissp/SKILL.md",
+            "`.env`",
+            "repair",
+        ):
+            assert needed in text, (agents, needed)
+    for sub in (REPO / "crissp/AGENTS.md", TEMPLATE / "AGENTS.md"):
+        assert "main session" in sub.read_text().split("\n\n")[1] and "ignores this file" in sub.read_text()
+
+
+def tools() -> list[str]:
+    """The names of the tools the crissp MCP server offers (crissp/tool/server.py's TOOLS)."""
+    sys.path.insert(0, str(REPO / "crissp" / "tool"))
+    import server
+
+    return [t["name"] for t in server.TOOLS]
+
+
+def test_the_crissp_skill_is_the_engines_and_this_repository_uses_it():
+    """F-111: the playbook for the crissp tools, as an agent skill (.agents/skills: Vibe loads it when needed, and it
+    can be committed): when to call which tool, what waits for the product owner, what to do when a tool is slow."""
+    skill = REPO / "crissp/template/agents/skills/crissp/SKILL.md"
+    text = skill.read_text()
+    head = text.split("---")[1]
+    assert "name: crissp" in head and "description: " in head
+    for tool in tools():  # every tool the crissp MCP server offers, so a new one cannot be missed (stage, F-130)
+        assert f"`{tool}`" in text, tool
+    assert "check-all" in text and "{{" not in text
+    assert (REPO / ".agents/skills/crissp/SKILL.md").read_text() == text

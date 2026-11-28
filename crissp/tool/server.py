@@ -7,6 +7,9 @@ than the repository says, and what it writes is plain Markdown in the backlog's 
 Tools
 - brief     where the work stands: version, commit, certificate, items doing / in review / next, open decisions, the
             number of open findings. Small enough to load at the start of every session.
+- stage     where the work is in the six stages (Discover, Plan, Build, Verify, Review, Release; F-130), read from the
+            backlog, the certificate, git and the UX suite (crissp/testsuite/lib/stages.py, the Stages page's own logic);
+            with a stage, what is in it and what to do to help the product owner with it.
 - backlog   exactly what is asked: one finding, decision, epic, feature or PBI by its id (F-12, D-05, E8, E8-F1,
             E8-F1-01), the features and PBIs with a status, or the open findings or decisions.
 - finding   writes a new finding (the next F-number) into FINDINGS.md.
@@ -36,6 +39,7 @@ It works for the project CRISSP_ROOT names, or the current directory (Claude Cod
 """
 
 import datetime
+import importlib.util
 import json
 import os
 import re
@@ -44,6 +48,7 @@ import sys
 import textwrap
 import threading
 import time
+import types
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -72,10 +77,10 @@ RUNS = {
     "check-all": ("check-all.sh", [], True),
 }
 VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the one local server to answer
-PLAN_TIMEOUT = 120  # seconds a plan may take
-DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
+PLAN_TIMEOUT = 45  # seconds a plan may take: under a tool call budget of a minute (Vibe's, F-108)
+DASHBOARD_WAIT = 45  # seconds to wait for the dashboard to say where it is (F-108: under a minute)
 EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.MULTILINE)
-WAIT = 300  # status with wait: seconds it waits by default (F-31) …
+WAIT = 45  # status with wait: seconds it waits by default (F-31; F-108: under a minute, then ask again) …
 WAIT_MAX = 3600  # … and at most
 WAIT_POLL = 0.5  # how often it looks while it waits
 
@@ -85,6 +90,24 @@ TOOLS = [
         "description": "Where the work on this repository stands: version, commit, release certificate, backlog items doing "
         "/ in review / next, open decisions, the number of open findings. Call it first in a session.",
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "stage",
+        "description": "Where the work is in the six stages of the agentic SDLC (Discover, Plan, Build, Verify, Review, "
+        "Release): what is in each and whose move it is. With a stage: what is in it and the instructions "
+        "for helping the product owner with it. Call it at the start of a session, on a <!-- CRISSP --> "
+        'prompt, and when asked for help with a stage ("crissp: help me with Plan").',
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "stage": {
+                    "type": "string",
+                    "enum": ["discover", "plan", "build", "verify", "review", "release"],
+                    "description": "one stage: what is in it and how to help with it",
+                }
+            },
+        },
     },
     {
         "name": "backlog",
@@ -210,7 +233,7 @@ TOOLS = [
     {
         "name": "run",
         "description": "Start a check of this repository: check (tests what changed since the last green state) or "
-        "check-all (the full run; the product owner's to start unless they asked) in the background, then "
+        "check-all (the full run: only with asked: true, when the product owner asked for it) in the background, then "
         "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: "
         "check-plan (what check would run and how long), "
         "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
@@ -220,7 +243,14 @@ TOOLS = [
             "type": "object",
             "additionalProperties": False,
             "required": ["what"],
-            "properties": {"what": {"type": "string", "enum": list(RUNS)}},
+            "properties": {
+                "what": {"type": "string", "enum": list(RUNS)},
+                "asked": {
+                    "type": "boolean",
+                    "description": "check-all only: true when the product owner asked for the full run "
+                    "in so many words (F-112); a wish to use crissp fully is no such ask",
+                },
+            },
         },
     },
     {
@@ -375,6 +405,26 @@ def brief(root: Path) -> str:
     )
 
 
+def stage(root: Path, args: dict) -> str:
+    """F-130: the six stages, from lib/stages.py: the project's own (a repository that carries the framework), else the
+    engine's (an installed crissp)."""
+    path = next(
+        (
+            p
+            for p in (root / "crissp" / "testsuite" / "lib" / "stages.py", ENGINE / "testsuite" / "lib" / "stages.py")
+            if p.is_file()
+        ),
+        None,
+    )
+    if path is None:
+        raise LookupError("crissp/testsuite/lib/stages.py is missing")
+    spec = importlib.util.spec_from_file_location("crissp_stages_for_the_tool", path)
+    stages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(stages)
+    this = types.SimpleNamespace(items=items, open_findings=open_findings, open_decisions=open_decisions)  # one parser
+    return stages.text(stages.state(root, this), args.get("stage"))
+
+
 def backlog(root: Path, args: dict) -> str:
     if args.get("id"):
         wanted = args["id"].strip().upper()
@@ -382,7 +432,7 @@ def backlog(root: Path, args: dict) -> str:
             if i["id"] == wanted:
                 return f"{i['file']}\n{i['block']}"
 
-        def pbis(prefix: str) -> list[str]:
+        def pbis(prefix):
             return [
                 f"{i['id']} · {i['title']} [{i['status']}] [{i['size']}]"
                 for i in items(root)
@@ -673,6 +723,11 @@ def run(root: Path, args: dict) -> str:
     what = args.get("what") or ""
     if what not in RUNS:
         raise ValueError(f"what must be one of {', '.join(RUNS)} (a deploy stays in the product owner's terminal)")
+    if what == "check-all" and args.get("asked") is not True:  # F-112: the full run is the product owner's
+        raise ValueError(
+            "check-all (the full run) is the product owner's to start: ask them; once they asked for the "
+            "full run, call run with what: check-all and asked: true. For your own work: what: check"
+        )
     name, argv, detached = RUNS[what]
     path = script(root, name)
     if not detached:
@@ -769,8 +824,12 @@ def dashboard(root: Path, args: dict | None = None) -> str:
     if view not in VIEWS:
         raise ValueError(f"view must be one of {', '.join(VIEWS)}")
     path = script(root, "test.sh")
-    background(root, "dashboard", [str(path), VIEWS[view]])
     log = results(root) / "mcp" / "dashboard.log"
+    running = re.search(r"Dashboard: (http://127\.0\.0\.1:\d+)/", read(log))
+    if running and served(running.group(1) + "/dashboard/", root):  # F-108: never a second test.sh over a running one
+        page = "ux" if view == "ux" else "dashboard"
+        return f"Dashboard: {running.group(1)}/{page}/ (served already; the open page keeps itself current)"
+    background(root, "dashboard", [str(path), VIEWS[view]])
     deadline = time.monotonic() + DASHBOARD_WAIT
     while time.monotonic() < deadline:
         text = read(log)
@@ -781,7 +840,10 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])
         time.sleep(0.2)
-    raise ValueError(f"the dashboard said nothing in {DASHBOARD_WAIT}s; see crissp/testsuite/results/mcp/dashboard.log")
+    raise ValueError(
+        f"the dashboard said nothing in {DASHBOARD_WAIT}s; it may still be starting: call dashboard again "
+        "(see crissp/testsuite/results/mcp/dashboard.log)"
+    )
 
 
 def call(root: Path, name: str, args: dict) -> dict:
@@ -789,6 +851,8 @@ def call(root: Path, name: str, args: dict) -> dict:
     try:
         if name == "brief":
             text = brief(root)
+        elif name == "stage":
+            text = stage(root, args)
         elif name == "backlog":
             text = backlog(root, args)
         elif name == "finding":
@@ -824,7 +888,10 @@ def handle(root: Path, msg: dict) -> dict | None:
             "protocolVersion": (msg.get("params") or {}).get("protocolVersion", PROTOCOL),
             "capabilities": {"tools": {}},
             "serverInfo": {"name": "crissp", "version": "0.1.0"},
-            "instructions": "The way of working of this repository. Call brief at the start; ask backlog for "
+            "instructions": "The way of working of this repository. Call brief and stage at the start, and call stage "
+            "on a <!-- CRISSP --> prompt: say which stage the work is in and offer to help "
+            'with it ("crissp: help me with <stage>" asks for it; call stage with that stage '
+            "and do what it says). Ask backlog for "
             "F-/D-/E- ids instead of reading crissp/backlog files; write findings, decisions, "
             "epics, features and PBIs with finding, decision, epic, feature and item instead of "
             "editing them; start the checks with run, wait for them with status (wait: true), "

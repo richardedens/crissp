@@ -1,5 +1,6 @@
-"""E3-F1-01: one top bar on every page. The sections (Tests · Backlog · UX · Workers · Activity · Sessions) come from one list in
-the shared look (crissp/look/look.js); every page has the same empty sections nav, which look.js fills and marks."""
+"""E3-F1-01: one top bar on every page. The sections (Stages · Tests · Backlog · UX · Workers · Activity · Sessions)
+come from one list in the shared look (crissp/look/look.js); every page has the same empty sections nav, which
+look.js fills and marks."""
 
 import json
 import re
@@ -15,11 +16,12 @@ LOOK_JS = ENGINE / "look" / "look.js"
 sys.path.insert(0, str(ENGINE / "testsuite" / "lib"))
 import sessionview as sv
 
-SECTIONS = ["tests", "backlog", "ux", "workers", "activity", "sessions"]
+SECTIONS = ["stages", "tests", "backlog", "ux", "workers", "activity", "sessions"]
 PAGES = {
     ENGINE / "testsuite" / "dashboard" / "index.html": "tests",
     ENGINE / "testsuite" / "dashboard" / "workers.html": "workers",
     ENGINE / "testsuite" / "dashboard" / "activity.html": "activity",
+    ENGINE / "testsuite" / "dashboard" / "stages.html": "stages",
     ENGINE / "uxsuite" / "web" / "index.html": "ux",
 }
 NAV = re.compile(r'<nav class="?sections"?[^>]*>(.*?)</nav>', re.DOTALL)
@@ -79,6 +81,7 @@ console.log(JSON.stringify({first, titled, sections: window.Look.SECTIONS.map(s 
     assert out["sections"] == SECTIONS
     links = re.findall(r'<a href="([^"]+)"( aria-current="page")?>([^<]+)</a>', out["first"])
     assert [(h, t) for h, _, t in links] == [
+        ("/dashboard/stages.html", "Stages"),
         ("/dashboard/", "Tests"),
         ("/dashboard/#board", "Backlog"),
         ("/ux/", "UX"),

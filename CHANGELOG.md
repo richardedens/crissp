@@ -7,6 +7,91 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **crissp's own Python has one layout (F-97).** It was formatted once with `ruff format`, and the `python-lint`
   step now checks the layout (`ruff format --check`) and the line length. `git blame` skips the layout commit
   (`.git-blame-ignore-revs`; locally `git config blame.ignoreRevsFile .git-blame-ignore-revs`).
+- **See where the work is in the six stages, and get help with each (F-130).** The dashboard has a Stages page
+  (`/stages`, first in the top bar): Discover, Plan, Build, Verify, Review and Release, which stage the work is in now,
+  and per stage what is in it and whose move it is (to set up, work to do, waits for you, clear). It is read from the
+  backlog, the release certificate, git, `VERSION`, `CHANGELOG.md` and the UX team's state. Ask Claude and Ask Vibe copy
+  the command that starts a session on that stage (`claude "crissp: help me with Plan"`, the same with `vibe`), and
+  Discover can start the UX team's rounds right there. The crissp tool has a new `stage` tool, so Claude Code and
+  Mistral Vibe both get the same answer and the same instructions per stage. Helping never pushes, tags, publishes or
+  deploys.
+- **Every session opens with the stage and offers its help (F-131).** At the start of a session, and on every
+  `<!-- CRISSP … -->` prompt, Claude and Vibe now say which stage the work is in and offer the next step, for example
+  setting up the UX suite when there is none yet. It is a new section of the agreement, *The six stages*; `crissp
+  repair --yes` brings it into projects brought in earlier.
+- **Vibe's crissp skill knows the stages too (F-140).** The `crissp` skill and the root `AGENTS.md` name the `stage`
+  tool, so a Vibe session asks where the work is before it starts; `crissp repair --yes` updates the skill.
+- **Decide once, for a whole rule, area or screen (E7-F4-02).** In the review screen's verdict bar, press `s` to give
+  your verdict to the advice's screen, its area or its rule instead: it then holds for every piece of advice under it
+  that has no verdict of its own (the nearest one wins, and your verdict on one piece of advice always wins). Advice you
+  agreed with that comes back on two screens or more is proposed as a rule in the **Rules** tab; make it a rule and it
+  is written to `crissp/uxsuite/rules/`.
+- **One screen at a time, from the keyboard (E7-F4-01).** The UX page's new **Review** tab shows how far the product
+  is (every screen new, seen, discussed, decided, designed, approved, built or accepted, as one bar) and goes through
+  the screens that wait for you first. Per screen: the shot with the team's advice pinned where it is, next to the
+  design; the advice must first; and one verdict bar at the bottom of the window. 1 2 3 give the verdict, ← → go to the
+  previous or next screen, ↑ ↓ to the previous or next item; after a verdict it moves on to the next open one.
+- **The browser measures what it can, so the team does not guess (E7-F2-02).** A rule can say what the browser checks
+  for it at every shoot: text that is cut off or runs past the screen, tap targets under 44 × 44 on a phone, the
+  primary action below the fold, a see-through dialog, a control without a visible focus. Tick them in the Rules tab
+  (or write `measure:` in the rule's file, or "Measured by the browser: ..." under a section of PRINCIPLES.md; the
+  template's principles 1, 6, 7 and 8 do). Each shot keeps what was found; the enlarged screenshot draws a numbered box
+  where it is, and the team reports it as a fact under its rule.
+- **Accept what was built, or send it back (E7-F5-01).** Once an approved design is built and its walk shot again, the
+  Designs tab puts the new screens next to the design. **Accept** moves its backlog item to review; **Not good…** moves
+  it back to doing and writes your reason as a finding for that item. Screenshots taken before the approval are never
+  judged as the build.
+- **Discovery: can every persona do their jobs? (E7-F3-02).** `crissp ux --discover` (or the new **Jobs** tab) asks
+  the team about the whole product: every persona tries their own jobs on the mapped screens and says done, hard or
+  impossible, where they gave up and why. The moderator turns what cannot be done into needs. Approve a need and it
+  becomes a design request (a walk with the need as its brief) whose first design starts at once; reject it with a
+  reason and the next discovery round reads why.
+- **A map of every screen, and the gaps (E7-F3-01).** `crissp ux --map` lists the product's screens in the UX page's new
+  **Map** tab, so the team looks at more than the walks someone wrote. It crawls the running product read-only (its own
+  links only, never one that signs out or deletes, at most `map.max` pages per device), adds the screenshots your E2E
+  tests list in `crissp/uxsuite/results/test-shots/screens.json` (`map.tests` points elsewhere), and the walks' own. Per
+  area you see every screen with its pictures, how it was found and its gaps: no link reaches it, the crawl could not
+  open it, or no walk looks at it.
+- **Vibe's desktop app gets the crissp tools (F-100).** A Vibe desktop session listed only Vibe's own tools: the
+  desktop app starts MCP servers from its own folder with only a few environment variables, so the server was not
+  found (a relative path) or did not know the project. `.vibe/config.toml` now names the project's folder (`cwd` and
+  `CRISSP_ROOT`), starts `uvx` by its full path and gives the first download 60 seconds. `crissp init` writes it, and
+  `crissp repair --yes` writes it anew for a project brought in earlier (when it holds only crissp's server; it says
+  what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
+  of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
+  project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
+- **Checks started from Vibe run with your terminal's tools (F-107).** Vibe's desktop app gives the crissp server
+  its own PATH, so a check started through the crissp tool could pick up a Mac's old bash 3.2 and fail where the
+  same check from a terminal passes. `.vibe/config.toml` now carries the PATH of the shell that ran `crissp init` or
+  `crissp repair --yes`; run `crissp repair --yes` once from your terminal and restart Vibe.
+- **An agent starts working at once (F-110, F-111).** The root `AGENTS.md`, which Mistral Vibe reads as its
+  instructions, now gives the first moves itself: `brief`, `backlog`, `run` and `status`, and what waits for your yes
+  (the full run, a push, a deploy). Before, it pointed at two long files, and a session spent its first steps reading
+  them. A new crissp skill (`.agents/skills/crissp/SKILL.md`) is the playbook for the crissp tools: which tool for
+  which question, the order of a session, and what to do when a call is slow. `crissp init` writes both;
+  `crissp repair --yes` brings them to a project brought in earlier, without touching an `AGENTS.md` you wrote yourself.
+- **The crissp tools answer within a minute (F-108).** Vibe cancels a tool call after 60 seconds. The dashboard,
+  a plan and `status` now answer within 45 seconds and say to ask again when something is still going. A dashboard
+  that already runs is answered at once instead of being started a second time.
+- **The full run starts only when you asked for it (F-112).** Through the crissp tool, `check-all` now needs
+  `asked: true`, which an agent may only pass when you asked for the full run. For its own work it uses `check`.
+- **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
+  commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
+  automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings
+  the section into projects brought in earlier.
+- **The Activity page shows Mistral Vibe's sessions too (F-101).** `/activity` lists the Vibe sessions working in
+  the repository next to Claude Code's, read from Vibe's own session logs (`VIBE_HOME`, else `~/.vibe`): the last
+  prompt, the latest step, its subagents, and the history the last request carried, with the same "start fresh"
+  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe. It also reads the turns Vibe
+  packs away in a long session, and shows a crissp call Vibe makes from a program as the tools it used (F-109).
+- **The Activity page warns about the context budget (F-104).** Besides the 300k-token history, a session's card
+  now says when its main thread holds 10 or more images (screenshots belong in a subagent that reports text) or read
+  a file of more than 800 lines whole (read the part needed). For Claude Code and Mistral Vibe sessions alike.
+- **The UX team walks on Mistral Vibe too (F-103).** Rounds and designs run on an agent CLI that is installed:
+  Claude Code, or Mistral Vibe when Claude Code is not there; `CRISSP_UX_CLI=vibe` (or `claude`) picks one. On Vibe a
+  run stays as safe as on Claude Code: it works in its own results folder and Vibe refuses a write anywhere else, it has
+  no shell, no web and no MCP servers, it reads only the UX suite and the agreement and never a `.env` file. It plays
+  the personas itself, one after the other, since Vibe gives a headless run no agents.
 - **crissp's own lint holds the engine to the standard library and finds copied code (F-93).** The `python-lint`
   step also scans every import in the engine's runtime code (anything outside the standard library and the engine's
   own modules fails, by file and line) and runs pylint's duplicate-code check (six similar lines or more).

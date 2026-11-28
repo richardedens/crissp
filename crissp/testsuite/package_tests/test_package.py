@@ -143,6 +143,7 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
         "crissp/deploy/helm/app/Chart.yaml",
         "crissp/deploy/terraform/main.tf",
         ".githooks/pre-commit",
+        ".agents/skills/crissp/SKILL.md",
     ):
         assert (project / made).is_file(), made
     text = "".join(
@@ -155,7 +156,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     assert mcp["command"] == "uvx" and mcp["args"] == [f"crissp=={VERSION}", "mcp"]  # the project pins its crissp
     vibe = (project / ".vibe" / "config.toml").read_text()  # F-24: the same server for Vibe
     assert 'name = "crissp"' in vibe and "uvx" in vibe and f"crissp=={VERSION}" in vibe
-    assert "!.vibe/config.toml" in (project / ".gitignore").read_text().splitlines()  # F-29: committed like .mcp.json
+    assert f"cwd = {json.dumps(str(project.resolve()))}" in vibe  # F-100: names this folder, for Vibe's desktop app
+    assert ".vibe/" in (project / ".gitignore").read_text().splitlines()  # F-100: so it stays out of git
     assert not (tmp_path / "vibe-home").exists()
     assert run(["git", "log"], project, env, check=False).returncode != 0  # nothing committed: the owner reviews first
 

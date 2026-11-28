@@ -4,15 +4,16 @@
                               bring this folder in: git init when it is no repository yet, then the agreement, the
                               backlog, the configuration and the deploy template; never overwrites, never commits.
                               Also writes .vibe/config.toml (the crissp MCP server for Mistral Vibe, pinned like
-                              .mcp.json) and, when Vibe is installed (VIBE_HOME or ~/.vibe), asks to add this
-                              folder to its trusted_folders.toml (--yes: adds it; F-24, F-28). Writes
+                              .mcp.json, naming this folder; not in git, F-100) and, when Vibe is installed (VIBE_HOME or
+                              ~/.vibe), asks to add this folder to its trusted_folders.toml (--yes: adds it; F-24,
+                              F-28). Writes
                               .githooks/pre-commit and sets core.hooksPath, unless the repository has hooks of its
                               own (F-50)
     crissp check [--plan]     test what changed since the last green state (crissp/check.sh)
     crissp check-all          the full run (crissp/check-all.sh)
     crissp deploy [...]       behind the release gate (crissp/deploy.sh: --plan, --cluster, --cluster-plan)
     crissp dashboard          the Tests dashboard and the UX suite on one local server (crissp/test.sh --dashboard)
-    crissp ux [...]           the UX suite (crissp/ux.sh: --list, --status, --shoot, --round, --propose)
+    crissp ux [...]           the UX suite (crissp/ux.sh: --list, --status, --shoot, --map, --discover, --round, --propose)
     crissp repair [--yes]     say what this project has out of place (old steps on src/, a UX suite walking a dev
                               server, files in crissp/uxsuite/); --yes puts it in place, never deleting or committing
     crissp hook               the lint steps, as git runs them before every commit (.githooks/pre-commit; F-50)
@@ -83,8 +84,15 @@ def plan_init(root: Path, values: dict, deploy: bool) -> list[tuple[Path, Path, 
     for name in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION"):
         files.append((TEMPLATE / name, root / name, True))
     files.append((TEMPLATE / "mcp.json", root / ".mcp.json", True))
-    files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24: Vibe's MCP pin
+    files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24/F-100: Vibe's MCP
     files.append((TEMPLATE / "githooks" / "pre-commit", root / ".githooks" / "pre-commit", False))  # F-50: the lint
+    files.append(
+        (
+            TEMPLATE / "agents" / "skills" / "crissp" / "SKILL.md",
+            root / ".agents" / "skills" / "crissp" / "SKILL.md",
+            False,
+        )
+    )  # F-111: the crissp skill, for an agent that reads .agents/skills (Vibe)
     tree(TEMPLATE / "crissp", root / "crissp")
     files.append((ENGINE / "CRISSP.md", root / "crissp" / "CRISSP.md", False))
     if deploy:
@@ -167,6 +175,7 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         "VERSION": "0.1.0",
         "CRISSP_VERSION": __version__,
     }
+    values |= vibe.fields(root, *vibe.server(root, __version__))  # F-100: .vibe/config.toml names this folder
     if not args.yes and ask(
         f"Bring {root} in as {values['PRODUCT']} (C.R.I.S.S.P. {__version__})? [y/N] "
     ).strip().lower() not in ("y", "yes"):
@@ -213,7 +222,9 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
     print(
         "\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you, and first asks how many backends\n"
         "and frontends the product has: a large one is better split into parts of its own), name the product's parts\n"
-        "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.",
+        "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.\n"
+        "Every Claude or Vibe session then opens with the stage the work is in (Discover, Plan, Build, Verify,\n"
+        "Review, Release) and offers help with it; `crissp dashboard` shows the same on its Stages page.",
         file=out,
     )
     return 0
@@ -253,7 +264,7 @@ def parser() -> argparse.ArgumentParser:
         ("check", "test what changed (--plan)"),
         ("check-all", "the full run"),
         ("deploy", "deploy behind the release gate (--plan, --cluster, --cluster-plan)"),
-        ("ux", "the UX suite (--list, --status, --shoot, --round, --propose)"),
+        ("ux", "the UX suite (--list, --status, --shoot, --map, --discover, --round, --propose)"),
     ):
         sub.add_parser(name, help=help_, add_help=False)  # its options belong to the guard: passed on untouched
     sub.add_parser("dashboard", help="the Tests dashboard and the UX suite on 127.0.0.1")

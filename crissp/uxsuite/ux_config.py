@@ -15,12 +15,15 @@ team.json
     rounds           debate rounds after the first look, 1-5 (default 2)
     parallel         how many runs at once, at least 1 (default 3; UXSUITE_PARALLEL overrides it)
     backlog          {"epic": "E<n>"} or {"epic_title": "..."}: where approved designs become PBIs
+    map              {"max": pages the crawl opens per device, 1-500 (default 40), "tests": where the project's E2E
+                     tests list their screenshots (default crissp/uxsuite/results/test-shots/screens.json)}: ux_map
     personas         [{key, name, role, device: desktop|mobile|both, moderator: bool, on: bool, brief, jobs: [text]}],
                      one moderator that is on; only while there are no files in personas/ (ux_cards: the team's files)
 walks/<id>.json
     title            what the walk is about
     steps            [{do: goto (path) | click (text or selector) | fill (selector, value) | press (key) | wait (ms)
                        | shot (title)}], at least one shot
+    brief, need      a design request from a discovery round (ux_discovery): what to design, and the need's id
 """
 
 from __future__ import annotations
@@ -88,14 +91,19 @@ def _read(path: Path) -> dict:
 def _text(data: dict, key: str, where: str, default: str | None = None) -> str:
     value = data.get(key, default)
     if not isinstance(value, str) or not value.strip():
-        raise ConfigError(f"{where}: {key} must be a text" + ("" if default is None else " (or left out)"))
+        raise ConfigError(
+            f"{where}{'' if where.endswith('.') else ': '}{key} must be a text"
+            + ("" if default is None else " (or left out)")
+        )
     return value.strip()
 
 
 def _whole(data: dict, key: str, where: str, default: int, low: int, high: int) -> int:
     value = data.get(key, default)
     if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
-        raise ConfigError(f"{where}: {key} must be a whole number from {low} to {high}")
+        raise ConfigError(
+            f"{where}{'' if where.endswith('.') else ': '}{key} must be a whole number from {low} to {high}"
+        )
     return value
 
 
@@ -150,7 +158,8 @@ def walk(path: Path) -> dict:
             raise ConfigError(f"{where}: step {n} ({do}) needs {', '.join(missing)}")
     if not any(s["do"] == "shot" for s in steps):
         raise ConfigError(f"{where}: a walk needs at least one shot step (that is what the team looks at)")
-    return {"id": path.stem, "title": _text(data, "title", where), "steps": steps}
+    extra = {k: _text(data, k, where) for k in ("brief", "need") if k in data}  # a design request from discovery
+    return {"id": path.stem, "title": _text(data, "title", where), "steps": steps, **extra}
 
 
 def load(suite: Suite) -> dict:
@@ -164,6 +173,9 @@ def load(suite: Suite) -> dict:
     if not isinstance(backlog, dict) or ("epic" in backlog and not re.fullmatch(r"E\d+", str(backlog["epic"]))):
         raise ConfigError('team.json: backlog must be {"epic": "E<n>"} or {"epic_title": "..."}')
     walks = [walk(p) for p in sorted((suite.here / "walks").glob("*.json"))]
+    mapping = data.get("map", {})
+    if not isinstance(mapping, dict):
+        raise ConfigError('team.json: map must be {"max": <pages>, "tests": "<path>"} (or left out)')
     import ux_cards  # the persona files (ux_cards reads team.json's personas with personas() below when there are none)
 
     team, source = ux_cards.team(suite.here, data)
@@ -180,6 +192,10 @@ def load(suite: Suite) -> dict:
         "backlog": {
             "epic": backlog.get("epic"),
             "epic_title": str(backlog.get("epic_title") or "UX: approved designs"),
+        },
+        "map": {
+            "max": _whole(mapping, "max", "team.json: map.", 40, 1, 500),
+            "tests": _text(mapping, "tests", "team.json: map.", "crissp/uxsuite/results/test-shots/screens.json"),
         },
         "personas": team,
         "personas_from": source,
