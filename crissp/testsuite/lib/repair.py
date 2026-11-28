@@ -17,6 +17,8 @@ The project is CRISSP_ROOT, or the current directory. What it puts in place:
                testsuite's changes.json …): made from the template, filled in as crissp init does; first-visit.json
                only while the project has no walks of its own
     crissp-md  crissp/CRISSP.md is not this crissp's: replaced by it (it is the framework's text, never a project's own)
+    agents     the crissp skill (.agents/skills/crissp/SKILL.md) is not there or not this crissp's (F-111), the root
+               AGENTS.md is the old pointer crissp wrote, or crissp/AGENTS.md has the old intro (F-110): this crissp's
     gitignore  .gitignore lacks some of the framework's rules (secrets, dumps, results): added, nothing removed
     sessions   crissp/CLAUDE.md's "Sessions that stay small" is not this crissp's (F-21): the section is crissp's own,
                so it is replaced by the template's, or added before "Working with the product owner" (else at the end)
@@ -69,6 +71,12 @@ UX_CONFIG = {"team.json", "walks", "personas", "rules", "PRINCIPLES.md", "README
 SKIP = {"__pycache__", ".DS_Store", "results"}
 FIRST_WALK = Path("uxsuite/walks/first-visit.json")
 SESSIONS = "## Sessions that stay small"
+SKILL = ".agents/skills/crissp/SKILL.md"  # F-111: the playbook for the crissp tools, an agent skill (Vibe loads it)
+# F-110: the texts crissp wrote before the root AGENTS.md gave the first moves: crissp's own, so they are replaced
+OLD_AGENTS = re.compile(r"# (.+) — for agents\n\nRead `crissp/AGENTS\.md` \(what an agent next to the main session must "
+                        r"know\) and `crissp/CLAUDE\.md` \(the agreement\)\.\n")
+OLD_INTRO = ("The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
+             "specific to\nworking as an agent next to the main session.\n")
 STAGES = "## The six stages"
 BEFORE = "## Working with the product owner"
 OLD_TOOL = re.compile(r"`crissp/tool`,(\s+)registered(\s+)in `\.mcp\.json`")
@@ -174,6 +182,34 @@ def fix_agreement(root: Path) -> Repair | None:
 
     return Repair("agreement", "crissp/CLAUDE.md: the tools come from `crissp/tool`, which is not here → the crissp MCP "
                                "server in .mcp.json", do)
+
+
+def fix_agents(root: Path) -> Repair | None:
+    """F-110/F-111: the agent files crissp wrote (the crissp skill, the root AGENTS.md's first moves, crissp/AGENTS.md
+    saying it is not for the main session) are this crissp's; a file the project wrote itself is left as it is."""
+    if not brought_in(root):
+        return None
+    skill, playbook = root / SKILL, (TEMPLATE / "agents/skills/crissp/SKILL.md").read_text()
+    top, sub = root / "AGENTS.md", root / "crissp/AGENTS.md"
+    old_top = OLD_AGENTS.fullmatch(top.read_text()) if top.is_file() else None
+    sub_text = sub.read_text() if sub.is_file() else ""
+    new_intro = (TEMPLATE / "crissp/AGENTS.md").read_text().split("\n\n")[1] + "\n"
+    writes = {}
+    if not skill.is_file() or skill.read_text() != playbook:
+        writes[SKILL] = (skill, playbook)
+    if old_top:
+        writes["AGENTS.md"] = (top, (TEMPLATE / "AGENTS.md").read_text().replace("{{PRODUCT}}", old_top.group(1)))
+    if OLD_INTRO in sub_text:
+        writes["crissp/AGENTS.md"] = (sub, sub_text.replace(OLD_INTRO, new_intro))
+    if not writes:
+        return None
+
+    def do() -> None:
+        for path, text in writes.values():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+    return Repair("agents", f"{', '.join(writes)}: not this crissp's (the first moves for an agent, the crissp skill) "
+                            "→ this crissp's", do)
 
 
 def brought_in(root: Path) -> bool:
@@ -374,8 +410,8 @@ def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | Non
         parts.append(f".vibe/config.toml is not there → {Path(command).name} {' '.join(args[-2:])}, started in this "
                      "folder (the server .mcp.json registers for Claude Code)")
     elif stale:
-        parts.append(".vibe/config.toml does not name this folder (cwd, CRISSP_ROOT): Vibe's desktop app starts the "
-                     "server elsewhere and gets no crissp tools → written anew for this folder")
+        parts.append(".vibe/config.toml does not name this folder (cwd, CRISSP_ROOT) or this shell's PATH: Vibe's "
+                     "desktop app starts the server elsewhere, with its own PATH → written anew for this folder")
     if not trusted:
         parts.append(f"not trusted in {db} → added (never removed)")
 
@@ -439,7 +475,7 @@ def find(root: Path, version: str | None = None, home: Path | None = None) -> li
     """What is out of place, in the order it is put in place."""
     return [r for r in (fix_steps(root), fix_ux_url(root), fix_ux_extra(root), fix_agreement(root), fix_sessions(root), fix_stages(root),
                         fix_missing(root),
-                        fix_crissp_md(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
+                        fix_crissp_md(root), fix_agents(root), fix_gitignore(root), fix_changes(root), fix_pin(root, version),
                         fix_vibe_pin(root, version), fix_vibe(root, version, home), fix_hook(root)) if r]
 
 

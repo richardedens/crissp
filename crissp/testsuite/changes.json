@@ -1858,6 +1858,183 @@
     "test_ux_tree::test_an_approved_proposal_is_a_rule_file_and_a_rejected_one_stays_away",
     "test_ux_tree::test_a_theme_or_else_the_title_groups_advice"
    ]
+  },
+  {
+   "id": "brief-names-the-checkout",
+   "title": "A test held the checkout to the folder name crissp (F-105)",
+   "problem": "The Vibe config test asserted that brief starts with \"crissp \", while brief names the checkout's folder: in a checkout named otherwise the full run was red.",
+   "fix": "The test expects the checkout's own folder name and the commit.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def brief("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere"
+   ]
+  },
+  {
+   "id": "audit-test-on-a-mac",
+   "title": "The audit test was red on every Mac (F-106)",
+   "problem": "test_audit_runs_the_engines_security_scans_for_the_project gave bash PATH=/usr/bin:/bin, where a Mac has Apple's python3 3.9, which cannot load the engine.",
+   "fix": "The python that runs the tests comes first on that PATH, as in a terminal where crissp runs.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "audit()"
+    }
+   ],
+   "tests": [
+    "test_run::test_audit_runs_the_engines_security_scans_for_the_project"
+   ]
+  },
+  {
+   "id": "vibe-server-path",
+   "title": "What the crissp tool started from Vibe's desktop app ran with the app's PATH (F-107)",
+   "problem": "Vibe's desktop app gives an MCP server its own PATH: on a Mac /bin/bash 3.2 first, so a check-all started through the crissp tool failed its lint step (mapfile: command not found) while the same run from a terminal was green.",
+   "fix": "vibe.config writes the PATH of the shell that runs crissp init or repair into the server's env, vibe.pinned counts a config without it as stale (repair writes it anew), and lint.sh reads its file lists without mapfile; a test keeps bash 4 builtins out of every bash script.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def fields("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": "scripts=()"
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_gives_the_server_this_machines_path",
+    "test_lint::test_every_bash_script_runs_on_the_bash_a_mac_ships",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew"
+   ]
+  },
+  {
+   "id": "agents-first-moves",
+   "title": "An agent that reads AGENTS.md had to explore before its first move (F-110)",
+   "problem": "Vibe reads AGENTS.md as its instructions; the root file only pointed at two long files, so a session read the whole agreement, .mcp.json, the README and server.py before calling brief, and took \"use crissp to the fullest\" as a yes for the full run. crissp/AGENTS.md, for an agent next to the main session, reached the main session as well.",
+   "fix": "The root AGENTS.md (this repository and the template) gives the first moves in 20 lines: brief, backlog, run and status, the tools that write the backlog, what waits for the product owner's yes, never a .env, and where to read more. crissp/AGENTS.md says the main session ignores it. Repair replaces the old pointer and the old intro, only where they are crissp's text.",
+   "sources": [
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": "# {{PRODUCT}}"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_root_agents_file_gives_an_agent_its_first_moves",
+    "test_repair::test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
+  },
+  {
+   "id": "crissp-skill",
+   "title": "No playbook for the crissp tools (F-111)",
+   "problem": "An agent learned the crissp tools one description at a time, after a search: nothing said which tool fits which question, the order of a session, or what to do when a call is slow.",
+   "fix": "The crissp skill (crissp/template/agents/skills/crissp/SKILL.md, written by init to .agents/skills/crissp/SKILL.md, which Vibe loads when needed and which can be committed): which tool when, the order of a session, what waits for the product owner, a slow or missing tool. Repair keeps it this crissp's; this repository has the same file.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": "name: crissp"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "F-111"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_repair::test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
+  },
+  {
+   "id": "tools-fit-a-minute",
+   "title": "The crissp tools could hold a call past Vibe's minute (F-108)",
+   "problem": "Vibe cancels a tool call after 60 s and the server answers one call at a time: the dashboard tool waited up to 120 s, so it and the call behind it (deploy-plan) were cancelled. A second dashboard call started test.sh over the running server and rewrote its log (NUL bytes in status), and a rebuild that failed was tried again on every request.",
+   "fix": "DASHBOARD_WAIT, PLAN_TIMEOUT and status's default wait are 45 s, each then says to ask again; dashboard answers at once when the log names a server that serves this project; Live.stamp tries a failed rebuild again only once something changed.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def dashboard("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def stamp("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_every_answer_fits_a_tool_call_budget_of_a_minute",
+    "test_crissp_tool::test_a_dashboard_this_project_already_serves_is_answered_without_a_restart",
+    "test_serve::test_a_failed_rebuild_keeps_the_last_good_data"
+   ]
+  },
+  {
+   "id": "check-all-asked",
+   "title": "The tool started the full run on a vague wish (F-112)",
+   "problem": "Asked to use crissp to the fullest, a Vibe session started check-all through the tool; the agreement keeps the full run the product owner's unless they ask.",
+   "fix": "run starts check-all only with asked: true (described in the tool's schema as the product owner asking for the full run), otherwise it says to ask them and to use check for one's own work; the skill says the same.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def run("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_the_full_run_starts_only_when_the_product_owner_asked_for_it"
+   ]
+  },
+  {
+   "id": "vibe-packed-sessions",
+   "title": "A packed Vibe session showed no prompt or step on /activity (F-109)",
+   "problem": "Vibe 3.1 packs a session's older turns into generations/ and chunks/ and starts a new, often empty journal; the Activity page read only the journal, so a busy session showed no prompt, no step and no history. Vibe calls MCP tools through run_typescript, which showed as other.",
+   "fix": "vibesessions.packed reads CURRENT, the generation's manifest and checkpoint and its chunks of messages (and the context's last reported tokens); read takes those turns before the journal. A run_typescript step names the tools its program called, by namespace.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def packed("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def step("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_packed_vibe_session_still_shows_its_prompt_step_and_history",
+    "test_vibesessions::test_a_run_typescript_call_names_the_tools_it_used"
+   ]
+  },
+  {
+   "id": "skill-names-every-tool",
+   "title": "The crissp skill names every tool the server offers, stage too (F-140)",
+   "problem": "The crissp skill and the root AGENTS.md were written before the stage tool landed: the playbook named every tool but stage, so an agent following it never asked which of the six stages the work is in.",
+   "fix": "The skill's table and session order, and the first moves in AGENTS.md (this repository's and the template's), name stage. The skill's test reads the tool names from crissp/tool/server.py's TOOLS, so a tool added later fails it until the skill names it.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_template.py::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_template.py::test_the_root_agents_file_gives_an_agent_its_first_moves"
+   ]
   }
  ],
  "gaps": [

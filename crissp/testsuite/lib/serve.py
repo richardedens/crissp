@@ -83,7 +83,9 @@ class Live:
                     self.rebuild()
                     self.seen, self.error = now, ""
                 except Exception as err:
-                    self.error = str(err) or type(err).__name__
+                    # F-108: tried again once something changes, not on every request: a rebuild that cannot succeed
+                    # ran collect.py each time the page (or the crissp tool) asked, and held every answer up
+                    self.seen, self.error = now, str(err) or type(err).__name__
                     print(f"dashboard data not rebuilt: {self.error}", file=sys.stderr)
             return self.built()
 
