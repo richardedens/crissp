@@ -2,7 +2,8 @@
 # decision, epic, feature, item, run, status, dashboard), pinned to this project's crissp.
 # Written for this machine by `crissp init` and `crissp repair --yes` (F-100): Vibe's desktop app starts MCP servers
 # from its own folder with only a few safe variables, so the project's folder is named here (cwd, CRISSP_ROOT) and
-# the command is found by its full path. Not in git: a teammate's `crissp repair --yes` writes their own.
+# the command is found by its full path; what it starts gets the PATH of the shell that wrote this (F-107).
+# Not in git: a teammate's `crissp repair --yes` writes their own.
 # Vibe loads project-local config only in trusted folders; init asks to add this project to trusted_folders.toml
 # under VIBE_HOME (else ~/.vibe), repair adds it. Restart Vibe after a change: it reads this file per session.
 [[mcp_servers]]
@@ -15,3 +16,4 @@ startup_timeout_sec = 60
 
 [mcp_servers.env]
 CRISSP_ROOT = {{VIBE_ROOT}}
+PATH = {{VIBE_PATH}}

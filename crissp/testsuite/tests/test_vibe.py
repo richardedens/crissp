@@ -113,14 +113,15 @@ def test_a_relative_server_path_is_not_found_from_vibes_app_server(tmp_path):
 def test_the_config_crissp_writes_loads_the_tools_from_anywhere(tmp_path):
     """F-100: vibe.config pins the project's folder (cwd and CRISSP_ROOT) and gives the first uvx download time, so
     the server starts and answers for this project whatever folder Vibe starts it from."""
-    text = vibe.config(REPO, sys.executable, ["-I", str(SERVER)])
+    text = vibe.config(REPO, sys.executable, ["-I", str(SERVER)], path="/opt/homebrew/bin:/usr/bin:/bin")
     server = tomllib.loads(text)["mcp_servers"][0]
-    assert server["cwd"] == str(REPO) and server["env"] == {"CRISSP_ROOT": str(REPO)}
+    assert server["cwd"] == str(REPO)
+    assert server["env"] == {"CRISSP_ROOT": str(REPO), "PATH": "/opt/homebrew/bin:/usr/bin:/bin"}
     assert server["startup_timeout_sec"] >= 60
     answers = start_like_vibe(text, tmp_path)
     assert {"brief", "backlog", "finding", "item", "run", "status"} <= listed(answers)
     brief = next(a for a in answers if a.get("id") == 3)["result"]["content"][0]["text"]
-    assert brief.startswith("crissp ") and "commit" in brief
+    assert brief.startswith(f"{REPO.name} ") and " · commit " in brief  # F-105: the checkout's own name
 
 
 def test_a_windows_path_stays_valid_toml_in_the_config():
@@ -128,3 +129,14 @@ def test_a_windows_path_stays_valid_toml_in_the_config():
     server = tomllib.loads(text)["mcp_servers"][0]
     assert server["cwd"] == str(WIN) and server["command"].endswith("uvx.exe")
     assert server["args"] == ["crissp==1.2.3", "mcp"]
+
+
+def test_the_config_gives_the_server_this_machines_path(monkeypatch):
+    """F-107: what the server starts (the checks, the dashboard) runs with the PATH of the shell crissp was set up in,
+    not the desktop app's: there a Mac's bash 3.2 and python 3.9 come first. A config without it is not pinned."""
+    monkeypatch.setenv("PATH", "/home/me/.local/bin:/usr/bin")
+    text = vibe.config(REPO, "uvx", ["crissp==1.2.3", "mcp"])
+    assert tomllib.loads(text)["mcp_servers"][0]["env"]["PATH"] == "/home/me/.local/bin:/usr/bin"
+    assert vibe.pinned(text, REPO)
+    older = text.replace('PATH = "/home/me/.local/bin:/usr/bin"\n', "")
+    assert "PATH =" not in older and not vibe.pinned(older, REPO)

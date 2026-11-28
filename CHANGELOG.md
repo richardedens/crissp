@@ -16,6 +16,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   `<!-- CRISSP … -->` prompt, Claude and Vibe now say which stage the work is in and offer the next step, for example
   setting up the UX suite when there is none yet. It is a new section of the agreement, *The six stages*; `crissp
   repair --yes` brings it into projects brought in earlier.
+- **Vibe's crissp skill knows the stages too (F-140).** The `crissp` skill and the root `AGENTS.md` name the `stage`
+  tool, so a Vibe session asks where the work is before it starts; `crissp repair --yes` updates the skill.
 - **Decide once, for a whole rule, area or screen (E7-F4-02).** In the review screen's verdict bar, press `s` to give
   your verdict to the advice's screen, its area or its rule instead: it then holds for every piece of advice under it
   that has no verdict of its own (the nearest one wins, and your verdict on one piece of advice always wins). Advice you
@@ -55,6 +57,21 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
   of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
   project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
+- **Checks started from Vibe run with your terminal's tools (F-107).** Vibe's desktop app gives the crissp server
+  its own PATH, so a check started through the crissp tool could pick up a Mac's old bash 3.2 and fail where the
+  same check from a terminal passes. `.vibe/config.toml` now carries the PATH of the shell that ran `crissp init` or
+  `crissp repair --yes`; run `crissp repair --yes` once from your terminal and restart Vibe.
+- **An agent starts working at once (F-110, F-111).** The root `AGENTS.md`, which Mistral Vibe reads as its
+  instructions, now gives the first moves itself: `brief`, `backlog`, `run` and `status`, and what waits for your yes
+  (the full run, a push, a deploy). Before, it pointed at two long files, and a session spent its first steps reading
+  them. A new crissp skill (`.agents/skills/crissp/SKILL.md`) is the playbook for the crissp tools: which tool for
+  which question, the order of a session, and what to do when a call is slow. `crissp init` writes both;
+  `crissp repair --yes` brings them to a project brought in earlier, without touching an `AGENTS.md` you wrote yourself.
+- **The crissp tools answer within a minute (F-108).** Vibe cancels a tool call after 60 seconds. The dashboard,
+  a plan and `status` now answer within 45 seconds and say to ask again when something is still going. A dashboard
+  that already runs is answered at once instead of being started a second time.
+- **The full run starts only when you asked for it (F-112).** Through the crissp tool, `check-all` now needs
+  `asked: true`, which an agent may only pass when you asked for the full run. For its own work it uses `check`.
 - **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
   commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
   automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings
@@ -62,7 +79,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **The Activity page shows Mistral Vibe's sessions too (F-101).** `/activity` lists the Vibe sessions working in
   the repository next to Claude Code's, read from Vibe's own session logs (`VIBE_HOME`, else `~/.vibe`): the last
   prompt, the latest step, its subagents, and the history the last request carried, with the same "start fresh"
-  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe.
+  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe. It also reads the turns Vibe
+  packs away in a long session, and shows a crissp call Vibe makes from a program as the tools it used (F-109).
 - **The Activity page warns about the context budget (F-104).** Besides the 300k-token history, a session's card
   now says when its main thread holds 10 or more images (screenshots belong in a subagent that reports text) or read
   a file of more than 800 lines whole (read the part needed). For Claude Code and Mistral Vibe sessions alike.

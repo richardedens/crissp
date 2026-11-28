@@ -40,7 +40,8 @@ failed=0
 bad() { echo "FAILED: $*"; failed=1; }
 
 echo "== shellcheck (every bash script)"
-mapfile -t scripts < <(shell_files)
+scripts=()  # bash 3.2 (a Mac's /bin/bash) has no mapfile (F-107)
+while IFS= read -r f; do scripts+=("$f"); done < <(shell_files)
 if command -v uv >/dev/null 2>&1; then
   # -s bash: a sourced file without a shebang (lib/steps.sh) is bash too; -x follows what a script sources
   if uv run --quiet --no-project --with-requirements "$HERE/requirements.txt" shellcheck -s bash -x "${scripts[@]}"; then
@@ -53,7 +54,8 @@ else
 fi
 
 echo "== ESLint (every JavaScript file)"
-mapfile -t sources < <(js_files)
+sources=()
+while IFS= read -r f; do sources+=("$f"); done < <(js_files)
 if command -v npm >/dev/null 2>&1; then
   record="$HERE/node_modules/.package-lock.json"
   if [ ! -f "$record" ] || [ "$HERE/package-lock.json" -nt "$record" ]; then
@@ -71,7 +73,8 @@ else
 fi
 
 echo "== stylelint (every CSS file)"
-mapfile -t sheets < <(css_files)
+sheets=()
+while IFS= read -r f; do sheets+=("$f"); done < <(css_files)
 if [ -x "$HERE/node_modules/.bin/stylelint" ]; then
   if "$HERE/node_modules/.bin/stylelint" --config "$HERE/stylelint.config.mjs" "${sheets[@]}"; then
     echo "ok: stylelint, ${#sheets[@]} files"
