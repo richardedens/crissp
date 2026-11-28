@@ -961,6 +961,22 @@
    "tests": [
     "test_lint.py::test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repository"
    ]
+  },
+  {
+   "id": "package-step-reports-its-tests",
+   "title": "Ten changes stayed 'missing' on the dashboard although their tests passed (F-40)",
+   "problem": "The dashboard proves a change by finding its tests in a step's JUnit file. The package step ran pytest without --junitxml, so the tests in package_tests (test_cli, test_package) never reached the dashboard and every change they prove showed as 'missing'.",
+   "fix": "The package step writes its JUnit to $JUNIT like every other test step. test_changes checks that every test a change names is run by a step that writes JUnit.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/suites.json",
+     "symbol": "crissp/testsuite/package_tests\""
+    }
+   ],
+   "tests": [
+    "test_changes::test_every_test_that_proves_a_change_is_reported_to_the_dashboard",
+    "test_changes::test_a_step_without_junit_leaves_its_tests_unreported"
+   ]
   }
  ],
  "gaps": [

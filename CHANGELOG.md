@@ -11,6 +11,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
   ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
   what to do instead. `git commit --no-verify` skips the hook once.
+- **"Changes proven" on this repository's dashboard counts the package tests (F-40).** The `package` step now writes
+  its test results for the dashboard, so the changes proven by `test_cli` and `test_package` no longer show as
+  "missing" while they pass.
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
   `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint

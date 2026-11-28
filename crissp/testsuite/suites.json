@@ -56,7 +56,7 @@
    "key": "package",
    "label": "The package: build, install, init a project, its full run",
    "dir": ".",
-   "run": "uv run --quiet --no-project --with-requirements crissp/testsuite/requirements.txt python -m pytest -q -p no:cacheprovider crissp/testsuite/package_tests",
+   "run": "uv run --quiet --no-project --with-requirements crissp/testsuite/requirements.txt python -m pytest -q -p no:cacheprovider --junitxml=\"$JUNIT\" crissp/testsuite/package_tests",
    "seconds": 30,
    "tests": [
     "crissp/testsuite/package_tests"
