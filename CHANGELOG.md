@@ -65,6 +65,9 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   changes" instead of "this commit".
 - **A secret found in a test file says: check first whether it is a fake (F-166).** Before, every hit said "rotate it,
   then remove it from the history", also for test keys and variables named token.
+- **The pre-commit hook lints only what you commit (F-154).** A part with nothing staged is skipped, and the
+  backend and frontend lint look at the staged files only, so an old finding elsewhere no longer blocks a commit.
+  `crissp check` and CI still lint everything.
 
 ## 0.2.0 — 2026-11-28
 

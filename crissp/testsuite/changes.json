@@ -2446,6 +2446,25 @@
     "test_collect.py::test_the_lint_rules_switched_off_reach_the_dashboard",
     "test_dashboard_page.py::test_the_lint_rules_a_project_switched_off_are_listed_with_why"
    ]
+  },
+  {
+   "id": "hook-lints-staged-files",
+   "title": "F-154: the pre-commit hook lints only the staged files",
+   "problem": "The pre-commit hook linted the whole project, so old findings in untouched files blocked a commit and every commit waited for a full lint.",
+   "fix": "lib/hook.py lists the staged paths (git diff --cached), writes them to a file CRISSP_STAGED names and skips a part's step with nothing staged in its folder; sources.staged() gives a folder's staged files, frontend_lint.py lints those (judging the baseline without shrinking it) and steps.sh's ruff_check lints the staged Python with --force-exclude.",
+   "sources": [
+    "crissp/testsuite/lib/hook.py",
+    "crissp/testsuite/lib/sources.py",
+    "crissp/testsuite/lib/frontend_lint.py",
+    "crissp/testsuite/lib/steps.sh"
+   ],
+   "tests": [
+    "test_hook.py::test_the_hook_lints_only_the_staged_files_and_skips_a_part_with_none",
+    "test_hook.py::test_a_commit_with_nothing_staged_lints_nothing",
+    "test_sources.py::test_the_staged_files_of_a_folder_come_from_the_hook",
+    "test_lint_ratchet.py::test_before_a_commit_only_the_staged_files_are_linted_and_the_baseline_stays",
+    "test_run.py::test_before_a_commit_ruff_check_lints_the_staged_python_only"
+   ]
   }
  ],
  "gaps": [

@@ -72,3 +72,20 @@ def test_a_long_list_is_split_into_command_lines_that_stay_short():
     assert [n for batch in batches for n in batch] == names and len(batches) > 1
     assert all(sum(len(n) + 1 for n in batch) <= 10_000 for batch in batches)
     assert sources.batches([], limit=10) == []
+
+
+def test_the_staged_files_of_a_folder_come_from_the_hook(tmp_path, monkeypatch, capsys):
+    """F-154: the hook writes the staged paths (relative to the project) into the file CRISSP_STAGED names."""
+    listed = tmp_path / "staged"
+    listed.write_text("app/frontend/src/a.js\napp/backend/x.py\napp/frontend/b.css\n\n")
+    env = {"CRISSP_STAGED": str(listed), "CRISSP_ROOT": str(tmp_path)}
+    front = tmp_path / "app/frontend"
+    assert sources.staged(front, env) == {"src/a.js", "b.css"}
+    assert sources.staged(tmp_path, env) == {"app/frontend/src/a.js", "app/backend/x.py", "app/frontend/b.css"}
+    assert sources.staged(front, {}) is None  # not the hook: everything
+    front.mkdir(parents=True)
+    monkeypatch.chdir(front)
+    assert sources.main(["staged", ".js", ".css"], env) == 0
+    assert capsys.readouterr().out == "b.css\nsrc/a.js\n"
+    assert sources.main(["staged", ".js"], {}) == 1  # outside the hook there is no staged list
+    assert sources.main([], env) == 2

@@ -196,3 +196,41 @@ def test_the_pinned_crissp_on_path_is_used_without_fetching(shop, tmp_path):
     pinned = '[ "$1" = --version ] && echo "crissp 1.2.3" || echo "crissp $*"'
     done = _hook_in(shop, tmp_path, {"uvx": "echo never", "crissp": pinned})
     assert done.returncode == 0 and done.stdout == "crissp hook\n"
+
+
+def test_the_hook_lints_only_the_staged_files_and_skips_a_part_with_none(shop, capfd):
+    """F-154: before a commit only what is staged is linted: the hook hands the steps the staged paths
+    (CRISSP_STAGED, a file of paths in the project) and skips a part's step when nothing of it is staged.
+    crissp check and CI still lint everything."""
+    git(shop, "init", "-q")
+    (shop / "app/frontend").mkdir(parents=True)
+    (shop / "app/frontend/package.json").write_text("{}")
+    (shop / "app/backend").mkdir(parents=True)
+    (shop / "app/backend/api.py").write_text("x = 1\n")
+    git(shop, "add", "app/backend/api.py")
+    seen = []
+
+    def runner(cmd, cwd, env, check):
+        seen.append((Path(cwd), Path(env["CRISSP_STAGED"]).read_text()))
+        return subprocess.CompletedProcess(cmd, 0)
+
+    assert hook.run(shop, env={"PATH": "/usr/bin:/bin"}, runner=runner) == 0
+    assert [cwd for cwd, _ in seen] == [shop, shop]  # backend-lint and lint (the project's root); frontend-lint skipped
+    assert all(staged == "app/backend/api.py\n" for _, staged in seen)
+    assert "crissp hook: Frontend lint skipped: nothing staged in app/frontend" in capfd.readouterr().out
+
+
+def test_a_commit_with_nothing_staged_lints_nothing(shop, capfd):
+    git(shop, "init", "-q")
+    assert hook.run(shop, env={"PATH": "/usr/bin:/bin"}, runner=lambda *a, **k: 1 / 0) == 0
+    assert "nothing staged to lint" in capfd.readouterr().out
+
+
+def test_without_git_the_hook_lints_everything(shop, capfd):
+    seen = {}
+    hook.run(
+        shop,
+        env={"PATH": "/usr/bin:/bin"},
+        runner=lambda cmd, cwd, env, check: seen.update(env=env) or subprocess.CompletedProcess(cmd, 0),
+    )
+    assert "CRISSP_STAGED" not in seen["env"]

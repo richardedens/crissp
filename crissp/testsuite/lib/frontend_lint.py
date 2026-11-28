@@ -14,7 +14,8 @@ recommended rules, as crissp's own CSS: mistakes, not layout) run on the folder 
 The project's package.json, its node_modules and its files are never touched, and its own lint config is not read.
 The tools get the project's own files by name (lib/sources.py, F-150): what git lists (its .gitignore counts), never a
 build folder (dist, build, node_modules, .next, coverage, …). A tool with nothing to lint is skipped, and says so.
-Every finding counts, a warning too. With a baseline (crissp/testsuite/lint-baseline.json) the ratchet decides what
+Before a commit (the pre-commit hook, CRISSP_STAGED) only the staged files are linted, and the baseline is left as it
+is (F-154). Every finding counts, a warning too. With a baseline (crissp/testsuite/lint-baseline.json) the ratchet decides what
 blocks (lib/lint_ratchet.py); without one, every finding does.
 Exit 0: nothing blocks; 1: a finding that blocks, a tool that could not run, no npm, no folder or a failed install;
 2: wrong arguments.
@@ -218,9 +219,11 @@ def main(
         return 1
     # F-151: the React Compiler's rules only for a project that says it uses the compiler (eslint.config.mjs reads this)
     tools_env = {**env, "CRISSP_REACT_COMPILER": "1" if "--react-compiler" in flags else "0"}
+    only = sources.staged(folder, env)  # F-154: before a commit, only what is staged
     findings, problems = [], []
     for tool, command in commands(where).items():
-        found, why = lint(tool, command, folder, run, tools_env, sources.files(folder, TOOLS[tool][1]))
+        names = [n for n in sources.files(folder, TOOLS[tool][1]) if only is None or n in only]
+        found, why = lint(tool, command, folder, run, tools_env, names)
         findings += found
         problems += why
     root = lint_ratchet.root_of(folder, env)
@@ -230,7 +233,7 @@ def main(
     folders = lint_ratchet.load(root)
     if "--baseline" in flags:
         return write_baseline(root, folder, key, folders, findings, problems)
-    blocking, allowed, shrunk = lint_ratchet.judge(folder, findings, folders.get(key), complete=True)
+    blocking, allowed, shrunk = lint_ratchet.judge(folder, findings, folders.get(key), complete=only is None)
     return report(root, key, folders, blocking, allowed, shrunk, problems)
 
 
