@@ -797,6 +797,21 @@
     "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
     "test_crissp_tool::test_the_dashboard_is_served_and_its_address_answered"
    ]
+  },
+  {
+   "id": "workers-command-portable-test",
+   "title": "The workers' command reader is covered on every platform (F-33)",
+   "problem": "workers._command's last line ran only on macOS (sysctl, vm_stat), so on Linux, where CI runs, lib/workers.py was at 99.5% and the coverage gate was red.",
+   "fix": "The test of the real sources also runs the current Python as the command: one that prints and one that exits 3, so the output and the None for a failure are both proven on any platform.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/workers.py",
+     "symbol": "_command"
+    }
+   ],
+   "tests": [
+    "test_workers.py::test_the_real_sources_answer_on_this_machine"
+   ]
   }
  ],
  "gaps": [
