@@ -33,7 +33,8 @@ repository so you do not have to read files for them. Each answer is a few lines
 
 ## What waits for the product owner's yes
 
-- `run` with `what: check-all` (the full run, several minutes): only when the product owner asked for the full run.
+- `run` with `what: check-all` and `asked: true` (the full run, several minutes): only when the product owner asked
+  for the full run in so many words. "Use crissp fully" is no such ask.
 - A push, a tag, a publish, a deploy: never through these tools; the product owner does them.
 - Marking anything done.
 

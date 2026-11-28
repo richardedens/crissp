@@ -63,10 +63,10 @@ MAIN = " For the main session only: agents never edit the backlog."
 RUNS = {"check-plan": ("check.sh", ["--plan"], False), "deploy-plan": ("deploy.sh", ["--plan"], False),
         "ux-status": ("ux.sh", ["--status"], False), "check": ("check.sh", [], True), "check-all": ("check-all.sh", [], True)}
 VIEWS = {"tests": "--dashboard", "ux": "--ux"}  # dashboard: which page of the one local server to answer
-PLAN_TIMEOUT = 120  # seconds a plan may take
-DASHBOARD_WAIT = 120  # seconds to wait for the dashboard to say where it is
+PLAN_TIMEOUT = 45  # seconds a plan may take: under a tool call budget of a minute (Vibe's, F-108)
+DASHBOARD_WAIT = 45  # seconds to wait for the dashboard to say where it is (F-108: under a minute)
 EXIT = re.compile(r"^\[crissp\] exit (\d+)$", re.MULTILINE)
-WAIT = 300  # status with wait: seconds it waits by default (F-31) …
+WAIT = 45  # status with wait: seconds it waits by default (F-31; F-108: under a minute, then ask again) …
 WAIT_MAX = 3600  # … and at most
 WAIT_POLL = 0.5  # how often it looks while it waits
 
@@ -125,13 +125,15 @@ TOOLS = [
          "status": {"type": "string", "enum": [s for s in STATUSES if s != "done"]}}}},
     {"name": "run",
      "description": "Start a check of this repository: check (tests what changed since the last green state) or "
-                    "check-all (the full run; the product owner's to start unless they asked) in the background, then "
+                    "check-all (the full run: only with asked: true, when the product owner asked for it) in the background, then "
                     "wait for its result with status (wait: true; never wait on the pid); or get an answer at once: check-plan (what check would run and how long), "
                     "deploy-plan (what a deploy would rebuild and why), ux-status (what the UX team runs and what "
                     "waits). It never deploys and never starts a UX round: those stay with the product owner. Commit "
                     "first: the checks test what is committed.",
      "inputSchema": {"type": "object", "additionalProperties": False, "required": ["what"], "properties": {
-         "what": {"type": "string", "enum": list(RUNS)}}}},
+         "what": {"type": "string", "enum": list(RUNS)},
+         "asked": {"type": "boolean", "description": "check-all only: true when the product owner asked for the full run "
+                   "in so many words (F-112); a wish to use crissp fully is no such ask"}}}},
     {"name": "status",
      "description": "How the checks started with run are doing: running or finished, the exit code, the last lines of "
                     "their log, and whether a run holds the lock. With wait: true it answers once the run has ended "
@@ -493,6 +495,9 @@ def run(root: Path, args: dict) -> str:
     what = args.get("what") or ""
     if what not in RUNS:
         raise ValueError(f"what must be one of {', '.join(RUNS)} (a deploy stays in the product owner's terminal)")
+    if what == "check-all" and args.get("asked") is not True:  # F-112: the full run is the product owner's
+        raise ValueError("check-all (the full run) is the product owner's to start: ask them; once they asked for the "
+                         "full run, call run with what: check-all and asked: true. For your own work: what: check")
     name, argv, detached = RUNS[what]
     path = script(root, name)
     if not detached:
@@ -571,8 +576,11 @@ def dashboard(root: Path, args: dict | None = None) -> str:
     if view not in VIEWS:
         raise ValueError(f"view must be one of {', '.join(VIEWS)}")
     path = script(root, "test.sh")
-    background(root, "dashboard", [str(path), VIEWS[view]])
     log = results(root) / "mcp" / "dashboard.log"
+    running = re.search(r"Dashboard: (http://127\.0\.0\.1:\d+)/", read(log))
+    if running and served(running.group(1) + "/dashboard/", root):  # F-108: never a second test.sh over a running one
+        return f"Dashboard: {running.group(1)}/{'ux' if view == 'ux' else 'dashboard'}/ (served already; the open page keeps itself current)"
+    background(root, "dashboard", [str(path), VIEWS[view]])
     deadline = time.monotonic() + DASHBOARD_WAIT
     while time.monotonic() < deadline:
         text = read(log)
@@ -583,7 +591,8 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])
         time.sleep(0.2)
-    raise ValueError(f"the dashboard said nothing in {DASHBOARD_WAIT}s; see crissp/testsuite/results/mcp/dashboard.log")
+    raise ValueError(f"the dashboard said nothing in {DASHBOARD_WAIT}s; it may still be starting: call dashboard again "
+                     "(see crissp/testsuite/results/mcp/dashboard.log)")
 
 
 def call(root: Path, name: str, args: dict) -> dict:

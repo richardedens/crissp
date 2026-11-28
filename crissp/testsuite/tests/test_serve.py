@@ -98,6 +98,11 @@ def test_a_failed_rebuild_keeps_the_last_good_data(world, capsys):
     before = live.built()
     assert live.stamp() == before and live.data.read_text() == "window.SUITE = {};\n"
     assert "dashboard data not rebuilt: changes.json is not JSON" in capsys.readouterr().err
+    tries = []
+    live.rebuild = lambda: tries.append(1) or broken()
+    assert live.stamp() == before and tries == []  # F-108: not tried again on every request while nothing changed …
+    (root / "crissp/testsuite/changes.json").write_text("{}")
+    assert live.stamp() == before and tries == [1]  # … but again once something did
 
 
 
@@ -141,8 +146,10 @@ def test_a_failed_rebuild_is_said_on_the_page(world):
         (root / "crissp/testsuite/changes.json").write_text("{")
         assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == "changes.json is not JSON"
         live.rebuild = lambda: (_ for _ in ()).throw(RuntimeError())
+        (root / "crissp/testsuite/changes.json").write_text("{ ")  # F-108: tried again once something changed
         assert live.stamp() and live.error == "RuntimeError"  # a reason without words still names itself
         live.rebuild = build
+        (root / "crissp/testsuite/changes.json").write_text("{}")
         assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == ""  # rebuilt: current again
     finally:
         httpd.shutdown()

@@ -22,6 +22,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   them. A new crissp skill (`.agents/skills/crissp/SKILL.md`) is the playbook for the crissp tools: which tool for
   which question, the order of a session, and what to do when a call is slow. `crissp init` writes both;
   `crissp repair --yes` brings them to a project brought in earlier, without touching an `AGENTS.md` you wrote yourself.
+- **The crissp tools answer within a minute (F-108).** Vibe cancels a tool call after 60 seconds. The dashboard,
+  a plan and `status` now answer within 45 seconds and say to ask again when something is still going. A dashboard
+  that already runs is answered at once instead of being started a second time.
+- **The full run starts only when you asked for it (F-112).** Through the crissp tool, `check-all` now needs
+  `asked: true`, which an agent may only pass when you asked for the full run. For its own work it uses `check`.
 - **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
   commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
   automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings

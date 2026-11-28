@@ -1678,6 +1678,42 @@
     "test_repair::test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current",
     "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
    ]
+  },
+  {
+   "id": "tools-fit-a-minute",
+   "title": "The crissp tools could hold a call past Vibe's minute (F-108)",
+   "problem": "Vibe cancels a tool call after 60 s and the server answers one call at a time: the dashboard tool waited up to 120 s, so it and the call behind it (deploy-plan) were cancelled. A second dashboard call started test.sh over the running server and rewrote its log (NUL bytes in status), and a rebuild that failed was tried again on every request.",
+   "fix": "DASHBOARD_WAIT, PLAN_TIMEOUT and status's default wait are 45 s, each then says to ask again; dashboard answers at once when the log names a server that serves this project; Live.stamp tries a failed rebuild again only once something changed.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def dashboard("
+    },
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def stamp("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_every_answer_fits_a_tool_call_budget_of_a_minute",
+    "test_crissp_tool::test_a_dashboard_this_project_already_serves_is_answered_without_a_restart",
+    "test_serve::test_a_failed_rebuild_keeps_the_last_good_data"
+   ]
+  },
+  {
+   "id": "check-all-asked",
+   "title": "The tool started the full run on a vague wish (F-112)",
+   "problem": "Asked to use crissp to the fullest, a Vibe session started check-all through the tool; the agreement keeps the full run the product owner's unless they ask.",
+   "fix": "run starts check-all only with asked: true (described in the tool's schema as the product owner asking for the full run), otherwise it says to ask them and to use check for one's own work; the skill says the same.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def run("
+    }
+   ],
+   "tests": [
+    "test_crissp_tool::test_the_full_run_starts_only_when_the_product_owner_asked_for_it"
+   ]
   }
  ],
  "gaps": [

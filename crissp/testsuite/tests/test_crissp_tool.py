@@ -345,7 +345,7 @@ def test_plans_answer_at_once_and_a_deploy_is_never_run(tmp_path, monkeypatch):
     assert not any("round" in name or "propose" in name for name in srv.RUNS)  # a UX round costs tokens: the owner asks
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")  # neither the project nor the engine has it
     with pytest.raises(LookupError, match=re.escape("crissp/check-all.sh is missing")):
-        srv.run(tmp_path, {"what": "check-all"})
+        srv.run(tmp_path, {"what": "check-all", "asked": True})
     _scripts(tmp_path, check="sleep 5")
     monkeypatch.setattr(srv, "PLAN_TIMEOUT", 0.2)
     with pytest.raises(ValueError, match=re.escape("took longer than 0.2s")):
@@ -362,7 +362,7 @@ def test_a_check_runs_in_the_background_and_status_follows_it(tmp_path):
     text = _until(lambda: t if "finished" in (t := srv.status(tmp_path)) else None)
     assert "check · started " in text and "finished, exit 0 (green)" in text and "  Green: crissp/deploy.sh may go." in text
     assert "[crissp] exit" not in text  # the exit marker is read, not shown
-    srv.run(tmp_path, {"what": "check-all"})
+    srv.run(tmp_path, {"what": "check-all", "asked": True})
     text = _until(lambda: t if "check-all · " in (t := srv.status(tmp_path)) and "exit 1" in t else None)
     assert "finished, exit 1 · " in text and "(green)" not in text.split("check-all · ")[1] and "  Coverage gate: RED" in text
 
@@ -545,7 +545,7 @@ def test_a_dashboard_that_says_its_address_but_does_not_serve_is_reported(tmp_pa
         srv.dashboard(tmp_path)
     _scripts(tmp_path, test="sleep 5")
     monkeypatch.setattr(srv, "DASHBOARD_WAIT", 0.3)
-    with pytest.raises(ValueError, match=re.escape("said nothing in 0.3s")):
+    with pytest.raises(ValueError, match=re.escape("said nothing in 0.3s; it may still be starting: call dashboard again")):
         srv.dashboard(tmp_path)
     monkeypatch.setattr(srv, "ENGINE", tmp_path / "no-engine")
     with pytest.raises(LookupError, match=re.escape("crissp/test.sh is missing")):
@@ -663,3 +663,41 @@ def test_an_installed_project_runs_the_engines_own_scripts(tmp_path, monkeypatch
     assert srv.script(project, "check.sh") == engine / "check.sh"
     (project / "crissp" / "check.sh").write_text("echo own\n")
     assert srv.script(project, "check.sh") == project / "crissp" / "check.sh"  # a project's own script wins
+
+
+def test_every_answer_fits_a_tool_call_budget_of_a_minute():
+    """F-108: Vibe cancels a tool call after 60 s, and the next call waits behind it (the server answers one at a time):
+    the dashboard's wait, a plan's and status's default wait all stay under that."""
+    assert max(srv.DASHBOARD_WAIT, srv.PLAN_TIMEOUT, srv.WAIT) < 60
+
+
+def test_a_dashboard_this_project_already_serves_is_answered_without_a_restart(tmp_path):
+    """F-108: a second dashboard call started test.sh again over the running server and rewrote the log it writes
+    into (status then showed NUL bytes); a dashboard the log names and that serves this project is answered at once."""
+    (tmp_path / "web" / "dashboard").mkdir(parents=True)
+    (tmp_path / "web" / "dashboard" / "index.html").write_text('<a id="sessions"></a>')
+    (tmp_path / "web" / "dashboard" / "stamp").write_text(json.dumps({"stamp": 1.0, "root": str(tmp_path.resolve())}))
+    httpd = _serve(tmp_path / "web")
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    log = tmp_path / "crissp/testsuite/results/mcp/dashboard.log"
+    log.parent.mkdir(parents=True)
+    log.write_text(f"dashboard data: 3 tests\nDashboard: {base}/dashboard/   (Ctrl-C to stop)\n")
+    _scripts(tmp_path, test="echo started again; exit 9")
+    try:
+        assert srv.dashboard(tmp_path, {"view": "ux"}).startswith(f"Dashboard: {base}/ux/ ")
+        assert srv.dashboard(tmp_path).startswith(f"Dashboard: {base}/dashboard/ ")
+        assert "started again" not in log.read_text() and not (log.parent / "runs.json").exists()
+    finally:
+        httpd.shutdown()
+
+
+def test_the_full_run_starts_only_when_the_product_owner_asked_for_it(tmp_path):
+    """F-112: a Vibe session took "use crissp to the fullest" as a yes and started check-all. The tool starts the full
+    run only with asked: true, said by an agent the product owner asked for that run; else it says what to do."""
+    _scripts(tmp_path, **{"check-all": "echo full run"})
+    for args in ({"what": "check-all"}, {"what": "check-all", "asked": False}, {"what": "check-all", "asked": "yes"}):
+        with pytest.raises(ValueError, match="the product owner's to start: ask them; once they asked for the full run"):
+            srv.run(tmp_path, args)
+    assert not (tmp_path / "crissp/testsuite/results/mcp/runs.json").exists()
+    schema = next(t for t in srv.TOOLS if t["name"] == "run")["inputSchema"]["properties"]
+    assert schema["asked"]["type"] == "boolean" and "product owner" in schema["asked"]["description"]
