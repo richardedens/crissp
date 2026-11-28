@@ -2,6 +2,7 @@
 that project's full run is green. Built from this checkout with uv, installed into a throwaway venv, used in a
 throwaway folder: nothing here touches this repository or the network beyond what uv needs to build."""
 
+import importlib.util
 import json
 import os
 import shutil
@@ -21,6 +22,19 @@ def run(cmd, cwd, env=None, check=True):
     if check and done.returncode != 0:
         raise AssertionError(f"{cmd} → {done.returncode}\n{done.stdout}\n{done.stderr}")
     return done
+
+
+def stand_in_scanners(cache: Path) -> None:
+    """The pinned scanners (lib/tools.py) as stand-ins in the crissp cache: the audit and the secrets scan run their
+    real code in the project, but nothing is downloaded and no image is pulled."""
+    spec = importlib.util.spec_from_file_location("tools_pins", REPO / "crissp/testsuite/lib/tools.py")
+    tools = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tools)
+    for name, answer in (("trivy", '{"Results": []}'), ("gitleaks", "[]")):
+        binary = cache / "tools" / f"{name}-{tools.TOOLS[name]['version']}" / name
+        binary.parent.mkdir(parents=True)
+        binary.write_text(f"#!/bin/sh\necho \"$*\" >> {cache}/{name}.calls\necho '{answer}'\n")
+        binary.chmod(0o755)
 
 
 @pytest.fixture(scope="module")
@@ -55,9 +69,11 @@ def test_the_wheel_carries_the_licences_and_the_engine_but_no_project_data(wheel
                    "uxsuite/cli.py", "look/look.css", "template/crissp/CLAUDE.md", "deploy/helm/app/Chart.yaml",
                    "deploy/terraform/main.tf", "deploy/check.sh", "testsuite/lib/workers.py",
                    "testsuite/lib/pytest_plugin/crissp_timing.py", "testsuite/dashboard/workers.html",
-                   "testsuite/frontend-lint/package-lock.json", "testsuite/lib/frontend_lint.py"):
+                   "testsuite/frontend-lint/package-lock.json", "testsuite/lib/frontend_lint.py",
+                   "testsuite/lib/tools.py", "testsuite/sast/python.yaml", "testsuite/sast/javascript.yaml"):
         assert engine + needed in names, needed
     for never in ("backlog/", "testsuite/results/", "uxsuite/results/", "testsuite/tests/", "testsuite/suites.json",
+                  "testsuite/sast/tests/",
                   "testsuite/coverage-baseline.json", "testsuite/changes.json", "CLAUDE.md", "AGENTS.md"):
         assert not any(n.startswith(engine + never) for n in names), never
     assert not any("__pycache__" in n for n in names)
@@ -75,6 +91,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     env.pop("CRISSP_ROOT", None)
     env["PATH"] = os.pathsep.join([str(crissp.parent), env.get("PATH", "")])  # F-50: the hook finds the pinned crissp
     env["VIBE_HOME"] = str(tmp_path / "vibe-home")  # F-24: no Vibe here, init writes the config and skips the trust
+    env["CRISSP_CACHE"] = str(tmp_path / "cache")
+    stand_in_scanners(tmp_path / "cache")
     said = run([str(crissp), "init", "--yes", "--product", "Example", "--owner", "the product owner"], project, env).stdout
     assert (project / ".git").is_dir() and "git init" in said
     for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", ".vibe/config.toml",
@@ -109,7 +127,7 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
         "from example import double\n\n\ndef test_double_zero():\n    assert double(0) == 0\n")
     run(["git", "add", "-A"], project, env)
     adopted = run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed
-    assert "crissp hook: CRISSP: the backend's lint (ruff) passed" in adopted.stdout + adopted.stderr  # F-50: git linted it first
+    assert "crissp hook: CRISSP: the backend's lint (ruff, with its security rules) passed" in adopted.stdout + adopted.stderr  # F-50: git linted it first
     nothing = run([str(crissp), "deploy"], project, env, check=False)  # F-04: a project's guards speak `crissp …`
     said = nothing.stdout + nothing.stderr
     assert "crissp deploy --cluster" in said and ".sh" not in said, said
@@ -119,6 +137,12 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     if (os.cpu_count() or 1) >= 3:  # E1-F1-02: CPUs to spare, so the backend's two files ran on two workers
         assert "2 workers)" in said, said
     assert (project / "crissp" / "testsuite" / "results").is_dir()
+    audited = json.loads((project / "crissp/testsuite/results/audit.json").read_text())  # F-42: every project is audited
+    assert "trivy config crissp/deploy/helm/app" in audited["scanned"] and "trivy fs app/backend" in audited["scanned"]
+    assert "app/backend/requirements.txt" in audited["absent"]  # a place the tiny product has not got yet
+    sast = json.loads((project / "crissp/testsuite/results/sast.json").read_text())  # F-44: the real Semgrep ran
+    assert sast["scanned"] == ["semgrep app"] and sast["blocking"] == []
+    assert json.loads((project / "crissp/testsuite/results/secrets.json").read_text())["scanned"] == ["gitleaks git history"]
     assert "Green: crissp deploy may go." in said and "crissp/" + "check" not in said and ".sh" not in said, said
     # F-06: the first full run says plainly what is left: commit the baseline it wrote, then crissp check
     assert "This was the first full run" in said and "git add crissp/testsuite/coverage-baseline.json" in said, said

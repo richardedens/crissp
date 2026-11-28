@@ -5,16 +5,22 @@
   {"key": "backend", "label": "CRISSP: the backend's tests (pytest under coverage)", "dir": "app/backend",
    "run": "covered tests", "seconds": 20, "gate": true, "sources": ["app/backend"], "omit": ["*/tests/*"],
    "when": "app/backend", "parallel": true},
-  {"key": "backend-lint", "label": "CRISSP: the backend's lint (ruff)", "dir": "app/backend",
-   "run": "py -m ruff check --no-cache .", "seconds": 3, "when": "app/backend"},
+  {"key": "backend-lint", "label": "CRISSP: the backend's lint (ruff, with its security rules)", "dir": "app/backend",
+   "run": "ruff_check .", "seconds": 3, "when": "app/backend"},
   {"key": "frontend", "label": "CRISSP: the frontend's tests", "dir": "app/frontend", "run": "npm test",
    "seconds": 20, "when": "app/frontend/package.json"},
   {"key": "frontend-lint", "label": "CRISSP: the frontend's lint (ESLint and stylelint, crissp's own)",
-   "dir": "app/frontend", "run": "frontend_lint", "seconds": 10, "when": "app/frontend/package.json"}
+   "dir": "app/frontend", "run": "frontend_lint", "seconds": 10, "when": "app/frontend/package.json"},
+  {"key": "audit", "label": "CRISSP: CVEs and misconfigurations (pip-audit, npm audit, trivy)", "run": "audit run",
+   "seconds": 60, "full_only": true, "when": "app"},
+  {"key": "secrets", "label": "CRISSP: secrets in the git history (gitleaks)", "run": "audit secrets", "seconds": 5,
+   "when": "app"},
+  {"key": "sast", "label": "CRISSP: unsafe code (Semgrep with crissp's rules)", "run": "audit sast", "seconds": 15,
+   "when": "app"}
  ],
  "paths": [
-  {"match": "app/backend/", "steps": ["backend", "backend-lint"]},
-  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint"]}
+  {"match": "app/backend/", "steps": ["backend", "backend-lint", "secrets", "sast"]},
+  {"match": "app/frontend/", "steps": ["frontend", "frontend-lint", "secrets", "sast"]}
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},
@@ -25,5 +31,11 @@
  ],
  "notes": [],
  "setup": {"venvs": [], "npm": [], "needs": []},
+ "audit": {"missing": "skip", "pip": ["app/backend/requirements.txt"], "npm": ["app/frontend"],
+           "fs": ["app/backend", "app/frontend"], "dockerfiles": ["app/*/Dockerfile"],
+           "config": ["crissp/deploy/helm/app", "crissp/deploy/terraform"],
+           "images": ["docker-compose.yml", "crissp/deploy/helm/app/values.yaml"],
+           "own_images": {"values": "crissp/deploy/helm/app/values.yaml", "parts": ["backend", "frontend"]},
+           "sast": ["app"], "sast_rules": []},
  "texts": {}
 }

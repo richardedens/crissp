@@ -12,6 +12,25 @@
 #   frontend_lint [<folder>]
 #       the frontend linted with crissp's own pinned tools (lib/frontend_lint.py: ESLint and stylelint, installed once
 #       into crissp's cache, never into the project), in the step's folder.
+#
+#   audit run | secrets | sast
+#       crissp's security scans for the project (lib/audit.py, next to this file wherever crissp is installed): run is
+#       the CVE and misconfiguration audit, secrets the git history, sast the code. Each writes results/<scan>.json
+#       and is red on what blocks; suites.json `audit` says what each scans.
+#
+#   ruff_check <paths…>
+#       ruff (the pinned one, through py) on top of the part's own ruff configuration, with ruff's Bandit rules (S)
+#       added: a backend's lint is also a security lint. Tests may assert and use made-up secrets and random numbers;
+#       nothing else is allowed there that is not allowed in the code.
+CRISSP_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+audit() { python3 "$CRISSP_LIB/audit.py" "$@"; }
+ruff_check() {
+  local ignores=() pattern code
+  for pattern in "**/tests/**" "**/test_*.py" "**/conftest.py"; do
+    for code in S101 S105 S106 S107 S311; do ignores+=(--extend-per-file-ignores "$pattern:$code"); done
+  done
+  py -m ruff check --no-cache --extend-select S "${ignores[@]}" "$@"
+}
 py() {
   if [ -n "${PY:-}" ]; then "$PY" "$@"; else uv run --quiet --no-project --with-requirements "$TOOLS" python "$@"; fi
 }

@@ -63,6 +63,20 @@
    ]
   },
   {
+   "key": "secrets",
+   "label": "Secrets in the git history (gitleaks)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py secrets",
+   "seconds": 5
+  },
+  {
+   "key": "sast",
+   "label": "Unsafe code (Semgrep with crissp's rules, and the rules' own tests)",
+   "dir": "crissp/testsuite",
+   "run": "python3 lib/audit.py rules && python3 lib/audit.py sast",
+   "seconds": 15
+  },
+  {
    "key": "audit",
    "label": "CVE audit of the pinned test tools (pip-audit)",
    "dir": "crissp/testsuite",
@@ -75,82 +89,104 @@
   {
    "match": "crissp/testsuite/accepted-risks.json",
    "steps": [
-    "audit"
+    "audit",
+    "secrets"
    ]
   },
   {
    "match": "crissp/testsuite/lint/",
    "steps": [
-    "lint"
+    "lint",
+    "secrets"
    ]
   },
   {
    "match": "crissp/testsuite/dashboard/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/testsuite/frontend-lint/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/testsuite/",
    "steps": [
     "tools",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/uxsuite/web/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/uxsuite/",
    "steps": [
     "tools",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/ux.sh",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/tool/",
    "steps": [
     "tools",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/look/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/template/githooks/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/template/",
    "steps": [
-    "tools"
+    "tools",
+    "secrets",
+    "sast"
    ]
   },
   {
@@ -158,56 +194,69 @@
    "steps": [
     "tools",
     "lint",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/deploy/check.sh",
    "steps": [
     "deploy",
-    "lint"
+    "lint",
+    "secrets"
    ]
   },
   {
    "match": "crissp/deploy/",
    "steps": [
     "deploy",
-    "python-lint"
+    "python-lint",
+    "secrets"
    ]
   },
   {
    "match": "crissp/deploy.sh",
    "steps": [
     "deploy",
-    "lint"
+    "lint",
+    "secrets"
    ]
   },
   {
    "match": "src/",
    "steps": [
     "package",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "pyproject.toml",
    "steps": [
     "package",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": "crissp/testsuite/package_tests/",
    "steps": [
     "package",
-    "python-lint"
+    "python-lint",
+    "secrets",
+    "sast"
    ]
   },
   {
    "match": ".githooks/",
    "steps": [
     "tools",
-    "lint"
+    "lint",
+    "secrets",
+    "sast"
    ]
   }
  ],
@@ -225,6 +274,15 @@
   ],
   "npm": [
    "crissp/testsuite/lint"
+  ],
+  "config": [
+   "crissp/deploy/helm/app",
+   "crissp/deploy/terraform"
+  ],
+  "sast": [
+   "src",
+   "crissp",
+   "site"
   ]
  },
  "texts": {}

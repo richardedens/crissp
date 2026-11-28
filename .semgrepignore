@@ -1,0 +1,10 @@
+# Semgrep (crissp/testsuite/lib/audit.py sast): what crissp's own scan leaves out. With this file Semgrep's built-in
+# defaults no longer apply here (they skip crissp/testsuite/, the engine itself).
+crissp/testsuite/sast/tests/
+crissp/testsuite/tests/
+crissp/testsuite/package_tests/
+crissp/uxsuite/tests/
+crissp/deploy/tests/
+results/
+node_modules/
+*.min.js
