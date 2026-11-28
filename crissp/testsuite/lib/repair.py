@@ -359,8 +359,8 @@ def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | Non
         parts.append(f".vibe/config.toml is not there → {Path(command).name} {' '.join(args[-2:])}, started in this "
                      "folder (the server .mcp.json registers for Claude Code)")
     elif stale:
-        parts.append(".vibe/config.toml does not name this folder (cwd, CRISSP_ROOT): Vibe's desktop app starts the "
-                     "server elsewhere and gets no crissp tools → written anew for this folder")
+        parts.append(".vibe/config.toml does not name this folder (cwd, CRISSP_ROOT) or this shell's PATH: Vibe's "
+                     "desktop app starts the server elsewhere, with its own PATH → written anew for this folder")
     if not trusted:
         parts.append(f"not trusted in {db} → added (never removed)")
 

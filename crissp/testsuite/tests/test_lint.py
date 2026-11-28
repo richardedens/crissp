@@ -94,3 +94,12 @@ def test_the_lint_script_says_how_to_use_it():
     run = subprocess.run(["bash", str(LINT / "lint.sh"), "--list", "nonsense"], cwd=REPO, capture_output=True, text=True,
                          check=False)
     assert run.returncode == 2 and "usage" in run.stderr
+
+
+def test_every_bash_script_runs_on_the_bash_a_mac_ships():
+    """F-107: a Mac's /bin/bash is 3.2, and a tool started from a desktop app (Vibe's MCP server, an editor) finds that
+    one first: lint.sh's mapfile was "command not found" there and the lint step went red. No bash 4 builtins."""
+    import re
+    bash4 = re.compile(r"^\s*(mapfile|readarray)\b|\bdeclare -A\b|\$\{\w+(,,|\^\^)\}", re.MULTILINE)
+    used = [f for f in shell_scripts() if bash4.search((REPO / f).read_text(encoding="utf-8", errors="replace"))]
+    assert used == []

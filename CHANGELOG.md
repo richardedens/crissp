@@ -12,6 +12,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
   of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
   project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
+- **Checks started from Vibe run with your terminal's tools (F-107).** Vibe's desktop app gives the crissp server
+  its own PATH, so a check started through the crissp tool could pick up a Mac's old bash 3.2 and fail where the
+  same check from a terminal passes. `.vibe/config.toml` now carries the PATH of the shell that ran `crissp init` or
+  `crissp repair --yes`; run `crissp repair --yes` once from your terminal and restart Vibe.
 - **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
   commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
   automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings

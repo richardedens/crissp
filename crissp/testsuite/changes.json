@@ -1577,6 +1577,61 @@
     "test_ux_team::test_a_round_runs_on_mistral_vibe_read_only_without_mcp",
     "test_ux_team::test_the_runner_is_the_one_asked_for_else_the_one_installed"
    ]
+  },
+  {
+   "id": "brief-names-the-checkout",
+   "title": "A test held the checkout to the folder name crissp (F-105)",
+   "problem": "The Vibe config test asserted that brief starts with \"crissp \", while brief names the checkout's folder: in a checkout named otherwise the full run was red.",
+   "fix": "The test expects the checkout's own folder name and the commit.",
+   "sources": [
+    {
+     "file": "crissp/tool/server.py",
+     "symbol": "def brief("
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_crissp_writes_loads_the_tools_from_anywhere"
+   ]
+  },
+  {
+   "id": "audit-test-on-a-mac",
+   "title": "The audit test was red on every Mac (F-106)",
+   "problem": "test_audit_runs_the_engines_security_scans_for_the_project gave bash PATH=/usr/bin:/bin, where a Mac has Apple's python3 3.9, which cannot load the engine.",
+   "fix": "The python that runs the tests comes first on that PATH, as in a terminal where crissp runs.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/steps.sh",
+     "symbol": "audit()"
+    }
+   ],
+   "tests": [
+    "test_run::test_audit_runs_the_engines_security_scans_for_the_project"
+   ]
+  },
+  {
+   "id": "vibe-server-path",
+   "title": "What the crissp tool started from Vibe's desktop app ran with the app's PATH (F-107)",
+   "problem": "Vibe's desktop app gives an MCP server its own PATH: on a Mac /bin/bash 3.2 first, so a check-all started through the crissp tool failed its lint step (mapfile: command not found) while the same run from a terminal was green.",
+   "fix": "vibe.config writes the PATH of the shell that runs crissp init or repair into the server's env, vibe.pinned counts a config without it as stale (repair writes it anew), and lint.sh reads its file lists without mapfile; a test keeps bash 4 builtins out of every bash script.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def fields("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibe.py",
+     "symbol": "def pinned("
+    },
+    {
+     "file": "crissp/testsuite/lint/lint.sh",
+     "symbol": "scripts=()"
+    }
+   ],
+   "tests": [
+    "test_vibe::test_the_config_gives_the_server_this_machines_path",
+    "test_lint::test_every_bash_script_runs_on_the_bash_a_mac_ships",
+    "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew"
+   ]
   }
  ],
  "gaps": [

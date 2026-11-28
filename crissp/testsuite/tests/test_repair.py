@@ -475,7 +475,7 @@ def test_a_vibe_config_that_does_not_name_the_folder_is_written_anew(tmp_path):
     assert "does not name this folder" in fix.what
     fix.do()
     server = repair.tomllib.loads((root / ".vibe/config.toml").read_text())["mcp_servers"][0]
-    assert server["cwd"] == str(root) and server["env"] == {"CRISSP_ROOT": str(root)}
+    assert server["cwd"] == str(root) and server["env"] == {"CRISSP_ROOT": str(root), "PATH": repair.os.environ["PATH"]}
     assert server["args"] == ["crissp==9.9.9", "mcp"]
     assert "vibe" not in [r.key for r in repair.find(root, "9.9.9")]
 

@@ -1,6 +1,7 @@
 """The crissp command passes every option of a guard on to it untouched (crissp check --plan, crissp deploy --cluster,
 crissp ux --shoot <walk>), for the project it is started in. Fast: the scripts are stood in, nothing is run."""
 
+import os
 import subprocess
 import sys
 import tomllib
@@ -184,7 +185,8 @@ def test_the_vibe_config_names_this_folder_and_stays_out_of_git(tmp_path, monkey
     assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
     (project / ".vibe" / "cache.json").write_text("{}")
     server = tomllib.loads((project / ".vibe" / "config.toml").read_text())["mcp_servers"][0]
-    assert server["cwd"] == str(project.resolve()) and server["env"] == {"CRISSP_ROOT": str(project.resolve())}
+    assert server["cwd"] == str(project.resolve())
+    assert server["env"] == {"CRISSP_ROOT": str(project.resolve()), "PATH": os.environ["PATH"]}  # F-107
     assert server["args"] == [f"crissp=={cli.__version__}", "mcp"]
 
     def ignored(rel: str) -> bool:

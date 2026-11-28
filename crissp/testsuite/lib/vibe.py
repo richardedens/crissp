@@ -73,17 +73,20 @@ def trust(vibe_home: Path, root: PurePath) -> str:
     return f"trusted {root} in {db} (to undo: remove that line)"
 
 
-def fields(root: PurePath, command: str, args: list[str]) -> dict[str, str]:
-    """F-100: the config's placeholders as TOML values (json.dumps: a backslash in a Windows path stays valid)."""
-    return {"VIBE_COMMAND": json.dumps(command), "VIBE_ARGS": json.dumps(args), "VIBE_ROOT": json.dumps(str(root))}
+def fields(root: PurePath, command: str, args: list[str], path: str | None = None) -> dict[str, str]:
+    """F-100: the config's placeholders as TOML values (json.dumps: a backslash in a Windows path stays valid). F-107:
+    the PATH of the shell this runs in (else the given one), for what the server starts."""
+    return {"VIBE_COMMAND": json.dumps(command), "VIBE_ARGS": json.dumps(args), "VIBE_ROOT": json.dumps(str(root)),
+            "VIBE_PATH": json.dumps(os.environ.get("PATH", "") if path is None else path)}
 
 
-def config(root: PurePath, command: str, args: list[str]) -> str:
+def config(root: PurePath, command: str, args: list[str], path: str | None = None) -> str:
     """F-100: .vibe/config.toml for this machine. Vibe's desktop app starts the server from its own folder with only
     HOME, PATH and a few more, so the project's folder is named (cwd and CRISSP_ROOT) and the command is a full path;
-    the first `uvx crissp==x` downloads, so it gets 60 s instead of Vibe's 10."""
+    the first `uvx crissp==x` downloads, so it gets 60 s instead of Vibe's 10. F-107: the app's PATH is not the
+    terminal's (on a Mac, bash 3.2 and python 3.9 first), so the checks the server starts get this shell's PATH."""
     text = CONFIG.read_text()
-    for key, value in fields(root, command, args).items():
+    for key, value in fields(root, command, args, path).items():
         text = text.replace("{{" + key + "}}", value)
     return text
 
@@ -97,8 +100,8 @@ def server(root: Path, version: str | None, engine: bool = False) -> tuple[str, 
 
 
 def pinned(text: str, root: PurePath) -> bool:
-    """F-100: whether a config's crissp server names this project's folder (cwd and CRISSP_ROOT), as Vibe's desktop
-    app needs; a config crissp does not know counts as pinned (left as it is)."""
+    """F-100: whether a config's crissp server names this project's folder (cwd and CRISSP_ROOT) and, F-107, a PATH, as
+    Vibe's desktop app needs; a config crissp does not know counts as pinned (left as it is)."""
     try:
         servers = tomllib.loads(text).get("mcp_servers")
     except tomllib.TOMLDecodeError:
@@ -107,4 +110,5 @@ def pinned(text: str, root: PurePath) -> bool:
     if not mine:
         return True
     env = mine[0].get("env") if isinstance(mine[0].get("env"), dict) else {}
-    return _key(mine[0].get("cwd", "")) == _key(root) and _key(env.get("CRISSP_ROOT", "")) == _key(root)
+    return _key(mine[0].get("cwd", "")) == _key(root) and _key(env.get("CRISSP_ROOT", "")) == _key(root) \
+        and bool(env.get("PATH"))
