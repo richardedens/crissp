@@ -172,19 +172,32 @@ blocking); this step measures every language and holds the totals.
 
 ## DAST (lib/audit.py dast)
 
-`audit dast` (full run only) runs the passive OWASP ZAP baseline (`zap-baseline.py`, the ZAP image pinned by digest
-in `lib/audit.py`) against the running app. Passive means it requests the pages and reads the answers, it never
-attacks: missing security headers, cookies without flags, leaking errors and server versions. `audit.dast`:
+`audit dast` (full run only) runs OWASP ZAP (the image pinned by digest in `lib/audit.py`) against the app.
+`audit.dast`:
 
 - `targets`: the app's local URLs (the template: `http://127.0.0.1:8080`, the URL the UX suite uses);
-- `compose`: the compose file that starts the app when it does not answer (`docker compose up -d --build --wait`);
-  the scan stops only what it started;
-- `rules`: the project's ZAP rules file (`<id>\tIGNORE|WARN|FAIL\t(why)`, as `zap-baseline.py -c` reads it; the
-  template: `zap/rules.tsv`, absent until the project writes one).
+- `compose`: the compose file of a **throwaway stack**: the scan starts its own (`docker compose -p crissp-dast up -d
+  --build --wait`, built fresh) and removes it afterwards with its volumes (`down -v --remove-orphans`), so nothing the
+  scan does stays. Something that already answers at a target is a problem: stop it first. Without `compose` the scan
+  looks at the app that runs, the baseline only;
+- `signin` (on the throwaway stack): first-run setup, `{"setup": {"path": "/api/setup", "body": {"email":
+  "dast@example.org", "password": "{password}"}}}`, optionally a `login` of the same shape, and where the token is in
+  the answer (`token`, default `access_token`, dotted for nested; `header`, default `Authorization`; `scheme`, default
+  `Bearer`). `{password}` is a fresh random password per run, never stored or said; ZAP gets the token from a private
+  mode-600 env file, never on a command line;
+- `api` (on the throwaway stack): `{"definition": "http://127.0.0.1:8080/openapi.json", "format": "openapi"}`, the API
+  scan (`zap-api-scan.py`, an active scan: it attacks, which is why it only runs on the throwaway stack; `format`
+  openapi, soap or graphql);
+- `rules`: the project's ZAP rules file (`<id>\tIGNORE|WARN|FAIL\t(why)`, as ZAP's `-c` reads it; the template:
+  `zap/rules.tsv`, absent until the project writes one).
 
-A high risk blocks, and so does every rule the rules file makes FAIL; the rest is listed. It needs Docker; an app that
-does not answer is a problem, never a pass. On Linux ZAP shares the host's network; on macOS it reaches the app
-through `host.docker.internal`.
+First a **canary**: a page without any security header, served on this machine. ZAP must find something on it, else
+the scan proves nothing and says so. Then the baseline (`zap-baseline.py`, passive: it requests the pages and reads the
+answers) of every target, and the API scan. A high or a medium risk blocks, and so does every rule the rules file makes
+FAIL; low and informational are listed. A finding is accepted for a while in `accepted-risks.json` by its rule's id and
+the site (`package`: the target's origin, as the report shows it). It needs Docker; an app that does not answer is a
+problem, never a pass. On Linux ZAP shares the host's network; on macOS it reaches the app through
+`host.docker.internal`.
 
 ## Licences and the SBOM (lib/audit.py licenses)
 

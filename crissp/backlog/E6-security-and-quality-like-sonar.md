@@ -77,9 +77,12 @@ Why        A passive OWASP ZAP baseline against the app docker-compose starts on
 
 ### E6-F5-01 · The passive ZAP baseline against the running app                          [review] [M]
 Why        nothing scanned the running app (F-143)
-What       audit dast: zap-baseline.py in the pinned ZAP image against audit.dast.targets, compose started and stopped
-           when the app is down, the project's rules file; HIGH and FAIL rules block
-Done when  a high risk or a FAIL rule blocks the full run; an app that does not answer is a problem
+What       audit dast: a canary first (ZAP must find the missing headers of a page served here), then
+           zap-baseline.py in the pinned ZAP image against audit.dast.targets; with a compose file a throwaway stack
+           (crissp-dast, built fresh, removed with its volumes), signed in through first-run setup (signin) and the
+           API scan (api, zap-api-scan.py); the project's rules file; HIGH, MEDIUM and FAIL rules block unless accepted
+Done when  a high or medium risk or a FAIL rule blocks the full run; a canary ZAP finds nothing on, an app that does
+           not answer and a failed sign-in are problems; the API scan never runs against an app crissp did not start
 Tests      test_dast, test_template
 Depends    —
 

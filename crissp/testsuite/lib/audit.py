@@ -24,10 +24,19 @@ SAST is the pinned Semgrep, offline (metrics off, no registry), with crissp's ru
 JavaScript, TypeScript, JSX) and the rules folders the project names (sast_rules), on the code it names (sast). An
 ERROR blocks; a WARNING is listed for review. The project's .semgrepignore counts.
 
-DAST is the passive OWASP ZAP baseline (the pinned image, zap-baseline.py: it looks, it never attacks) against the
-running app (audit.dast: targets, the app's local URLs; compose, the compose file that starts it when it is not up,
-stopped again afterwards; rules, the project's ZAP rules file, IGNORE/WARN/FAIL per rule). It needs Docker. A high
-risk blocks, and so does every rule the rules file makes FAIL; the rest is listed.
+DAST is OWASP ZAP (the image pinned by digest) against the app (audit.dast). With a compose file (compose) it starts a
+throwaway stack of its own (compose project crissp-dast, built fresh) and removes it afterwards with its volumes, so
+nothing the scan does stays; without one it scans the app that runs (targets, the app's local URLs). First a canary: a
+page without any security header, served on this machine, on which ZAP must find something, else the scan proves
+nothing. Then the baseline (zap-baseline.py: it looks, it never attacks) of every target, and on the throwaway stack:
+- signin: first-run setup (setup: {path, body}; "{password}" in a body is a fresh random password), optionally a login,
+  and the token from the answer (token, default access_token; header, default Authorization; scheme, default Bearer):
+  ZAP sends it on every request (from a private mode-600 env file, never on a command line);
+- api: the API scan (zap-api-scan.py, active) of the API definition (definition: its URL; format: openapi, soap or
+  graphql).
+rules is the project's ZAP rules file, IGNORE/WARN/FAIL per rule. It needs Docker. A high or medium risk blocks unless
+accepted (accepted-risks.json: the rule's id and the site), and so does every rule the rules file makes FAIL; low and
+informational are listed.
 
 Licences: every package of the pip and npm places above with its licence (from the lock file; for pip from PyPI,
 cached), into a CycloneDX SBOM. Forbidden (AGPL, SSPL, BUSL, non-commercial) and copyleft (GPL) licences block,
@@ -37,20 +46,25 @@ allow ({package: why}, for good), block (more SPDX ids), product (the SBOM's nam
     python3 crissp/testsuite/lib/audit.py run       scan, write crissp/testsuite/results/audit.json, exit 1 when anything blocks
     python3 crissp/testsuite/lib/audit.py secrets   the git history, into results/secrets.json, exit 1 on a secret
     python3 crissp/testsuite/lib/audit.py sast      the code (audit.sast), into results/sast.json, exit 1 on an ERROR
-    python3 crissp/testsuite/lib/audit.py dast      the running app (audit.dast), into results/dast.json, exit 1 on a high risk
+    python3 crissp/testsuite/lib/audit.py dast      the app (audit.dast), into results/dast.json, exit 1 on a high or medium risk
     python3 crissp/testsuite/lib/audit.py licenses  every dependency's licence into results/licenses.json and the SBOM
                                                     into results/sbom.cdx.json, exit 1 on a licence the product may not ship
     python3 crissp/testsuite/lib/audit.py rules     crissp's Semgrep rules against their own tests (sast/tests)
 """
 
+import contextlib
 import datetime
+import http.server
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -459,95 +473,236 @@ def zap_rules(text: str) -> set[str]:
 
 
 def from_zap(data: dict, target: str, fail: set[str]) -> list[dict]:
+    """ZAP's alerts as findings, one per rule and site: a high or medium risk blocks, and a rule the project makes FAIL."""
     out = []
     for site in data.get("site", []):
         for a in site.get("alerts", []):
             severity = RISK.get(str(a.get("riskcode")), "UNKNOWN")
             uris = [i.get("uri", "") for i in a.get("instances", [])]
+            name = a.get("alert") or a.get("name", "")
             out.append(
                 _finding(
                     "zap",
                     target,
-                    uris[0] if uris else site.get("@name", target),
+                    site.get("@name", target),
                     f"{a.get('count', len(uris))} URLs",
                     str(a.get("pluginid")),
                     severity,
                     "",
-                    a.get("alert") or a.get("name", ""),
-                    severity == "HIGH" or str(a.get("pluginid")) in fail,
+                    f"{name} (first at {uris[0]})" if uris else name,
+                    severity in ("HIGH", "MEDIUM") or str(a.get("pluginid")) in fail,
                 )
             )
     return out
 
 
-def _zap(root: Path, run, target: str, rules: Path | None, platform: str) -> tuple[dict | None, str]:
-    """One ZAP baseline of one target: its JSON report, or None and why."""
-    with tempfile.TemporaryDirectory(prefix="crissp-zap-") as work:
+ZAP_SCANS = {"baseline": "zap-baseline.py", "api": "zap-api-scan.py"}
+STACK = "crissp-dast"  # the throwaway stack's compose project: containers, networks and volumes of its own
+
+
+def _zap(root: Path, run, scan: list[str], rules: Path | None, platform: str, auth=None) -> tuple[dict | None, str]:
+    """One ZAP scan (["baseline", url] or ["api", definition, format]): its JSON report, or None and why."""
+    kind, url, *more = scan
+    with (
+        tempfile.TemporaryDirectory(prefix="crissp-zap-") as work,
+        tempfile.TemporaryDirectory(prefix="crissp-zap-auth-") as private,
+    ):
         os.chmod(work, 0o777)  # noqa: S103 — a private temp folder that ZAP, its own user, writes into
         network = ["--network", "host"] if platform.startswith("linux") else []
-        seen = target if network else LOCAL.sub(r"\1host.docker.internal", target)
-        args = ["-t", seen, "-J", "zap.json", "-I"]
+        seen = url if network else LOCAL.sub(r"\1host.docker.internal", url)
+        args = ["-t", seen, *(["-f", *more] if more else []), "-J", "zap.json", "-I"]
         if rules:
             (Path(work) / "rules.tsv").write_text(rules.read_text())
             args += ["-c", "rules.tsv"]
+        env = []
+        if auth:  # the token in a private mode-600 file, never on a command line or in a log
+            envfile = Path(private) / "auth.env"
+            envfile.touch(mode=0o600)
+            site = urllib.parse.urlsplit(seen).hostname
+            envfile.write_text(
+                f"ZAP_AUTH_HEADER={auth[0]}\nZAP_AUTH_HEADER_VALUE={auth[1]}\nZAP_AUTH_HEADER_SITE={site}\n"
+            )
+            env = ["--env-file", str(envfile)]
         code, out, err = run(
-            ["docker", "run", "--rm", *network, "-v", f"{work}:/zap/wrk:rw", ZAP, "zap-baseline.py", *args], root
+            ["docker", "run", "--rm", *network, *env, "-v", f"{work}:/zap/wrk:rw", ZAP, ZAP_SCANS[kind], *args], root
         )
         report = Path(work) / "zap.json"
         if not report.is_file():
-            return None, f"ZAP could not scan {target} (exit {code}): {(err or out).strip()[-300:]}"
+            return None, f"ZAP could not scan {url} (exit {code}): {(err or out).strip()[-300:]}"
         return json.loads(report.read_text()), ""
 
 
-def _start(root: Path, run, compose: Path | None, targets: list[str], reach, problems: list) -> bool:
-    """Start the app with its compose file when it does not answer; whether this scan started it."""
-    if not compose or not compose.is_file() or all(reach(t) for t in targets):
+@contextlib.contextmanager
+def canary_server():
+    """A page without a single security header, served on this machine: ZAP must find something on it."""
+
+    class Page(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # the name http.server calls
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(b"<!doctype html><title>crissp canary</title><p>No security header at all.")
+
+        def log_message(self, *_):
+            pass  # the scan's log stays the scan's
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Page)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def _canary(root: Path, run, platform: str, canary) -> str:
+    """Why the scan would prove nothing, or "" when ZAP found the canary's missing headers."""
+    with canary() as url:
+        report, why = _zap(root, run, ["baseline", url], None, platform)
+    if report is None:
+        return f"the canary: {why}"
+    if not from_zap(report, url, set()):
+        return "ZAP found nothing on the canary (a page without any security header): the scan proves nothing"
+    return ""
+
+
+def post_json(url: str, body: dict) -> dict:
+    """POST body as JSON to the throwaway stack; its JSON answer ({} when it is empty)."""
+    if not url.startswith(("http://", "https://")):
+        raise ValueError(f"not an http(s) URL: {url}")
+    request = urllib.request.Request(  # noqa: S310 — http(s) only, checked above
+        url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST"
+    )
+    with urllib.request.urlopen(request, timeout=30) as answer:  # noqa: S310 — http(s) only, checked above
+        text = answer.read()
+    return json.loads(text) if text.strip() else {}
+
+
+def _signin(base: str, signin: dict, post) -> tuple[tuple[str, str] | None, str]:
+    """Sign in through the app's first-run setup (and its login): the header ZAP sends, or None and why."""
+    password = secrets.token_urlsafe(24)  # a fresh stack, a fresh password: never stored, never said
+
+    def body(step: dict) -> dict:
+        return json.loads(json.dumps(step.get("body", {})).replace("{password}", password))
+
+    try:
+        answer = post(base + signin["setup"]["path"], body(signin["setup"]))
+        if signin.get("login"):
+            answer = post(base + signin["login"]["path"], body(signin["login"]))
+    except (OSError, ValueError, KeyError) as e:
+        return None, f"signing in through first-run setup failed: {e}"
+    token: object = answer
+    for part in signin.get("token", "access_token").split("."):
+        token = token.get(part) if isinstance(token, dict) else None
+    if not isinstance(token, str) or not token:
+        return None, f"signing in through first-run setup gave no token at {signin.get('token', 'access_token')}"
+    return (signin.get("header", "Authorization"), f"{signin.get('scheme', 'Bearer')} {token}".strip()), ""
+
+
+def _compose(root: Path, run, compose: Path, *args: str) -> tuple[int, str]:
+    code, out, err = run(["docker", "compose", "-p", STACK, "-f", str(compose), *args], root)
+    return code, (err or out).strip()[-300:]
+
+
+def _stack(root: Path, run, compose: Path | None, targets: list[str], reach, problems: list) -> bool:
+    """The app to scan: a throwaway stack when there is a compose file (whether it was started), else the running app."""
+    if compose is None:
+        down = [t for t in targets if not reach(t)]
+        if down:
+            problems.append(
+                f"the app does not answer at {', '.join(down)}: start it first (docker compose up), or name its "
+                "compose file in audit.dast.compose for a throwaway stack"
+            )
         return False
-    code, out, err = run(["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait"], root)
+    busy = [t for t in targets if reach(t)]
+    if busy:
+        problems.append(
+            f"something already answers at {', '.join(busy)}: stop it (docker compose down); the scan starts a "
+            "throwaway stack of its own"
+        )
+        return False
+    code, said = _compose(root, run, compose, "up", "-d", "--build", "--wait")
     if code:
-        problems.append(f"docker compose up could not start the app (exit {code}): {(err or out).strip()[-300:]}")
-    return code == 0
+        problems.append(f"docker compose up could not start the throwaway stack (exit {code}): {said}")
+    elif not all(reach(t) for t in targets):
+        problems.append(f"the throwaway stack does not answer at {', '.join(t for t in targets if not reach(t))}")
+    return True
 
 
-def _rules_file(root: Path, dast: dict, conf: dict, absent: list, problems: list) -> Path | None:
-    """The project's ZAP rules file, when it names one and it is there."""
-    if not dast.get("rules"):
+def _place(root: Path, name: str | None, conf: dict, absent: list, problems: list) -> Path | None:
+    """A file audit.dast names, when it names one and it is there."""
+    if not name:
         return None
-    rules = root / dast["rules"]
-    if rules.is_file():
-        return rules
-    (absent if conf.get("missing") == "skip" else problems).append(dast["rules"])
+    if (root / name).is_file():
+        return root / name
+    (absent if conf.get("missing") == "skip" else problems).append(name)
     return None
 
 
-def dast_all(
-    root: Path, run, on: datetime.date, accepted: dict, conf: dict, reach=None, platform: str = sys.platform
-) -> dict:
-    """The passive ZAP baseline (pinned image) against the running app. Started with docker compose when it is not up
-    and the project names a compose file; stopped again only when this scan started it."""
-    reach = reach or reachable
-    findings, problems, scanned, absent = [], [], [], []
-    dast = conf.get("dast") or {}
-    targets = dast.get("targets", [])
+def _setup(root: Path, dast: dict, conf: dict) -> tuple[list[str], list, list, Path | None, Path | None]:
+    """The targets, what is absent, the problems before anything runs, the rules file and the compose file."""
+    targets, absent, problems = dast.get("targets", []), [], []
     if not targets:
         absent.append("audit.dast.targets")
-    rules = _rules_file(root, dast, conf, absent, problems)
-    compose = root / dast["compose"] if dast.get("compose") else None
-    started = bool(targets) and _start(root, run, compose, targets, reach, problems)
-    down = [t for t in targets if not problems and not reach(t)]
-    if down:
-        problems.append(f"the app does not answer at {', '.join(down)}: start it first (docker compose up)")
-    if not problems:
-        fail = zap_rules(rules.read_text()) if rules else set()
-        for target in targets:
-            report, why = _zap(root, run, target, rules, platform)
-            if report is None:
-                problems.append(why)
-            else:
-                findings.extend(from_zap(report, target, fail))
-                scanned.append(f"zap baseline {target}")
+    problems += [f"not an http(s) URL: {t}" for t in targets if not t.startswith(("http://", "https://"))]
+    rules = _place(root, dast.get("rules"), conf, absent, problems)
+    compose = _place(root, dast.get("compose"), conf, absent, problems)
+    if (dast.get("api") or dast.get("signin")) and compose is None and targets:
+        problems.append(
+            "the API scan and the sign-in run only against a throwaway stack: name its compose file in "
+            "audit.dast.compose"
+        )
+    return targets, absent, problems, rules, compose
+
+
+def _scans(root: Path, run, dast: dict, targets: list[str], rules, platform: str, post, findings, scanned) -> list:
+    """The baseline of every target and, on the throwaway stack, the sign-in and the API scan; the problems."""
+    auth = None
+    if dast.get("signin"):
+        origin = urllib.parse.urlsplit(targets[0])
+        auth, why = _signin(f"{origin.scheme}://{origin.netloc}", dast["signin"], post)
+        if auth is None:
+            return [why]
+    fail = zap_rules(rules.read_text()) if rules else set()
+    scans = [["baseline", t] for t in targets]
+    if dast.get("api"):
+        scans.append(["api", dast["api"]["definition"], dast["api"].get("format", "openapi")])
+    problems = []
+    for scan in scans:
+        report, why = _zap(root, run, scan, rules, platform, auth)
+        if report is None:
+            problems.append(why)
+            continue
+        findings.extend(from_zap(report, scan[1], fail))
+        scanned.append(f"zap {scan[0]} {scan[1]}" + (" (signed in)" if auth else ""))
+    return problems
+
+
+def dast_all(
+    root: Path,
+    run,
+    on: datetime.date,
+    accepted: dict,
+    conf: dict,
+    reach=None,
+    platform: str = sys.platform,
+    post=None,
+    canary=None,
+) -> dict:
+    """OWASP ZAP (pinned image) against the app: a canary first, then the baseline of every target and, on a
+    throwaway compose stack (removed afterwards with its volumes), the sign-in and the API scan."""
+    dast = conf.get("dast") or {}
+    targets, absent, problems, rules, compose = _setup(root, dast, conf)
+    findings, scanned = [], []
+    if targets and not problems:
+        why = _canary(root, run, platform, canary or canary_server)
+        problems += [why] if why else []
+    started = bool(targets) and not problems and _stack(root, run, compose, targets, reach or reachable, problems)
+    if targets and not problems:
+        problems += _scans(root, run, dast, targets, rules, platform, post or post_json, findings, scanned)
     if started:
-        run(["docker", "compose", "-f", str(compose), "down"], root)
+        code, said = _compose(root, run, compose, "down", "-v", "--remove-orphans")
+        problems += [f"docker compose down could not remove the throwaway stack (exit {code}): {said}"] if code else []
     return {**_report("dast", on, scanned, problems, findings, accepted), "absent": absent}
 
 
@@ -917,7 +1072,7 @@ def render(report: dict) -> str:
     elif kind == "sast":
         lines.append(f"No unsafe code blocks ({len(listed)} listed for review).")
     elif kind == "dast":
-        lines.append(f"No high risk on the running app ({len(listed)} listed).")
+        lines.append(f"No high or medium risk on the app ({len(listed)} listed).")
     elif kind == "licenses":
         n = report["components"]
         lines.append(
