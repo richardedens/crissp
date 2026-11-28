@@ -4,7 +4,7 @@ Why: crissp asks every project to lint its backend and frontend; its own Python,
 one written standard too, read the same by the checks, an editor and an agent. Ported from the local branch backup-
 local-main (its E6), on today's main.
 
-## E8-F1 · crissp's own code held to one standard                                        [doing]
+## E8-F1 · crissp's own code held to one standard                                        [review]
 Why        the rules live in one place (pyproject.toml, crissp/testsuite/lint/, .editorconfig), the steps pass no flags
            of their own, and the code is clean against them
 
@@ -38,7 +38,7 @@ Done when  an editor writes UTF-8, LF, final newline, 4-space Python, 120
 Tests      test_python_lint::test_an_editor_writes_files_the_way_the_checks_hold_them
 Depends    —
 
-### E8-F1-05 · One layout: ruff format, once, then checked                               [todo] [M]
+### E8-F1-05 · One layout: ruff format, once, then checked                               [review] [M]
 Why        crissp's Python has no layout standard and E501 is still off (157 lines over 130)
 What       ruff format over src/, crissp/ and site/ in a commit of its own, listed in .git-blame-ignore-revs; python-
            lint adds ruff format --check; E501 on
