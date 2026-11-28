@@ -16,8 +16,8 @@ for p in (UXSUITE, Path(__file__).resolve().parent):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import ux_config  # noqa: E402
-import ux_team  # noqa: E402
+import ux_config
+import ux_team
 
 PERSONAS = [
     {"key": "tech", "name": "Sam", "role": "software engineer", "device": "desktop", "brief": "Notices states."},

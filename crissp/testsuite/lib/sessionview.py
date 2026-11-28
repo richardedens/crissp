@@ -33,6 +33,7 @@ import project
 ROOT = project.root()  # the project whose sessions these are (CRISSP_ROOT, or the current directory)
 OUT = project.results(ROOT) / "sessions"
 LOOK = Path(__file__).resolve().parents[2] / "look"  # the shared look, beside this engine
+DASHBOARD = Path(__file__).resolve().parents[1] / "dashboard"  # the pages' stylesheets and scripts (F-94)
 PROJECTS = Path.home() / ".claude" / "projects"
 
 SECRET = re.compile(r"(?i)((?:token|password|passwd|secret|api[_-]?key|bearer)[\"'=: ]+)[^\s\"']+")
@@ -285,106 +286,7 @@ def amount(n: int) -> str:
     return f"{n / 1e6:.1f}M" if n >= 1e6 else f"{n / 1e3:.1f}k" if n >= 1e3 else str(n)
 
 
-STYLE = """
-:root{--font:'Figtree',-apple-system,'SF Pro Text',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
---bg:#0a0b10;--ink:#eceef5;--ink-2:#c9cbd6;--muted:#9a9cab;--faint:#696c7c;--line:rgba(181,138,255,.13);
---line-strong:rgba(181,138,255,.28);--hair:rgba(255,255,255,.06);--glass:rgba(19,19,28,.56);--glass-strong:rgba(16,16,24,.86);
---accent:#b58aff;--accent-2:#7b2ff7;--teal:#3dd6c6;--blue:#6ea8ff;--ok:#7ee2a8;--warn:#ffb454;--bad:#ff6b6b;--pink:#f062c0;
---shadow:0 30px 80px -40px rgba(0,0,0,.75),0 2px 6px -2px rgba(0,0,0,.35);--radius:16px;color-scheme:dark}
-[data-theme=light]:root{--bg:#f3f2f8;--ink:#17151f;--ink-2:#34313f;--muted:#5f5c6d;--faint:#8b8898;
---line:rgba(91,63,208,.14);--line-strong:rgba(91,63,208,.3);--hair:rgba(23,21,31,.06);--glass:rgba(255,255,255,.66);
---glass-strong:rgba(255,255,255,.94);--accent:#6c3cf0;--accent-2:#5a24e0;--teal:#0f9f92;--blue:#2f6fe0;--ok:#16a06a;
---warn:#c47a00;--bad:#d93a4a;--pink:#cd148e;--shadow:0 30px 70px -40px rgba(40,20,90,.35),0 2px 6px -2px rgba(40,20,90,.12);
-color-scheme:light}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
-font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}::selection{background:rgba(181,138,255,.35)}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-.water{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.water canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.8}
-[data-theme=light] .water canvas{opacity:.16;filter:saturate(1.4) hue-rotate(-8deg)}
-.water i{position:absolute;inset:0;background:radial-gradient(1200px 700px at 78% -10%,rgba(123,47,247,.18),transparent 60%),
-radial-gradient(900px 600px at -10% 110%,rgba(61,214,198,.08),transparent 60%),linear-gradient(180deg,rgba(10,11,16,.2),rgba(10,11,16,.6) 85%)}
-[data-theme=light] .water i{background:radial-gradient(1200px 700px at 78% -10%,rgba(124,77,255,.14),transparent 60%),
-linear-gradient(180deg,rgba(243,242,248,.3),rgba(243,242,248,.8) 85%)}
-main{position:relative;z-index:1;padding:28px 16px 40px}.intro{max-width:1180px}
-.glass,.stat,.card,.node{background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);
-box-shadow:var(--shadow),inset 0 1px var(--hair);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
-.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;color:var(--muted)}
-h1{font:700 30px/1.1 var(--font);letter-spacing:-.9px;margin:6px 0}h1 i{font-style:normal;color:var(--accent)}
-h2{font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
-.muted{color:var(--muted)}code{font:12px var(--mono);overflow-wrap:anywhere;color:var(--ink-2)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:18px 0}
-.stat{padding:12px 14px;border-radius:14px;color:var(--muted);font-size:12px}
-.stat b{display:block;font:700 24px/1.1 var(--font);letter-spacing:-.6px;color:var(--ink)}
-.stat.hero{grid-column:span 2;background:linear-gradient(135deg,rgba(123,47,247,.28),rgba(61,214,198,.12)),var(--glass);
-border-color:var(--line-strong)}.stat.hero b{font-size:32px;background:linear-gradient(90deg,var(--accent),var(--teal));
--webkit-background-clip:text;background-clip:text;color:transparent}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px;margin-bottom:24px}
-.card{padding:16px}ul{list-style:none;margin:0;padding:0}
-.card li{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
-.card li:last-child{border:0}li.auto span{color:var(--ok)}li.read span{color:var(--blue)}li.never span{color:var(--bad);font-weight:600}
-.pipe{display:flex;overflow-x:auto;align-items:flex-start;padding:6px 0 24px;scroll-snap-type:x proximity;
-scrollbar-color:var(--line-strong) transparent}
-.col{flex:0 0 350px;position:relative;padding:0 12px;scroll-snap-align:start}
-.col::before{content:"";position:absolute;top:30px;left:0;right:0;height:2px;
-background:linear-gradient(90deg,var(--accent-2),var(--teal),var(--accent-2));background-size:300% 100%;
-animation:flow 9s linear infinite;opacity:.75}
-.col:first-child::before{left:50%}.col:last-child::before{right:50%}
-@keyframes flow{to{background-position:300% 0}}
-.node{position:relative;z-index:1;padding:10px 12px;border-radius:14px;min-width:0;overflow-wrap:anywhere;
-transition:border-color .2s,transform .2s,box-shadow .2s}
-.node:hover{border-color:var(--line-strong);transform:translateY(-1px);box-shadow:var(--shadow),0 0 0 1px var(--line-strong),
-0 0 28px -8px rgba(181,138,255,.45)}
-.node.prompt{border-top:2px solid var(--accent)}.n{display:inline-grid;place-items:center;min-width:24px;height:24px;
-padding:0 6px;border-radius:12px;margin-right:8px;font:700 12px var(--font);color:#fff;
-background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 16px -2px rgba(123,47,247,.7)}
-.when{color:var(--muted);font-size:12px}.ptext{margin:8px 0 0;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:5;
--webkit-box-orient:vertical;overflow:hidden;color:var(--ink-2)}details.full>summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:6px}
-details.full[open] .ptext{-webkit-line-clamp:unset}
-.tank{display:flex;align-items:center;gap:8px;margin-top:10px;font:600 11px var(--mono);color:var(--muted)}
-.tank span{flex:1;height:8px;border-radius:5px;background:rgba(181,138,255,.1);overflow:hidden;position:relative}
-.tank i{position:absolute;inset:0 auto 0 0;border-radius:5px;background:linear-gradient(90deg,var(--teal),var(--accent),var(--teal));
-background-size:200% 100%;animation:flow 4s linear infinite;box-shadow:0 0 12px rgba(61,214,198,.5)}
-.tree,.tree ul{list-style:none;margin:0;padding:0 0 0 22px}.tree{margin-left:14px}
-.tree li{position:relative;padding:12px 0 0}
-.tree li::before{content:"";position:absolute;left:-15px;top:0;bottom:0;width:2px;
-background:linear-gradient(180deg,var(--line-strong),var(--line))}
-.tree li:last-child::before{bottom:auto;height:30px}
-.tree li::after{content:"";position:absolute;left:-15px;top:30px;width:15px;height:2px;background:var(--line-strong)}
-.node.main{box-shadow:var(--shadow),inset 3px 0 var(--blue)}.node.sub{box-shadow:var(--shadow),inset 3px 0 var(--accent)}
-.node.F{box-shadow:var(--shadow),inset 3px 0 var(--warn)}.node.D{box-shadow:var(--shadow),inset 3px 0 var(--teal)}
-.node.rep{border-style:dashed;box-shadow:none}
-.kind{display:block;margin-bottom:2px;font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted)}
-.sub .kind,.rep .kind{color:var(--accent)}.main .kind{color:var(--blue)}.F .kind{color:var(--warn)}.D .kind{color:var(--teal)}
-.node>details>summary{cursor:pointer;list-style:none}.node>details>summary::-webkit-details-marker{display:none}
-.node>details>summary b::before{content:"▸ ";color:var(--muted)}.node>details[open]>summary b::before{content:"▾ "}
-.cost{float:right;font:600 11px var(--mono);color:var(--teal)}
-.status{float:right;margin-left:8px;font-size:11px;color:var(--ok)}.status.busy{color:var(--warn)}
-.chip{display:inline-block;margin:6px 4px 0 0;padding:1px 7px;border-radius:9px;font:11px var(--mono);
-border:1px solid currentColor;background:rgba(255,255,255,.02)}
-.read{color:var(--blue)}.change{color:var(--warn)}.run{color:var(--ink-2)}.ask{color:var(--teal)}.other{color:var(--faint)}
-.small{font-size:12px;margin:6px 0 0}.row{margin:6px 0 0;font-size:13px;color:var(--ink-2)}
-.row .id{font:700 12px var(--mono);margin-right:6px}.F .id{color:var(--warn)}.D .id{color:var(--teal)}
-.row.taken .id{text-decoration:line-through}
-.acts>summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:6px}ol{list-style:none;padding:0;margin:6px 0 0}
-ol li{padding:4px 0;border-top:1px solid var(--line);font-size:12px;overflow-wrap:anywhere}ol summary{cursor:pointer;list-style:none}
-.ico{display:inline-block;width:16px;font:700 11px var(--mono)}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px var(--mono);background:rgba(0,0,0,.25);color:var(--ink-2);
-padding:8px;border-radius:8px;margin:4px 0;max-height:240px;overflow:auto}
-table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
-th{font-size:10.5px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted)}
-tr:last-child td{border:0}tfoot td{font-weight:700;border-top:1px solid var(--line-strong)}
-td.num{font-family:var(--mono);text-align:right}.wrap{overflow-x:auto;border-radius:var(--radius)}
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:24px;padding:12px 24px;flex-wrap:wrap;
-background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-border-bottom:1px solid var(--line)}.brand{display:flex;gap:12px;align-items:center}
-.logo{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--accent-2);color:#fff;font-weight:800}
-.top h1{margin:0;font:600 16px var(--font);letter-spacing:0}.brand p{margin:0;color:var(--muted);font-size:12px}
-.top nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}.top nav a{color:var(--muted);padding:7px 12px;border-radius:8px;
-font:500 13px var(--font)}.top nav a:hover{color:var(--ink);text-decoration:none}
-.top nav a.on{background:var(--glass-strong);color:var(--ink)}
-.ghost{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer;font:13px var(--font)}
-@media (prefers-reduced-motion:reduce){.col::before,.tank i{animation:none}.node{transition:none}}"""
+STYLE = (DASHBOARD / "sessions.css").read_text(encoding="utf-8")  # F-94: a file linters read
 
 # The water of the shared look (crissp/look/water.js, plain WebGL), built into these pages so they also work alone.
 WATER_JS = LOOK / "water.js"

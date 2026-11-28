@@ -8,7 +8,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 TEMPLATE = REPO / "crissp" / "template" / "crissp"
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
-import project  # noqa: E402
+import project
 
 
 def filled(path: Path, product: str = "Example") -> dict:

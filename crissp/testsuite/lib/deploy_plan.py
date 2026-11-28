@@ -178,7 +178,7 @@ def record(components: list[str], root: Path = ROOT, deployed_path: Path = DEPLO
     last = json.loads(deployed_path.read_text()) if deployed_path.is_file() else {}
     entry = {"commit": _git("rev-parse", "HEAD", root=root).strip(), "version": (root / "VERSION").read_text().strip(),
              "at": time.time(), "rebuilt": components}
-    history = (last.get("history", []) + [{k: last[k] for k in ("commit", "version", "at", "rebuilt")}])[-20:] if last else []
+    history = ([*last.get("history", []), {k: last[k] for k in ("commit", "version", "at", "rebuilt")}])[-20:] if last else []
     deployed_path.parent.mkdir(parents=True, exist_ok=True)
     deployed_path.write_text(json.dumps({**entry, "history": history}, indent=2))
     return entry

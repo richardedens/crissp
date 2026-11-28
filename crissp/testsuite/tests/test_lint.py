@@ -14,8 +14,8 @@ REPO = Path(__file__).resolve().parents[3]
 LIB = REPO / "crissp" / "testsuite" / "lib"
 LINT = REPO / "crissp" / "testsuite" / "lint"
 sys.path.insert(0, str(LIB))
-import impact  # noqa: E402
-import project  # noqa: E402
+import impact
+import project
 
 
 def tracked() -> list[str]:

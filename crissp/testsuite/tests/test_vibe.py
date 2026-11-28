@@ -7,7 +7,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
-import vibe  # noqa: E402
+import vibe
 
 WIN = Path("C:\\Users\\x\\proj")
 

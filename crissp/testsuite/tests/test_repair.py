@@ -10,7 +10,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
-import repair  # noqa: E402
+import repair
 
 OLD_STEPS = [
     {"key": "unit", "label": "Unit tests", "dir": ".", "run": "covered tests", "gate": True, "sources": ["src"]},

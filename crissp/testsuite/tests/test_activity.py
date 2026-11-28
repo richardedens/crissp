@@ -10,8 +10,8 @@ from pathlib import Path
 
 LIB = Path(__file__).resolve().parents[1] / "lib"
 sys.path.insert(0, str(LIB))
-import activity  # noqa: E402
-import sessionview as sv  # noqa: E402
+import activity
+import sessionview as sv
 
 T = "2026-11-24T10:{:02d}:00Z"
 NOW = datetime.fromisoformat("2026-11-24T10:10:00+00:00").timestamp()

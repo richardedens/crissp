@@ -28,6 +28,18 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   run stays as safe as on Claude Code: it works in its own results folder and Vibe refuses a write anywhere else, it has
   no shell, no web and no MCP servers, it reads only the UX suite and the agreement and never a `.env` file. It plays
   the personas itself, one after the other, since Vibe gives a headless run no agents.
+- **crissp's own lint holds the engine to the standard library and finds copied code (F-93).** The `python-lint`
+  step also scans every import in the engine's runtime code (anything outside the standard library and the engine's
+  own modules fails, by file and line) and runs pylint's duplicate-code check (six similar lines or more).
+- **crissp's own Python is held to more of ruff's rules (F-92).** Besides the defaults: bugbear's likely bugs, bandit's
+  security rules (a shell stays forbidden), simpler forms, import order, names, comprehensions, ruff's own rules (a
+  `noqa` that suppresses nothing fails) and a docstring per module. The rules live in `pyproject.toml` alone, so an
+  editor or a hand-run `ruff check` gives the step's answer.
+- **The crissp tool only probes this machine's dashboard (F-91).** Checking whether the dashboard is up, it now opens
+  only `http://127.0.0.1` addresses, never a file or another host named in the dashboard's log.
+- **A test that could not fail now can (F-90).** A `pytest.raises(match="cannot hold a |")` matched every message,
+  since `match=` is a regular expression. ruff's RUF043 is now part of crissp's own lint, and 19 patterns are escaped
+  or made raw.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share
@@ -40,6 +52,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **Easier on a phone, and readable buttons (F-72).** The top bar no longer makes pages scroll sideways on a phone: the
   sections get a row of their own. Text on the purple accent is dark in the dark theme, so primary buttons pass WCAG AA
   contrast.
+- **See the debate, and enlarge a design (F-80).** A round on the UX page now shows the debate itself, not only the
+  moderator's summary: each persona's first look (score, what is good, the problems with a link to the screenshot,
+  ideas) and every answer per debate round (who agrees, who disagrees with whom and why, who changed their mind), live
+  while the round runs. Every screenshot and design opens big over the whole page: before, side by side or after, at
+  fit, 100%, 150% or 200% (keys 1-3 switch the view, + - 0 zoom, Esc closes).
 - **git lints before every commit (F-50).** `crissp init` writes `.githooks/pre-commit` and sets
   `core.hooksPath .githooks`, so a commit runs the project's lint steps first (`lint` and every `*-lint` step, such as
   `backend-lint` and `frontend-lint`) and a red lint stops it. The hook runs the crissp `.mcp.json` pins (the new

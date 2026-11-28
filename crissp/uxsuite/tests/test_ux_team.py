@@ -3,6 +3,7 @@ the rest waits in the queue, and nothing starts while a check run holds the mach
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -96,7 +97,7 @@ def test_what_cannot_start_is_refused_with_why(product):
         ux_team.start(product, conf, "poll", "first-visit")
     with pytest.raises(ValueError, match="unknown walk 'nowhere' \\(known: first-visit\\)"):
         ux_team.start(product, conf, "round", "nowhere")
-    with pytest.raises(ValueError, match="no screenshots yet: crissp/ux.sh --shoot first-visit"):
+    with pytest.raises(ValueError, match=re.escape("no screenshots yet: crissp/ux.sh --shoot first-visit")):
         ux_team.start(product, conf, "round", "first-visit")
     assert ux_team.popen.started == [] and ux_team.shots(product, "first-visit") == []
 
@@ -259,3 +260,14 @@ def test_the_runner_is_the_one_asked_for_else_the_one_installed(product, monkeyp
     with pytest.raises(ValueError, match="CRISSP_UX_CLI"):
         ux_team.start(product, _conf(product), "round", "first-visit")
     assert ux_team.popen.started == []
+def test_a_round_carries_its_debate_as_it_grows(product):
+    """F-80: the page shows the debate (every persona's first look and their answers to each other), also while the
+    round still runs: versions() carries debate.json as the run left it, or None before it is written."""
+    vdir = finish(product, "round", "first-visit", 1, ROUND)
+    assert ux_team.versions(product, "round", "first-visit")[0]["debate"] is None
+    debate = {"reviews": [{"persona": "tech", "score": 7, "good": ["clear"], "problems": [], "ideas": []}],
+              "rebuttals": [{"persona": "phone", "agree": [], "disagree": [{"with": "tech", "point": "clear", "why": "tiny"}]}]}
+    (vdir / "debate.json").write_text(json.dumps(debate))
+    assert ux_team.versions(product, "round", "first-visit")[0]["debate"] == debate
+    finish(product, "proposal", "first-visit", 1, PROPOSAL)
+    assert "debate" not in ux_team.versions(product, "proposal", "first-visit")[0]

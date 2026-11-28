@@ -1,3 +1,6 @@
-# This repository's own lint tools for its bash scripts (dev-only, never in the package; lint.sh runs them with uv).
+# This repository's own lint tools (dev-only, never in the package): shellcheck for the bash scripts (lint.sh) and
+# pylint for duplicate Python (python_lint.py), both run with uv.
 # ESLint is pinned next to it, in package.json and package-lock.json.
 shellcheck-py==0.11.0.1
+# The python-lint step's duplicate-code check (python_lint.py; settings in pyproject.toml [tool.pylint]).
+pylint==4.1.4

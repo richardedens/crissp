@@ -37,10 +37,7 @@ def select(every: list[dict], quick: bool, wanted: list[str]) -> list[dict]:
     unknown = [w for w in wanted if w not in known]
     if unknown:
         raise ValueError(f"unknown step {', '.join(unknown)} (known: {' '.join(known) or 'none'})")
-    if wanted:
-        chosen = [s for s in every if s["key"] in wanted]
-    else:
-        chosen = [s for s in every if not (quick and s["full_only"])]
+    chosen = [s for s in every if s["key"] in wanted] if wanted else [s for s in every if not (quick and s["full_only"])]
     ran = {s["key"] for s in chosen}
     return [{**s, "suites": [k for k in s["suites"] if k in ran]} if s["key"] == project.GATE else s for s in chosen]
 
