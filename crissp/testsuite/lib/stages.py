@@ -41,9 +41,9 @@ NEVER = "Never push, tag, publish or deploy, and never move anything to done: th
 PROMPTS = {
     "discover": (
         "C.R.I.S.S.P. stage Discover: find out what the product's users need. Call the crissp tool stage (stage: "
-        "discover) for where it stands. When the UX suite is not set up, set it up with the product owner: ask what "
-        "the product is, who uses it and where it runs locally, then write crissp/uxsuite/team.json and a first walk "
-        "in crissp/uxsuite/walks/ (crissp/uxsuite/README.md says how) and show the diff. When it is, say what the "
+        "discover) for where it stands. When the UX suite is not set up, or its team.json still holds CRISSP: "
+        "placeholders, set it up with the product owner: ask what the product is, who uses it, its language and where "
+        "it runs locally, then fill in crissp/uxsuite/team.json and a first walk in crissp/uxsuite/walks/ (crissp/uxsuite/README.md says how) and show the diff. When it is, say what the "
         "team found, which needs and designs wait for a verdict on the UX page, and offer the next step: map the "
         "product (crissp ux --map), a round on a walk or a discovery round (crissp ux). Those cost tokens: start one "
         "only after the product owner's yes. Write what you notice as findings with the finding tool. " + NEVER),
@@ -98,7 +98,11 @@ def ux_state(root: Path) -> dict | None:
     spec = importlib.util.spec_from_file_location("crissp_uxsuite_for_the_stages", UX_API)
     api = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(api)
-    return api.state(api.ux_config.Suite(root))
+    found = api.state(api.ux_config.Suite(root))
+    if "error" not in found:  # what crissp init left for the product owner to fill in ("CRISSP: …")
+        team = json.loads((root / "crissp" / "uxsuite" / "team.json").read_text())
+        found["placeholders"] = [k for k, v in team.items() if isinstance(v, str) and v.startswith("CRISSP:")]
+    return found
 
 
 def _git(root: Path, *args: str) -> str:
@@ -132,6 +136,9 @@ def discover(ux: dict | None) -> dict:
                       "runs) and a walk in crissp/uxsuite/walks/ set it up.")
     if ux.get("error"):
         return stage("discover", "setup", f"The UX suite's configuration is wrong: {ux['error']}")
+    if ux.get("placeholders"):
+        return stage("discover", "setup", "The UX suite is not filled in yet: team.json still says what belongs in "
+                     + ", ".join(ux["placeholders"]) + ".")
     items, actions, status = [], [], "clear"
     walks = ux.get("walks") or []
     if "map" in ux:  # the map and the discovery round, once the UX suite has them

@@ -198,6 +198,9 @@ def test_discover_says_what_the_team_has_not_looked_at_and_what_waits_for_a_verd
     assert waiting["items"] == ["2 screens mapped: 1 no walk looks at, 1 no link reaches",
                                 "1 need from the discovery round waits for your verdict on the UX page"]
     assert waiting["actions"] == [{"label": "Start a discovery round", "kind": "discovery", "walk": "product"}]
+    unfilled = by(stages.state(root, crissp, ux=ux([walk()], placeholders=["about", "audience"])))["discover"]
+    assert (unfilled["status"], unfilled["summary"]) == ("setup", "The UX suite is not filled in yet: team.json still "
+                                                         "says what belongs in about, audience.")
     busy = by(stages.state(root, crissp, ux=ux([walk()], team={"running": ["round:home"]})))["discover"]
     assert busy["items"] == ["The UX team works on round:home"]
     assert busy["status"] == "work"
@@ -279,7 +282,12 @@ def test_the_ux_suite_s_state_is_read_from_the_project_when_it_has_one(tmp_path,
         {"key": "mod", "name": "Mo", "role": "moderator", "device": "desktop", "moderator": True, "brief": "leads"}]}))
     (here / "walks" / "home.json").write_text(json.dumps({"title": "Home", "steps": [{"do": "shot", "title": "home"}]}))
     got = stages.ux_state(root)
-    assert [w["id"] for w in got["walks"]] == ["home"]
+    assert [w["id"] for w in got["walks"]] == ["home"] and got["placeholders"] == []
+    team = json.loads((here / "team.json").read_text())
+    (here / "team.json").write_text(json.dumps({**team, "about": "CRISSP: what the product is", "rounds": 2}))
+    assert stages.ux_state(root)["placeholders"] == ["about"]  # what crissp init left for the product owner to fill in
+    (here / "team.json").write_text(json.dumps({"product": "Shop"}))
+    assert "error" in stages.ux_state(root) and "placeholders" not in stages.ux_state(root)
     monkeypatch.setattr(stages, "UX_API", tmp_path / "missing.py")
     assert stages.ux_state(root) is None
     state = stages.state(root, crissp)  # read from the project itself when not given
