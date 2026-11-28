@@ -59,7 +59,7 @@ Done when  The UX page shows every screen with its status and the gaps.
 Tests      uxsuite tests at 100%, the crawl against a fixture site in the pinned Playwright.
 Depends    E7-F1-01
 
-### E7-F3-02 · Jobs per persona and a discovery round: done, hard or impossible          [todo] [L]
+### E7-F3-02 · Jobs per persona and a discovery round: done, hard or impossible          [review] [L]
 Why        Nothing asks whether a persona can actually do what they come for, so missing screens are never found.
 What       A discovery round asks each persona, per job, whether and where it can be done and where they would give up;
            the job map shows done, hard and impossible with the screens involved; an impossible job becomes a need, and

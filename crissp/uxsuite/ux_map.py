@@ -179,6 +179,7 @@ def build(suite: Suite, conf: dict) -> dict:
             if sh["url"] and (sh.get("at") or gotos):
                 s = screen(sh.get("at") or gotos[0])
                 found(s, "walk", w["id"])
+                s["title"] = s["title"] or sh["title"]
                 s["shots"].append({"device": sh["device"], "url": sh["url"], "source": "walk", "title": sh["title"]})
     out = []
     for k in sorted(screens):

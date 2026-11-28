@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Discovery: can every persona do their jobs? (E7-F3-02).** `crissp ux --discover` (or the new **Jobs** tab) asks
+  the team about the whole product: every persona tries their own jobs on the mapped screens and says done, hard or
+  impossible, where they gave up and why. The moderator turns what cannot be done into needs. Approve a need and it
+  becomes a design request (a walk with the need as its brief) whose first design starts at once; reject it with a
+  reason and the next discovery round reads why.
 - **A map of every screen, and the gaps (E7-F3-01).** `crissp ux --map` lists the product's screens in the UX page's new
   **Map** tab, so the team looks at more than the walks someone wrote. It crawls the running product read-only (its own
   links only, never one that signs out or deletes, at most `map.max` pages per device), adds the screenshots your E2E

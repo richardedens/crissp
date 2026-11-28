@@ -6,6 +6,7 @@
     python3 crissp/uxsuite/cli.py propose <walk> [focus]   a design for a walk, with an optional focus
     python3 crissp/uxsuite/cli.py shoot <walk>             take the walk's screenshots (the product must be running)
     python3 crissp/uxsuite/cli.py map                      map the product's screens: a crawl, the tests' screenshots, the walks
+    python3 crissp/uxsuite/cli.py discover                 a discovery round: can every persona do their jobs on the map?
 
 A queued request is started by the open suite (crissp/ux.sh, or crissp/test.sh --dashboard): its worker takes the queue.
 """
@@ -53,7 +54,7 @@ def ask(suite: ux_config.Suite, conf: dict, kind: str, walk: str, focus: str) ->
 def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int:
     suite = suite or ux_config.default_suite()
     cmd, args = (argv[0] if argv else ""), argv[1:]
-    if cmd not in ("list", "status", "round", "propose", "shoot", "map") or (cmd in ("round", "propose", "shoot") and not args):
+    if cmd not in ("list", "status", "round", "propose", "shoot", "map", "discover") or (cmd in ("round", "propose", "shoot") and not args):
         print(__doc__, file=sys.stderr)
         return 2
     try:
@@ -70,6 +71,8 @@ def main(argv: list[str], suite: ux_config.Suite | None = None, run=None) -> int
             code, text = ux_shoot.shoot(suite, conf, args[0], *([run] if run else []))
             print(text)
             return code
+        elif cmd == "discover":
+            print(ask(suite, conf, "discovery", ux_team.PRODUCT, ""))
         else:
             print(ask(suite, conf, "round" if cmd == "round" else "proposal", args[0], " ".join(args[1:])))
     except ValueError as e:  # a wrong configuration, an unknown walk, the team busy with this very walk

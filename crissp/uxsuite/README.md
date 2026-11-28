@@ -13,6 +13,7 @@ crissp/ux.sh --list                    # the product, the team and the walks
 crissp/ux.sh --status                  # what the team does now, what waits, how many rounds, designs and verdicts
 crissp/ux.sh --shoot <walk>            # take the walk's screenshots on a laptop and a phone (the product must be running)
 crissp/ux.sh --map                     # map the product's screens: a read-only crawl, the E2E tests' screenshots, the walks
+crissp/ux.sh --discover                # a discovery round: can every persona do their jobs on the mapped screens?
 crissp/ux.sh --round <walk>            # a round: review, debate, advice (now when a place is free, otherwise queued)
 crissp/ux.sh --propose <walk> [focus]  # a design for the walk, with an optional focus
 ```
@@ -63,8 +64,22 @@ Each screen has its area (the first part of its path), how it was found, which p
 gaps: **no link reaches it** (only a test or a walk gets there), **the crawl could not open it**, or **no walk looks at
 it**.
 
+## Discovery: can every persona do their jobs?
+
+A **discovery round** (`crissp ux --discover`, or *Ask for a discovery round* in the **Jobs** tab) is about the whole
+product, not one walk. Every persona that takes part tries their own jobs (the `## Jobs` of their file; a persona with
+none gets the two jobs their brief makes most likely, marked *inferred*) on the mapped screens, judging from the pictures
+of their own device, and says per job: **done**, **hard** or **impossible**, on which screens and where they gave up.
+The moderator checks the verdicts and writes the **needs**: what the product is missing, for whom, for which jobs, and
+where it would fit. The Jobs tab shows the job map per persona and the needs; an approved need becomes a **design
+request**: a walk of its own (`walks/need-<title>.json`, with the need as its brief and the screen where it fits as its
+first page), whose first design starts at once (or waits in the queue) and is judged like any other design. A rejected
+need (with a reason) is not proposed again unless something changed. The product must be mapped first.
+
 ## What the product owner decides
 
+- **A need** from discovery: approve (it becomes a design request, and its first design starts) · reject (with a
+  reason, which the next discovery round reads).
 - **Advice**: agree · disagree (with a reason) · later. The team reads the verdicts in its next round of that walk.
 - **A design**: shown **before and after**: the walk's own screenshot (laptop or phone) next to the mockup, the same
   size, with the verdict right under it: approve · approve with a remark… (the remark comes first in the PBI's What,
@@ -84,6 +99,7 @@ it**.
 | `ux_config.py` | the configuration, checked, with clear errors; where things are |
 | `ux_cards.py` | the personas and the rules as files: read, checked, written by the page |
 | `ux_shoot.py` | the walks in a real browser: the plan, and the run under uv |
+| `ux_discovery.py` | discovery: the screens a round reads, and an approved need as a design request |
 | `ux_map.py` | the map: the crawl (under uv, like a shoot), the E2E tests' screenshots and the walks, merged by screen |
 | `ux_team.py` | rounds and designs: the runs, their prompts, the places and the queue |
 | `ux_verdicts.py`, `ux_backlog.py` | the product owner's verdicts, and an approved design as a PBI |
@@ -91,4 +107,4 @@ it**.
 | `cli.py` | what `crissp/ux.sh` calls |
 | `web/` | the page (`index.html`, `ux.js`, `ux.css`); the look is `crissp/look/` |
 | `tests/` | the suite's own tests, run with the framework's tools at 100% lines and branches |
-| `results/` | what the suite makes: `shots/`, `map/`, `rounds/<walk>/r<n>/`, `proposals/<walk>/v<n>/`, `queue.jsonl`, `decisions.jsonl` — never in git |
+| `results/` | what the suite makes: `shots/`, `map/`, `discovery/product/d<n>/`, `rounds/<walk>/r<n>/`, `proposals/<walk>/v<n>/`, `queue.jsonl`, `decisions.jsonl` — never in git |

@@ -23,6 +23,7 @@ walks/<id>.json
     title            what the walk is about
     steps            [{do: goto (path) | click (text or selector) | fill (selector, value) | press (key) | wait (ms)
                        | shot (title)}], at least one shot
+    brief, need      a design request from a discovery round (ux_discovery): what to design, and the need's id
 """
 
 from __future__ import annotations
@@ -137,7 +138,8 @@ def walk(path: Path) -> dict:
             raise ConfigError(f"{where}: step {n} ({do}) needs {', '.join(missing)}")
     if not any(s["do"] == "shot" for s in steps):
         raise ConfigError(f"{where}: a walk needs at least one shot step (that is what the team looks at)")
-    return {"id": path.stem, "title": _text(data, "title", where), "steps": steps}
+    extra = {k: _text(data, k, where) for k in ("brief", "need") if k in data}  # a design request from discovery
+    return {"id": path.stem, "title": _text(data, "title", where), "steps": steps, **extra}
 
 
 def load(suite: Suite) -> dict:

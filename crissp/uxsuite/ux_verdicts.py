@@ -1,12 +1,14 @@
-"""The product owner's verdicts: on a piece of advice (agree · disagree · later) and on a design (approve · redo · reject).
+"""The product owner's verdicts: on a piece of advice (agree · disagree · later), on a design (approve · redo · reject) and
+on a need a discovery round found (approve · reject).
 
 Every verdict is one line appended to results/decisions.jsonl; a later line for the same item replaces an earlier one,
 which stays in the file as history. What a verdict sets going:
 - redo a design: the reason is the focus of the next design of that walk (started now, or queued)
 - approve a design: it becomes a PBI in the backlog (ux_backlog), once
+- approve a need: it becomes a design request, a walk with a brief, whose first design starts (ux_discovery)
 A disagreement, a redo and a rejection need a reason: that is what the team learns from.
 
-Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>".
+Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>".
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ import json
 import re
 
 import ux_backlog
+import ux_discovery
 import ux_team
 from ux_config import Suite
 
@@ -22,6 +25,8 @@ ADVICE = ("agree", "disagree", "later")
 DESIGN = ("approve", "redo", "reject")
 ADVICE_ID = re.compile(r"([a-z0-9][a-z0-9-]*)/r(\d+)/a(\d+)")
 DESIGN_ID = re.compile(r"([a-z0-9][a-z0-9-]*)#v(\d+)")
+NEED = ("approve", "reject")
+NEED_ID = re.compile(rf"{ux_team.PRODUCT}/d(\d+)/n(\d+)")
 NEEDS_A_REASON = {"disagree", "redo", "reject"}
 
 
@@ -48,6 +53,13 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         if verdict not in ADVICE:
             raise ValueError("a verdict on advice is agree, disagree or later")
         level, title = "advice", advice[int(m.group(3))].get("title", "")
+    elif (m := NEED_ID.fullmatch(item)):
+        needs = (_result(suite, "discovery", ux_team.PRODUCT, int(m.group(1))) or {}).get("needs", [])
+        if int(m.group(2)) >= len(needs):
+            raise ValueError("unknown need")
+        if verdict not in NEED:
+            raise ValueError("a verdict on a need is approve or reject")
+        level, title = "need", needs[int(m.group(2))].get("title", "")
     elif (m := DESIGN_ID.fullmatch(item)):
         found = _result(suite, "proposal", m.group(1), int(m.group(2))) if m.group(1) in conf["walks"] else None
         if not found:
@@ -67,9 +79,14 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
 
 
 def after(suite: Suite, conf: dict, line: dict) -> dict:
-    """What the verdict sets going: a PBI for an approved design, the next design for a redo; {} for the rest."""
-    if line["level"] != "design" or line["verdict"] == "reject":
+    """What the verdict sets going: a PBI for an approved design, the next design for a redo, a design request for an
+    approved need; {} for the rest."""
+    if line["verdict"] == "reject" or line["level"] not in ("design", "need"):
         return {}
+    if line["level"] == "need":
+        m = NEED_ID.fullmatch(line["id"])
+        need = _result(suite, "discovery", ux_team.PRODUCT, int(m.group(1)))["needs"][int(m.group(2))]
+        return ux_discovery.approved(suite, conf, line["id"], need)
     walk, _, n = line["id"].partition("#v")
     if line["verdict"] == "approve":
         return {"pbi": ux_backlog.file_pbi(suite, conf, walk, int(n), _result(suite, "proposal", walk, int(n)), remark=line["reason"])}

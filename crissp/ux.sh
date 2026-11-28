@@ -6,6 +6,7 @@
 #   crissp/ux.sh --status                 what the team does now, what waits, how many rounds, designs and verdicts
 #   crissp/ux.sh --shoot <walk>           take the walk's screenshots on a laptop and a phone (the product must run)
 #   crissp/ux.sh --map                    map the screens: a read-only crawl, the E2E tests' screenshots, the walks
+#   crissp/ux.sh --discover               a discovery round: every persona tries their jobs on the map (now, or queued)
 #   crissp/ux.sh --round <walk>           a round on a walk: review, debate, advice (now, or queued)
 #   crissp/ux.sh --propose <walk> [focus] a design for a walk, with an optional focus
 # Rounds and designs are headless Claude Code runs that cost tokens: the product owner asks for them, never a schedule.
@@ -15,8 +16,8 @@ ENGINE="$(cd "$(dirname "$0")" && pwd)"  # the framework: this repository's cris
 export CRISSP_ROOT="${CRISSP_ROOT:-$(dirname "$ENGINE")}"  # the project: crissp sets it, else the folder above
 case "${1:-}" in
   "") exec "$ENGINE/test.sh" --ux ;;
-  --list|--status|--shoot|--map|--round|--propose)
+  --list|--status|--shoot|--map|--discover|--round|--propose)
     cmd=${1#--}; shift
     exec python3 -I "$ENGINE/uxsuite/cli.py" "$cmd" "$@" ;;
-  *) sed -n '4,10p' "$0" | sed 's/^# //' >&2; exit 2 ;;
+  *) sed -n '4,11p' "$0" | sed 's/^# //' >&2; exit 2 ;;
 esac

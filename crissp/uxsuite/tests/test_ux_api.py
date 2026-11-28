@@ -106,6 +106,17 @@ def test_the_state_holds_the_map_once_the_product_was_mapped(site):
     assert [s["key"] for s in json.loads(get(base + "/ux/api/state")[2])["map"]["screens"]] == ["/"]
 
 
+def test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs(site):
+    suite, base = site
+    assert json.loads(get(base + "/ux/api/state")[2])["discovery"] == []
+    finish(suite, "discovery", "product", 1, {"summary": "s", "jobs": [], "needs": [{"title": "Pay", "detail": "d"}]})
+    assert post(base, "/ux/api/verdict", {"id": "product/d1/n0", "verdict": "reject", "reason": "no"})[0] == 200
+    d = json.loads(get(base + "/ux/api/state")[2])["discovery"][0]
+    assert d["key"] == "product#d1" and d["result"]["needs"][0]["title"] == "Pay"
+    assert d["needs"] == [{"id": "product/d1/n0", "verdict": {"id": "product/d1/n0", "level": "need", "verdict": "reject",
+                                                               "reason": "no", "title": "Pay", "at": d["needs"][0]["verdict"]["at"]}}]
+
+
 def test_a_broken_configuration_or_a_missing_tool_is_told_not_crashed(site):
     suite, base = site
     (suite.root / "crissp" / "tool" / "server.py").unlink()

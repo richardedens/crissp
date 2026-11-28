@@ -1348,6 +1348,41 @@
     "test_ux_api::test_the_state_holds_the_map_once_the_product_was_mapped",
     "test_ux_cli::test_map_says_what_the_crawl_found"
    ]
+  },
+  {
+   "id": "ux-discovery-round",
+   "title": "Nothing asked whether a persona can actually do what they come for",
+   "problem": "Rounds judged only the walks someone wrote; no run asked each persona, per job, whether it can be done in the product, so missing screens were never found (E7-F3-02).",
+   "fix": "A third kind of run, discovery, on the whole product: it reads the mapped screens with their pictures (ux_discovery.screens_for_a_run); every persona tries their own jobs (two inferred from the brief when none are written) and says done, hard or impossible, on which screens and where they gave up; the moderator writes the needs. The Jobs tab shows the job map and the needs; a need is approved or rejected (with a reason) like advice, and an approved need becomes a design request: walks/need-<title>.json with the need as its brief, whose first design starts at once; a design for a walk with a brief may start without screenshots and is told the request.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def _discover("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def discovery_prompt("
+    },
+    {
+     "file": "crissp/uxsuite/ux_discovery.py",
+     "symbol": "def design_request("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "NEED_ID"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function jobsTab("
+    }
+   ],
+   "tests": [
+    "test_ux_discovery::test_a_discovery_round_gives_every_persona_their_jobs_and_every_screen",
+    "test_ux_discovery::test_an_approved_need_is_a_design_request_that_starts_a_design",
+    "test_ux_discovery::test_a_wrong_verdict_on_a_need_is_refused",
+    "test_ux_api::test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs",
+    "test_ux_cli::test_discover_asks_for_a_discovery_round"
+   ]
   }
  ],
  "gaps": [

@@ -9,6 +9,7 @@ request under /ux): its page, what the team did and does, and the product owner'
     GET  /ux/results/proposals/…   the team's designs; their HTML in a sandbox of its own (never this origin)
     GET  /ux/results/map/…         the map's pictures: the crawl's and the copied test screenshots (ux_map)
     POST /ux/api/verdict           {id, verdict, reason}: a verdict (ux_verdicts), and what it sets going
+    POST /ux/api/request           {kind: discovery, walk: product}: a discovery round on the whole product
     POST /ux/api/request           {kind: round|proposal, walk, focus}: start it now, or queue it
     POST /ux/api/persona           {persona: {key?, name, role, device, moderator, on, brief, jobs}} or {remove: key}:
                                    the Team tab (ux_cards: a file per persona in personas/)
@@ -59,13 +60,22 @@ def state(suite: ux_config.Suite) -> dict:
     for w in conf["walks"].values():
         designs = [{**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"])}
                    for v in ux_team.versions(suite, "proposal", w["id"])]
-        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "shots": ux_team.shots(suite, w["id"]),
+        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"), "shots": ux_team.shots(suite, w["id"]),
                       "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
             "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
             "rules_from": ux_cards.rules_from(suite),
-            "walks": walks, "map": ux_map.load(suite), "verdicts": verdicts, "queue": ux_team.queue(suite),
+            "walks": walks, "map": ux_map.load(suite), "discovery": _discovery(suite, verdicts), "verdicts": verdicts, "queue": ux_team.queue(suite),
             "team": ux_team.state(suite, conf)}
+
+
+def _discovery(suite: ux_config.Suite, verdicts: dict) -> list[dict]:
+    """The discovery rounds, each need with the verdict that holds on it."""
+    out = []
+    for v in ux_team.versions(suite, "discovery", ux_team.PRODUCT):
+        ids = [f"{ux_team.PRODUCT}/d{v['version']}/n{i}" for i in range(len((v["result"] or {}).get("needs", [])))]
+        out.append({**v, "needs": [{"id": i, "verdict": verdicts.get(i)} for i in ids]})
+    return out
 
 
 def _send(handler, code: int, body: bytes, ctype: str = "application/json", extra: dict | None = None) -> None:

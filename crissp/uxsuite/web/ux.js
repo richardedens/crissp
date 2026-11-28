@@ -5,7 +5,7 @@
   const $ = (sel, el = document) => el.querySelector(sel);
   const { esc, badge } = window.Look;
   let S = null, tab = "overview", query = new URLSearchParams();
-  const TABS = [["overview", "Overview"], ["map", "Map"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
+  const TABS = [["overview", "Overview"], ["map", "Map"], ["jobs", "Jobs"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
 
   const api = async (path, body) => {
     const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -83,6 +83,41 @@
             ${s.shots.length > 1 ? `<div class="row">${s.shots.map((x, i) => `<button class="link small" data-view="map" data-key="${esc(s.key)}" data-i="${i}">${esc(x.device)} · ${esc(x.source === "test" ? "E2E test" : x.source)} ⤢</button>`).join("")}</div>` : ""}
           </article>`;
         }).join("")}</div></section>`).join("") || '<div class="card">Nothing to show here.</div>'}`;
+  }
+
+  /* Discovery (E7-F3-02): every persona tries their jobs on the mapped screens: done, hard or impossible, and where they
+     gave up. What cannot be done becomes a need; an approved need is a design request (a walk with a brief) whose first
+     design starts at once. */
+  const JOB = { done: "passed", hard: "missing", impossible: "failed" };
+  const screenChip = k => `<a class="chip" href="#map" title="On the map">${esc(k)}</a>`;
+  function jobsTab() {
+    const list = [...(S.discovery || [])].reverse();
+    const top = `<div class="toolbar"><button class="primary" data-request="discovery" data-walk="product" ${S.map ? "" : "disabled"}>Ask for a discovery round</button>
+      <span class="small muted">${S.map ? `Every persona tries their own jobs on the ${S.map.screens.length} mapped screens. A run costs tokens.` : "Map the product first: <code>crissp ux --map</code>."}</span></div>`;
+    return top + (list.map((d, i) => {
+      const res = d.result;
+      if (!res) return `<div class="card walk">Discovery ${d.version} ${phase(d.status)} <span class="small muted">${esc(d.status.note || "")}</span></div>`;
+      const count = v => (res.jobs || []).filter(j => j.verdict === v).length;
+      const people = [...new Set((res.jobs || []).map(j => j.persona))];
+      const body = `<p>${esc(res.summary)}</p>
+        <div class="row">${["done", "hard", "impossible"].map(v => badge(JOB[v], `${count(v)} ${v}`)).join("")}</div>
+        <div class="label">The job map</div>
+        ${people.map(k => `<div class="jobs-of">${who(k)}<span class="small muted">${esc(persona(k).role)}</span>
+          <table class="jobs"><tbody>${res.jobs.filter(j => j.persona === k).map(j => `<tr>
+            <td>${badge(JOB[j.verdict] || "missing", j.verdict)}</td><td><b>${esc(j.job)}</b>${j.inferred ? ' <span class="small muted">(inferred)</span>' : ""}${j.why ? `<div class="small muted">${esc(j.why)}</div>` : ""}</td>
+            <td class="small">${(j.screens || []).map(screenChip).join(" → ")}${j.gave_up_at ? ` <span class="gave-up">gave up at ${screenChip(j.gave_up_at)}</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`).join("")}
+        <div class="label">What is missing: the needs</div>
+        ${(res.needs || []).map((n, ni) => {
+          const id = d.needs[ni].id, held = d.needs[ni].verdict, walk = S.walks.find(w => w.need === id);
+          return `<div class="advice ${held?.verdict === "approve" ? "could" : "must"}"><div class="row"><b>${esc(n.title)}</b>${held ? badge(held.verdict === "approve" ? "passed" : "failed", held.verdict === "approve" ? "design requested" : "rejected") : ""}</div>
+            <p>${esc(n.detail)}</p>
+            <p class="small">For ${(n.personas || []).map(name).map(esc).join(", ") || "the team"}${(n.jobs || []).length ? ` · ${n.jobs.map(esc).join("; ")}` : ""}${(n.screens || []).length ? ` · fits at ${n.screens.map(screenChip).join(" ")}` : ""}</p>
+            ${walk ? `<p class="small"><a href="#proposals?walk=${encodeURIComponent(walk.id)}">Its designs ${walk.proposals.length ? `(${walk.proposals.length})` : "(starting)"} →</a></p>` : ""}
+            ${verdictButtons(id, [["approve", "Approve: ask for a design"], ["reject", "Reject"]])}</div>`;
+        }).join("") || '<p class="small muted">Nothing is missing: every job can be done.</p>'}`;
+      return i === 0 ? `<article class="card walk"><header><h3>Discovery ${d.version}</h3>${phase(d.status)}<span class="small muted">${esc(d.request?.at || "")}</span></header>${body}</article>`
+        : `<details class="card walk"><summary>Discovery ${d.version} · ${esc(d.request?.at || "")}</summary>${body}</details>`;
+    }).join("") || '<div class="card">No discovery round yet.</div>');
   }
 
   const walkPicker = (w, to) => `<div class="toolbar"><select id="walk" data-to="${to}" aria-label="Walk">${S.walks.map(x => `<option value="${esc(x.id)}" ${x === w ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select></div>`;
@@ -317,7 +352,7 @@
 
   function render() {
     $("#tabs").innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("");
-    const view = { overview, map: mapTab, rounds, proposals, team, rules: rulesTab }[tab] || overview;
+    const view = { overview, map: mapTab, jobs: jobsTab, rounds, proposals, team, rules: rulesTab }[tab] || overview;
     $("#view").innerHTML = view();
     fit();
     if (query.get("key")) $(`[id="p-${CSS.escape(query.get("key"))}"]`)?.scrollIntoView();
@@ -406,7 +441,7 @@
         remark ? "It goes into the backlog item, before the changes: the builder reads it first." : "The team reads this next time.") : "";
       if (reason === null || (remark && !reason.trim())) return;
       try { const out = await api("api/verdict", { id: v.dataset.id, verdict, reason });
-        tell(out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
+        tell(out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
       } catch (err) { tell(err.message); }
       return load();
     }

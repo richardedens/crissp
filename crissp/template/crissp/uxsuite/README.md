@@ -22,6 +22,7 @@ crissp/ux.sh --list                    # check the configuration
 crissp/ux.sh --map                     # every screen: a read-only crawl, your E2E tests' screenshots, the walks
 crissp/ux.sh --shoot first-visit       # the screenshots (the product must be running)
 crissp/ux.sh --round first-visit       # the first round
+crissp/ux.sh --discover                # can every persona do their jobs on the mapped screens? what is missing?
 crissp/ux.sh                           # the suite, next to the Tests dashboard
 ```
 
