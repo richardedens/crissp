@@ -236,6 +236,10 @@ def review(items: list[dict], ux: dict | None) -> dict:
     lines = [f"{i['id']} {i['title']} (in review)" for i in items if i["status"] == "review"]
     lines += [f"{_title(d)} waits for your verdict on the UX page" for d in _designs(ux)
               if (d.get("status") or {}).get("phase") == "done" and d.get("result") and not d.get("verdict")]
+    waiting = ((ux or {}).get("review") or {}).get("waiting") or 0  # the UX suite's review of every screen
+    if waiting:
+        lines.append(f"{_plural(waiting, 'screen')} {'waits' if waiting == 1 else 'wait'} for you on the UX page's "
+                     "Review tab (/ux/#review)")
     if lines:
         return stage("review", "yours", f"{_plural(len(lines), 'thing')} {'waits' if len(lines) == 1 else 'wait'} for your review.", lines)
     return stage("review", "clear", "Nothing waits for your review.")

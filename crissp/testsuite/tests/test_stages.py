@@ -159,6 +159,11 @@ def test_review_lists_what_waits_for_the_product_owner_and_comes_after_a_green_b
     assert review["items"] == ["E1-F1-02 Frontend tests (in review)",
                                "Design home#v2 “design 2” waits for your verdict on the UX page"]
     assert state["current"] == "review"
+    # the UX suite's review of every screen, once it has one: what waits for the product owner there
+    screens = by(stages.state(root, crissp, ux=ux(review={"waiting": 2, "screens": []})))["review"]
+    assert "2 screens wait for you on the UX page's Review tab (/ux/#review)" in screens["items"]
+    assert by(stages.state(root, crissp, ux=ux(review={"waiting": 0})))["review"]["items"] == \
+        ["E1-F1-02 Frontend tests (in review)"]
 
 
 def test_plan_holds_the_open_findings_decisions_and_approved_designs_without_a_pbi(tmp_path):
