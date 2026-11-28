@@ -359,3 +359,16 @@ def test_the_plan_says_how_many_workers_a_parallel_step_gets_and_why(repo, sh, m
     commit(repo, "app/backend/shop/pricing.py", "PRICE = 1\n")
     r = sh(repo, "check.sh", "--plan")
     assert r.returncode == 0 and "  Workers: backend 2 (2 test files)\n" in r.stdout
+
+
+def test_the_plan_advises_splitting_a_part_that_takes_long(capsys):
+    """The advice is said under the plan, with where the way of working explains it."""
+    check = _check()
+    p = {"files": ["app/backend/a.py"], "nothing": [], "full": [], "light": [], "suites": ["backend"], "minutes": 9,
+         "split": [{"key": "backend", "label": "Backend", "minutes": 8, "measured": True}]}
+    check.say_plan(p, "abcdef123456", sys.stdout)
+    out = capsys.readouterr().out
+    assert "Advice: Backend took 8 min last time, and every change in its part runs all of it." in out
+    assert "Split that part into smaller ones (several backends or frontends, CRISSP.md: Several parts)" in out
+    check.say_plan({**p, "split": [{**p["split"][0], "measured": False}]}, "abcdef123456", sys.stdout)
+    assert "Advice: Backend takes about 8 min (suites.json)" in capsys.readouterr().out

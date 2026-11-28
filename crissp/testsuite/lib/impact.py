@@ -49,6 +49,7 @@ FULL = [
 ]
 NOTHING = ("crissp/backlog/", "docs/", "crissp/testsuite/coverage-baseline.json")
 LIGHT = {"CHANGELOG.md": "release-notes", "VERSION": "release-notes"}
+SPLIT_SECONDS = 180  # a part whose tests take longer is advised to split: every change in it runs all of them
 
 
 def _matches(path: str, rule: str) -> bool:
@@ -95,6 +96,30 @@ def plan(files: list[str], conf: dict, root: Path) -> dict:
     out["light"] = sorted(light)
     out["suites"] = [s["key"] for s in chosen]
     out["minutes"] = math.ceil((sum(s["seconds"] for s in chosen) + 2 * len(light)) / 60)
+    out["split"] = too_long(chosen, measured(root))
+    return out
+
+
+def measured(root: Path) -> dict[str, int]:
+    """How long each step took in the last run that ran it (results/steps.jsonl), by key."""
+    path = project.results(root) / "steps.jsonl"
+    out = {}
+    for line in path.read_text().splitlines() if path.is_file() else []:
+        try:
+            row = json.loads(line)
+            out[row["key"]] = int(row["seconds"])
+        except (ValueError, KeyError, TypeError):
+            continue
+    return out
+
+
+def too_long(chosen: list[dict], took: dict[str, int]) -> list[dict]:
+    """The steps a change waits on too long (the last measured time, else suites.json's): their part should split."""
+    out = []
+    for s in chosen:
+        seconds = took.get(s["key"], s["seconds"])
+        if s["key"] != project.GATE and seconds > SPLIT_SECONDS:
+            out.append({"key": s["key"], "label": s["label"], "minutes": math.ceil(seconds / 60), "measured": s["key"] in took})
     return out
 
 

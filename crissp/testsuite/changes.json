@@ -961,6 +961,38 @@
    "tests": [
     "test_lint.py::test_the_step_lints_every_bash_script_and_every_javascript_file_of_this_repository"
    ]
+  },
+  {
+   "id": "split-large-parts",
+   "title": "crissp never asked about several backends or frontends, nor advised splitting a part whose tests take long",
+   "problem": "The template knew one app/backend and one app/frontend: a big product became one part, every change in it ran all of its tests, and nothing said so (F-60).",
+   "fix": "CRISSP.md gets Several parts (app/backend-<name>, app/frontend-<name>, each with its own steps; split past about three minutes); the template's first CRISSP block asks the product owner how many parts there are; crissp init says so; crissp/check.sh --plan advises a split for a step over three minutes (the last measured time, else suites.json's).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def too_long("
+    },
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def measured("
+    },
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def say_plan("
+    },
+    {
+     "file": "crissp/CRISSP.md",
+     "symbol": "Several parts"
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "how many backends and frontends"
+    }
+   ],
+   "tests": [
+    "test_impact::test_a_part_whose_tests_take_long_is_advised_to_split",
+    "test_check_scripts::test_the_plan_advises_splitting_a_part_that_takes_long"
+   ]
   }
  ],
  "gaps": [

@@ -11,6 +11,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   every fresh clone (`core.hooksPath` is not committed), `crissp repair --yes` makes the hook and turns it on. Neither
   ever switches off hooks a repository already has (its own `core.hooksPath`, or hooks in `.git/hooks`): they say
   what to do instead. `git commit --no-verify` skips the hook once.
+- **Several backends and frontends, and the advice to split (F-60).** When a project is brought in, Claude now first
+  asks how many backends and frontends the product has and will have, and advises a part of its own for each
+  (`app/backend-<name>/`, `app/frontend-<name>/`, each with its own steps; CRISSP.md, *Several parts*). `crissp check
+  --plan` advises splitting a part whose tests take more than about three minutes (the last run's time, else
+  `suites.json`'s), because every change in that part runs all of them.
 - **New projects lint the frontend too (F-30).** The project template gets a `frontend-lint` step next to
   `backend-lint`, there once `app/frontend/package.json` is and run by `crissp check` for every change under
   `app/frontend/`. It lints with crissp's own tools (F-34), so a frontend needs no lint setup of its own: ESLint

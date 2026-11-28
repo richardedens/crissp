@@ -191,8 +191,9 @@ def init(root: Path, args, env: dict, out=None, ask=input) -> int:
         print(f"  made  {rel}", file=out)
     for rel in kept:
         print(f"  kept  {rel}", file=out)
-    print("\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you), name the product's parts in\n"
-          "crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.", file=out)
+    print("\nNext: fill in the <!-- CRISSP: … --> blocks (Claude does this with you, and first asks how many backends\n"
+          "and frontends the product has: a large one is better split into parts of its own), name the product's parts\n"
+          "in crissp/testsuite/suites.json, review the diff, and commit when you are happy. Nothing was committed.", file=out)
     return 0
 
 

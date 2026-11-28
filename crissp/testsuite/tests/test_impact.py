@@ -69,6 +69,25 @@ def test_a_step_that_is_not_there_now_cannot_vouch(shop):
     assert plan(shop, ["chart/values.yaml"])["suites"] == ["chart"]
 
 
+def test_a_part_whose_tests_take_long_is_advised_to_split(shop):
+    """A step over SPLIT_SECONDS runs whole for every change in its part: the plan advises splitting that part into
+    several (backends or frontends of their own), so crissp/check.sh runs only the one that changed. The time is the
+    last run's measured time when there is one (steps.jsonl), else what suites.json says; the gate is never advised."""
+    assert plan(shop, ["app/backend/shop/prices.py"])["split"] == []  # 40 s: fine
+    conf = json.loads((shop / "crissp/testsuite/suites.json").read_text())
+    conf["steps"][0]["seconds"] = impact.SPLIT_SECONDS + 60
+    (shop / "crissp/testsuite/suites.json").write_text(json.dumps(conf))
+    p = plan(shop, ["app/backend/shop/prices.py", "app/frontend/src/App.tsx"])
+    assert p["split"] == [{"key": "backend", "label": "Backend", "minutes": 4, "measured": False}]
+    results = shop / "crissp/testsuite/results"
+    results.mkdir(parents=True)
+    rows = [{"key": "backend", "seconds": 30}, {"key": "web", "seconds": impact.SPLIT_SECONDS + 1}, {"key": "gate", "seconds": 999}]
+    (results / "steps.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows) + "not json\n")
+    p = plan(shop, ["app/backend/shop/prices.py", "app/frontend/src/App.tsx"])
+    assert p["split"] == [{"key": "web", "label": "Frontend", "minutes": 4, "measured": True}]  # measured wins, both ways
+    assert plan(shop, ["README.md"])["split"] == []
+
+
 @pytest.mark.parametrize("path", [
     ".gitignore", "crissp/testsuite/suites.json", "crissp/testsuite/requirements.txt", "crissp/check.sh",
     "crissp/check-all.sh", "crissp/test.sh", "crissp/testsuite/run.sh", "crissp/testsuite/setup.sh",

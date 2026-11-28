@@ -1,5 +1,5 @@
 {
- "$comment": "CRISSP: the parts of {{PRODUCT}}: what every run, crissp/check.sh's map and the dashboard are made of. By default the backend is app/backend, the frontend app/frontend, and docker-compose.yml at the root runs them together; a step exists once its part does (`when`); a parallel step spreads its tests over the workers this machine has. crissp/testsuite/lib/project.py says what each field means; python3 crissp/testsuite/lib/project.py check says what is wrong.",
+ "$comment": "CRISSP: the parts of {{PRODUCT}}: what every run, crissp/check.sh's map and the dashboard are made of. By default the backend is app/backend, the frontend app/frontend, and docker-compose.yml at the root runs them together; several backends or frontends are app/backend-<name> and app/frontend-<name>, each with its own steps and path rule (CRISSP.md: Several parts); a step exists once its part does (`when`); a parallel step spreads its tests over the workers this machine has. crissp/testsuite/lib/project.py says what each field means; python3 crissp/testsuite/lib/project.py check says what is wrong.",
  "product": "{{PRODUCT}}",
  "steps": [
   {"key": "backend", "label": "CRISSP: the backend's tests (pytest under coverage)", "dir": "app/backend",
