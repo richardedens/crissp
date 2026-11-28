@@ -32,7 +32,8 @@ too). They lint the project's own files only (`lib/sources.py`): what git lists,
 never a build folder (`dist`, `build`, `node_modules`, `coverage`, `.next`, …). ESLint holds React hooks to
 `rules-of-hooks` and `exhaustive-deps` (`frontend_lint --react-compiler` adds the React Compiler's rules); stylelint
 uses its recommended rules, as crissp's own CSS: mistakes, not layout.
-A project that already has code switches the lint on with `frontend_lint --baseline`: it writes what is found now into
+A project that already has code gets its lint baseline from `crissp repair --yes` or `crissp init` (each
+`frontend_lint` step without one), and `crissp lint --baseline` writes them all again: what is found now goes into
 `crissp/testsuite/lint-baseline.json` (commit it), and from then on the findings only go down (`lib/lint_ratchet.py`:
 an unchanged file keeps at most its counts per rule, a new or changed file is clean, a green run with fewer shrinks
 it). A rule the project switches off goes into `crissp/testsuite/lint-exceptions.json`, `{"exceptions": [{"rule",

@@ -269,7 +269,7 @@ def report(root: Path, key: str, folders: dict, blocking, allowed: int, shrunk, 
         print(f"Found {len(blocking)} {'error' if len(blocking) == 1 else 'errors'}{known}.")
         if key not in folders:
             print(
-                "frontend-lint: a project with code can switch the lint on step by step: frontend_lint --baseline "
+                "frontend-lint: a project with code can switch the lint on step by step: crissp lint --baseline "
                 "writes what is found now, and from then on it only goes down (lib/lint_ratchet.py)"
             )
         return 1

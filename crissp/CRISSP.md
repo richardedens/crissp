@@ -248,7 +248,7 @@ page. A new capability is documented by a journey in the same piece of work.
   stylelint (its recommended rules: mistakes, not layout), pinned with their lockfile and configs in the engine,
   installed once into crissp's cache, over the project's own files (never git-ignored or build output). The project's
   `package.json` and files stay as they are. A project with code switches it on with a baseline that only shrinks
-  (`frontend_lint --baseline`, `crissp/testsuite/lint-baseline.json`), and switches a rule off only with a reason
+  (`crissp repair --yes` writes it, `crissp lint --baseline` again; `crissp/testsuite/lint-baseline.json`), and switches a rule off only with a reason
   (`crissp/testsuite/lint-exceptions.json`), which the dashboard shows.
 - **The lint runs before every commit**: `.githooks/pre-commit` runs the lint steps (`lint` and every `*-lint` step)
   with the crissp `.mcp.json` pins (`crissp hook`), on the staged files only (a part with nothing staged is skipped;

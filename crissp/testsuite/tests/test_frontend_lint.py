@@ -236,7 +236,7 @@ def test_a_red_eslint_still_runs_stylelint_and_the_step_is_red(tmp_path, fronten
     assert [tool for tool, _, _ in npm.calls] == ["npm", "eslint", "stylelint"]
     out = capsys.readouterr().out
     assert "src/main.tsx:1:2: error: m [no-undef]\n" in out and "Found 1 error." in out
-    assert "frontend_lint --baseline" in out  # how a project with code switches the lint on
+    assert "crissp lint --baseline" in out  # how a project with code switches the lint on
     assert lint(tmp_path, Npm(found={"src/app.css": ["block-no-empty", "block-no-empty"]})) == 1
     assert "src/app.css:3:4: error: bad [block-no-empty]\n" in capsys.readouterr().out  # the rule said once
 

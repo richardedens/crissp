@@ -101,7 +101,9 @@ def test_repair_names_the_missing_steps_and_yes_adds_them(behind, capsys):
         "  suites     crissp/testsuite/suites.json lacks the template's steps frontend-lint, audit, secrets, sast"
         in out
     )
-    assert repair.main(["--yes"], {"CRISSP_ROOT": str(behind)}) == 0
+    linted = []
+    assert repair.main(["--yes"], {"CRISSP_ROOT": str(behind)}, lint=lambda root, env: linted.append(root)) == 0
+    assert linted == [behind.resolve()]  # F-155: the frontend-lint step just added gets its lint baseline
     conf = json.loads((behind / "crissp/testsuite/suites.json").read_text())
     assert [s["key"] for s in conf["steps"]][3:] == [
         "frontend-lint",
@@ -157,7 +159,8 @@ def test_every_older_pin_in_the_tracked_files_moves_and_is_listed(behind, capsys
         "crissp/deploy/deploy.json": ["crissp==0.1.8"],
         "deploy.sh": ["crissp==0.1.8"],
     }
-    assert repair.main(["--yes"], {"CRISSP_ROOT": str(behind), "CRISSP_VERSION": "0.2.1"}) == 0
+    env = {"CRISSP_ROOT": str(behind), "CRISSP_VERSION": "0.2.1"}
+    assert repair.main(["--yes"], env, lint=lambda root, env: None) == 0
     assert "  pins       older crissp pins in README.md (crissp==0.1.10rc1 crissp==0.1.8)" in capsys.readouterr().out
     assert (behind / "deploy.sh").read_text() == '#!/bin/bash\nexec uvx crissp==0.2.1 deploy "$@"\n'
     assert (behind / "README.md").read_text() == (

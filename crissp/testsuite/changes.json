@@ -2465,6 +2465,24 @@
     "test_lint_ratchet.py::test_before_a_commit_only_the_staged_files_are_linted_and_the_baseline_stays",
     "test_run.py::test_before_a_commit_ruff_check_lints_the_staged_python_only"
    ]
+  },
+  {
+   "id": "lint-baseline-without-effort",
+   "title": "F-155: the lint baseline is written without effort",
+   "problem": "Writing a project's lint baseline took the engine's path and the frontend's folder.",
+   "fix": "lib/lint_start.py finds every frontend_lint step that is there (suites.json, its folder and flags) and writes its baseline; crissp repair --yes and crissp init do it for the steps without one, crissp lint --baseline for all of them again.",
+   "sources": [
+    "crissp/testsuite/lib/lint_start.py",
+    "crissp/testsuite/lib/repair.py",
+    "src/crissp/cli.py"
+   ],
+   "tests": [
+    "test_lint_start.py::test_every_frontend_lint_step_that_is_there_gets_its_baseline_once",
+    "test_lint_start.py::test_repair_says_a_missing_baseline_and_yes_writes_it",
+    "test_level.py::test_repair_names_the_missing_steps_and_yes_adds_them",
+    "test_cli.py::test_lint_baseline_writes_every_frontend_s_lint_baseline_with_no_paths",
+    "test_cli.py::test_init_over_a_project_with_a_frontend_writes_its_lint_baseline"
+   ]
   }
  ],
  "gaps": [
