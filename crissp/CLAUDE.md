@@ -63,6 +63,9 @@ What `crissp/check.sh` runs per change:
   for `crissp/check-all.sh`.
 
 - Directly: `crissp/testsuite/run.sh --quick tools gate python-lint deploy package`. CI (`.github/workflows/ci.yml`) runs the same.
+- **The lint runs before every commit**: `.githooks/pre-commit` (the template's, the same file) runs the lint steps
+  with the engine in this checkout. Turn it on once per clone: `python3 crissp/testsuite/lib/repair.py --yes` (here
+  it only sets `core.hooksPath .githooks`). Never `--no-verify` to get past a red lint; fix it.
 - **Commit first**: the scripts test what is committed. **One run at a time** (a lock in `crissp/testsuite/results/`).
   Claude may run `crissp/check.sh` for its own work; the full run is the product owner's to start unless they ask.
 - Tests never read a developer's `.env`, never touch a real cluster, registry or PyPI, and never start a real Claude

@@ -46,6 +46,7 @@ def test_the_default_parts_are_app_backend_and_app_frontend_and_a_step_exists_on
     lint = next(s for s in conf["steps"] if s["key"] == "frontend-lint")  # F-30: the frontend is linted like the backend
     assert lint["run"] == "npm run --silent lint" and lint["when"] == "app/frontend/package.json"
     assert "docker-compose.yml" in [r["match"] for r in conf["shared"]]  # how the parts run together: the full run
+    assert ".githooks/" in [r["match"] for r in conf["shared"]]  # F-50: what git runs before every commit
     assert [s["key"] for s in conf["steps"] if s["parallel"]] == ["backend"]  # E1-F1-02: spread over the machine
 
 

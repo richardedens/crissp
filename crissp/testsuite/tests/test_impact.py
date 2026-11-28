@@ -104,7 +104,7 @@ TOOLS, LINTED = ["tools", "gate"], ["tools", "gate", "python-lint"]  # Python li
     ("crissp/ux.sh", TOOLS), ("crissp/tool/server.py", LINTED), ("crissp/look/look.css", TOOLS),
     ("crissp/template/crissp/uxsuite/team.json", TOOLS), ("crissp/testsuite/accepted-risks.json", ["audit"]),
     ("crissp/deploy/helm/app/values.yaml", ["deploy", "python-lint"]), ("crissp/deploy/check.sh", ["deploy", "python-lint"]),
-    ("crissp/deploy.sh", ["deploy"]),
+    ("crissp/deploy.sh", ["deploy"]), (".githooks/pre-commit", TOOLS),
 ])
 def test_this_repository_maps_its_own_parts(path, steps):
     """The framework is a product of its own: its tests, its deploy template, the audit of its pinned tools."""

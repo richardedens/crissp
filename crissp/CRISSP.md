@@ -225,6 +225,11 @@ page. A new capability is documented by a journey in the same piece of work.
   once their part does, so a project that was just brought in runs green with no code yet; the UX suite walks the
   local stack (`compose.url`, `http://127.0.0.1:8080`). The frontend's lint is its package's `lint` script
   (`npm run --silent lint`), so a frontend picks its own linter (ESLint, Biome …).
+- **The lint runs before every commit**: `.githooks/pre-commit` runs the lint steps (`lint` and every `*-lint` step)
+  with the crissp `.mcp.json` pins (`crissp hook`), and `core.hooksPath .githooks` turns it on. `crissp init` sets it
+  and `crissp repair --yes` sets it in every clone that lacks it, but never over hooks the repository already has
+  (a `core.hooksPath` of its own, hooks in `.git/hooks`): those are said, not switched off. `git commit --no-verify`
+  skips it once; `crissp check` and CI still run the lint.
 - **The first PBIs build the skeleton**: the two parts and the stack, each with a test, before any screen. Until it
   runs, the UX suite has nothing to walk; a look at a screen before it is built is `crissp ux --propose <walk>` (a
   mockup in `crissp/uxsuite/results/`), never a prototype written into `crissp/uxsuite/`, which holds only its

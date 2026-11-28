@@ -18,6 +18,7 @@
  ],
  "shared": [
   {"match": "docker-compose.yml", "why": "how the parts run together"},
+  {"match": ".githooks/", "why": "what git runs before every commit (the lint steps)"},
   {"match": "*/Dockerfile", "why": "what goes into an image"},
   {"match": "*/requirements.txt", "why": "the dependencies"},
   {"match": "*/package-lock.json", "why": "the frontend's dependencies"}

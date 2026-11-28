@@ -32,6 +32,9 @@ real services. Until the guards exist (template/testsuite), name the commands th
 guards as findings. -->
 
 - **Commit first**: the scripts test what is committed. **One run at a time.**
+- **The lint runs before every commit**: git runs `.githooks/pre-commit` (`crissp hook`: the `lint` and `*-lint`
+  steps). In a fresh clone, `crissp repair --yes` turns it on (`core.hooksPath .githooks`). Never `--no-verify` to
+  get past a red lint; fix it.
 - Tests never read a developer `.env`, never touch a real database, real AI keys or real identity providers.
 - **Parallel tests share one PostgreSQL server, with a database per worker**: never a server per worker. A session
   fixture (`conftest.py`) creates the worker's own database on that one server, named after `PYTEST_XDIST_WORKER`

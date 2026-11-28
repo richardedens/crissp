@@ -149,6 +149,12 @@
     "package",
     "python-lint"
    ]
+  },
+  {
+   "match": ".githooks/",
+   "steps": [
+    "tools"
+   ]
   }
  ],
  "shared": [

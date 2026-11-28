@@ -823,6 +823,44 @@
     "test_python_lint.py::test_every_change_to_linted_python_brings_the_lint_step",
     "test_python_lint.py::test_ci_runs_the_lint_step"
    ]
+  },
+  {
+   "id": "lint-before-commit",
+   "title": "git lints before every commit: .githooks/pre-commit, turned on by init and repair (F-50)",
+   "problem": "A project's lint steps only ran in crissp check and CI, after the commit was made; nothing set up a git hook, neither crissp init nor crissp repair, and this repository had none either.",
+   "fix": "The template's githooks/pre-commit becomes .githooks/pre-commit. It runs `crissp hook` (lib/hook.py: the `lint` and `*-lint` steps that are there, each in its folder with lib/steps.sh and the pinned tools, writing no results) with the crissp .mcp.json pins: the installed one when its version matches, else uvx, else crissp on PATH; in the framework's checkout its engine. crissp init and crissp repair --yes set core.hooksPath .githooks, but never over a core.hooksPath of the project's own or hooks in .git/hooks: those are said. This repository commits the same hook.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/hook.py",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/template/githooks/pre-commit",
+     "symbol": ""
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "fix_hook"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "hook_note"
+    },
+    {
+     "file": ".githooks/pre-commit",
+     "symbol": ""
+    }
+   ],
+   "tests": [
+    "test_hook.py::test_the_pre_commit_hook_runs_the_lint_and_blocks_a_red_commit",
+    "test_hook.py::test_a_project_s_hook_runs_the_crissp_that_mcp_json_pins",
+    "test_hook.py::test_hooks_a_project_already_has_are_never_switched_off",
+    "test_repair.py::test_the_lint_hook_is_made_and_turned_on",
+    "test_repair.py::test_hooks_of_its_own_are_never_switched_off_they_are_said",
+    "test_cli.py::test_init_makes_the_lint_hook_and_turns_it_on",
+    "test_cli.py::test_init_never_switches_off_hooks_a_repository_already_has",
+    "test_package.py::test_init_makes_a_crissp_project_that_is_green"
+   ]
   }
  ],
  "gaps": [

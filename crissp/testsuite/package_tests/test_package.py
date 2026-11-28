@@ -72,13 +72,14 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     env = {**os.environ, "GIT_AUTHOR_NAME": "Example", "GIT_AUTHOR_EMAIL": "example@example.org",
            "GIT_COMMITTER_NAME": "Example", "GIT_COMMITTER_EMAIL": "example@example.org"}
     env.pop("CRISSP_ROOT", None)
+    env["PATH"] = os.pathsep.join([str(crissp.parent), env.get("PATH", "")])  # F-50: the hook finds the pinned crissp
     env["VIBE_HOME"] = str(tmp_path / "vibe-home")  # F-24: no Vibe here, init writes the config and skips the trust
     said = run([str(crissp), "init", "--yes", "--product", "Example", "--owner", "the product owner"], project, env).stdout
     assert (project / ".git").is_dir() and "git init" in said
     for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", ".vibe/config.toml",
                  "crissp/CRISSP.md", "crissp/CLAUDE.md", "crissp/backlog/FINDINGS.md", "crissp/testsuite/suites.json",
                  "crissp/uxsuite/team.json", "crissp/deploy/deploy.json", "crissp/deploy/helm/app/Chart.yaml",
-                 "crissp/deploy/terraform/main.tf"):
+                 "crissp/deploy/terraform/main.tf", ".githooks/pre-commit"):
         assert (project / made).is_file(), made
     text = "".join(p.read_text() for p in project.rglob("*") if p.is_file() and ".git/" not in str(p)
                    and p.suffix in {".md", ".json", ".yaml", ".tf", ""})
@@ -106,7 +107,8 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     (backend / "tests" / "test_again.py").write_text(  # E1-F1-02: two files, so a machine with CPUs to spare uses xdist
         "from example import double\n\n\ndef test_double_zero():\n    assert double(0) == 0\n")
     run(["git", "add", "-A"], project, env)
-    run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed and committed
+    adopted = run(["git", "commit", "-q", "-m", "CRISSP: adopt C.R.I.S.S.P."], project, env)  # the owner reviewed
+    assert "crissp hook: CRISSP: the backend's lint (ruff) passed" in adopted.stdout + adopted.stderr  # F-50: git linted it first
     nothing = run([str(crissp), "deploy"], project, env, check=False)  # F-04: a project's guards speak `crissp …`
     said = nothing.stdout + nothing.stderr
     assert "crissp deploy --cluster" in said and ".sh" not in said, said
