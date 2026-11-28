@@ -22,6 +22,8 @@ with Mistral Vibe as well as Claude Code, and has a UX suite that discovers what
 
 ### Everything in this release
 
+- **The website names the released version as soon as VERSION changes (F-141).** It was rebuilt only when its pages,
+  pictures or look changed, so the bump to 0.2.0 left it saying 0.1.10.
 - **crissp's own Python has one layout (F-97).** It was formatted once with `ruff format`, and the `python-lint`
   step now checks the layout (`ruff format --check`) and the line length. `git blame` skips the layout commit
   (`.git-blame-ignore-revs`; locally `git config blame.ignoreRevsFile .git-blame-ignore-revs`).
