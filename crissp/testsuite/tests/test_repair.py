@@ -34,6 +34,7 @@ def bring_in(root: Path) -> None:
         if src.is_file():
             write(root / "crissp" / src.relative_to(repair.TEMPLATE / "crissp"), src.read_text().replace("{{PRODUCT}}", "x"))
     write(root / "crissp/CRISSP.md", (repair.ENGINE / "CRISSP.md").read_text())
+    write(root / repair.SKILL, (repair.TEMPLATE / "agents/skills/crissp/SKILL.md").read_text())
     write(root / ".gitignore", (repair.TEMPLATE / "gitignore.crissp").read_text())
     write(root / ".githooks/pre-commit", (repair.TEMPLATE / "githooks/pre-commit").read_text())
     (root / ".githooks/pre-commit").chmod(0o755)
@@ -81,7 +82,7 @@ def test_it_shows_what_is_out_of_place_and_changes_nothing_without_yes(old, caps
 def test_yes_puts_everything_in_place_and_keeps_what_the_project_wrote(old, capsys):
     assert repair.main(["--yes"], {"CRISSP_ROOT": str(old)}) == 0
     out = capsys.readouterr().out
-    assert "Repaired 9" in out and "Review the diff and commit when you are happy." in out
+    assert "Repaired 10" in out and "Review the diff and commit when you are happy." in out
     conf = json.loads((old / "crissp/testsuite/suites.json").read_text())
     template = json.loads((repair.TEMPLATE / "crissp/testsuite/suites.json").read_text())
     assert conf["steps"] == template["steps"]
@@ -526,3 +527,39 @@ def test_without_git_a_vibe_config_is_not_said_to_be_in_git(tmp_path, monkeypatc
         raise OSError("no git")
     monkeypatch.setattr(repair.subprocess, "run", no_git)
     assert repair.vibe_needs(root) == []
+
+
+OLD_AGENTS = ("# shop — for agents\n\nRead `crissp/AGENTS.md` (what an agent next to the main session must know) and "
+              "`crissp/CLAUDE.md` (the agreement).\n")
+OLD_INTRO = ("The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is "
+             "specific to\nworking as an agent next to the main session.\n")
+
+
+def test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill(tmp_path):
+    """F-110/F-111: a project brought in earlier has the old pointer AGENTS.md, the old crissp/AGENTS.md intro and no
+    crissp skill: repair brings all three, each only where it is crissp's own text."""
+    root = tmp_path / "shop"
+    bring_in(root)
+    write(root / "AGENTS.md", OLD_AGENTS)
+    sub = root / "crissp/AGENTS.md"
+    write(sub, sub.read_text().split("\n\n", 1)[0] + "\n\n" + OLD_INTRO + "\n" + sub.read_text().split("\n\n", 2)[2])
+    (root / repair.SKILL).unlink()
+    fix = next(r for r in repair.find(root) if r.key == "agents")
+    assert "AGENTS.md" in fix.what and "crissp/AGENTS.md" in fix.what and repair.SKILL in fix.what
+    fix.do()
+    text = (root / "AGENTS.md").read_text()
+    assert text.startswith("# shop — for agents\n") and "`brief`" in text and "{{" not in text
+    assert "ignores this file" in sub.read_text() and OLD_INTRO not in sub.read_text()
+    assert (root / repair.SKILL).read_text() == (repair.TEMPLATE / "agents/skills/crissp/SKILL.md").read_text()
+    assert "agents" not in keys(root)
+
+
+def test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current(tmp_path):
+    root = tmp_path / "own"
+    bring_in(root)
+    write(root / "AGENTS.md", "# own rules\n")
+    write(root / repair.SKILL, "an older skill\n")
+    fix = next(r for r in repair.find(root) if r.key == "agents")
+    assert fix.what.startswith(repair.SKILL)
+    fix.do()
+    assert (root / "AGENTS.md").read_text() == "# own rules\n" and "agents" not in keys(root)

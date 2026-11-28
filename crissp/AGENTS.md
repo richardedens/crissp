@@ -1,7 +1,8 @@
 # C.R.I.S.S.P. — for agents working in this repository
 
-The agreement is **crissp/CLAUDE.md**: read it first, it applies to every agent. This file only adds what is specific to
-working as an agent next to the main session.
+**Only for an agent a main session started for one part.** The main session (you talk with the product owner)
+follows the root `AGENTS.md` and ignores this file. The agreement is **crissp/CLAUDE.md**; this file adds what is
+specific to working as an agent next to the main session.
 
 - You work in your own git worktree, on one part. Run that part's tests before you report.
   Parts: `crissp/testsuite/run.sh --quick tools gate` (testsuite, uxsuite, tool), `crissp/deploy/check.sh` (deploy),

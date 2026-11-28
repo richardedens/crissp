@@ -98,7 +98,7 @@ def test_init_makes_a_crissp_project_that_is_green(crissp, tmp_path):
     for made in ("CLAUDE.md", "AGENTS.md", "CHANGELOG.md", "VERSION", ".gitignore", ".mcp.json", ".vibe/config.toml",
                  "crissp/CRISSP.md", "crissp/CLAUDE.md", "crissp/backlog/FINDINGS.md", "crissp/testsuite/suites.json",
                  "crissp/uxsuite/team.json", "crissp/deploy/deploy.json", "crissp/deploy/helm/app/Chart.yaml",
-                 "crissp/deploy/terraform/main.tf", ".githooks/pre-commit"):
+                 "crissp/deploy/terraform/main.tf", ".githooks/pre-commit", ".agents/skills/crissp/SKILL.md"):
         assert (project / made).is_file(), made
     text = "".join(p.read_text() for p in project.rglob("*") if p.is_file() and ".git/" not in str(p)
                    and p.suffix in {".md", ".json", ".yaml", ".tf", ""})

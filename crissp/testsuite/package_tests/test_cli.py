@@ -256,3 +256,13 @@ def test_hook_runs_the_engines_hook_for_the_project(monkeypatch, tmp_path):
     assert cli.main(["hook"], env={}) == 1
     (cmd, cwd, root), = calls
     assert cmd[1:] == [str(cli.ENGINE / "testsuite" / "lib" / "hook.py")] and str(cwd) == root == str(tmp_path.resolve())
+
+
+def test_init_gives_an_agent_its_first_moves_and_the_crissp_skill(tmp_path, monkeypatch):
+    """F-110/F-111: a project crissp brings in starts with the root AGENTS.md's first moves and the crissp skill."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert cli.main(["init", "--yes"], env={"VIBE_HOME": str(tmp_path / "no-home")}) == 0
+    assert "`brief`" in (project / "AGENTS.md").read_text()
+    assert (project / ".agents/skills/crissp/SKILL.md").read_text().startswith("---\nname: crissp\n")

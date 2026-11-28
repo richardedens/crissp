@@ -1632,6 +1632,52 @@
     "test_lint::test_every_bash_script_runs_on_the_bash_a_mac_ships",
     "test_repair::test_a_vibe_config_that_does_not_name_the_folder_is_written_anew"
    ]
+  },
+  {
+   "id": "agents-first-moves",
+   "title": "An agent that reads AGENTS.md had to explore before its first move (F-110)",
+   "problem": "Vibe reads AGENTS.md as its instructions; the root file only pointed at two long files, so a session read the whole agreement, .mcp.json, the README and server.py before calling brief, and took \"use crissp to the fullest\" as a yes for the full run. crissp/AGENTS.md, for an agent next to the main session, reached the main session as well.",
+   "fix": "The root AGENTS.md (this repository and the template) gives the first moves in 20 lines: brief, backlog, run and status, the tools that write the backlog, what waits for the product owner's yes, never a .env, and where to read more. crissp/AGENTS.md says the main session ignores it. Repair replaces the old pointer and the old intro, only where they are crissp's text.",
+   "sources": [
+    {
+     "file": "crissp/template/AGENTS.md",
+     "symbol": "# {{PRODUCT}}"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_root_agents_file_gives_an_agent_its_first_moves",
+    "test_repair::test_the_agent_files_of_an_older_crissp_get_the_first_moves_and_the_skill",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
+  },
+  {
+   "id": "crissp-skill",
+   "title": "No playbook for the crissp tools (F-111)",
+   "problem": "An agent learned the crissp tools one description at a time, after a search: nothing said which tool fits which question, the order of a session, or what to do when a call is slow.",
+   "fix": "The crissp skill (crissp/template/agents/skills/crissp/SKILL.md, written by init to .agents/skills/crissp/SKILL.md, which Vibe loads when needed and which can be committed): which tool when, the order of a session, what waits for the product owner, a slow or missing tool. Repair keeps it this crissp's; this repository has the same file.",
+   "sources": [
+    {
+     "file": "crissp/template/agents/skills/crissp/SKILL.md",
+     "symbol": "name: crissp"
+    },
+    {
+     "file": "src/crissp/cli.py",
+     "symbol": "F-111"
+    },
+    {
+     "file": "crissp/testsuite/lib/repair.py",
+     "symbol": "def fix_agents("
+    }
+   ],
+   "tests": [
+    "test_template::test_the_crissp_skill_is_the_engines_and_this_repository_uses_it",
+    "test_repair::test_agent_files_a_project_wrote_itself_are_left_and_an_old_skill_is_brought_current",
+    "test_cli::test_init_gives_an_agent_its_first_moves_and_the_crissp_skill"
+   ]
   }
  ],
  "gaps": [

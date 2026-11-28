@@ -85,6 +85,8 @@ def plan_init(root: Path, values: dict, deploy: bool) -> list[tuple[Path, Path, 
     files.append((TEMPLATE / "mcp.json", root / ".mcp.json", True))
     files.append((TEMPLATE / "vibe" / "config.toml", root / ".vibe" / "config.toml", True))  # F-24/F-100: Vibe's MCP
     files.append((TEMPLATE / "githooks" / "pre-commit", root / ".githooks" / "pre-commit", False))  # F-50: the lint
+    files.append((TEMPLATE / "agents" / "skills" / "crissp" / "SKILL.md", root / ".agents" / "skills" / "crissp" / "SKILL.md",
+                  False))  # F-111: the crissp skill, for an agent that reads .agents/skills (Vibe)
     tree(TEMPLATE / "crissp", root / "crissp")
     files.append((ENGINE / "CRISSP.md", root / "crissp" / "CRISSP.md", False))
     if deploy:
