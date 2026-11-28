@@ -24,9 +24,9 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "crissp" / "testsuite" / "lib"))
 
-import vibe  # noqa: E402
+import vibe
 
-from crissp import cli  # noqa: E402
+from crissp import cli
 
 VIBE = os.environ.get("CRISSP_VIBE") or shutil.which("vibe")
 pytestmark = pytest.mark.skipif(not VIBE, reason="Mistral Vibe is not installed (pip install mistral-vibe, or "

@@ -344,7 +344,7 @@ def fix_vibe(root: Path, version: str | None, home: Path | None) -> Repair | Non
     this folder (cwd and CRISSP_ROOT: Vibe's desktop app needs both) is written anew when it holds only crissp's
     server; the framework's own checkout gets one that starts its own server."""
     engine = is_engine(root) and (root / "crissp" / "tool" / "server.py").is_file()
-    if not (engine or brought_in(root) and version):
+    if not (engine or (brought_in(root) and version)):
         return None
     config = root / ".vibe" / "config.toml"
     db = home / vibe.FILE if home is not None and home.is_dir() else None
