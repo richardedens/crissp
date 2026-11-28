@@ -20,10 +20,13 @@ crissp/ux.sh --propose <walk> [focus]  # a design for the walk, with an optional
 
 The screenshots come from Playwright, run under uv with the version pinned (nothing is installed into the repository).
 The browser itself is fetched once by whoever runs it: `uv run --no-project --with playwright==1.55.0 playwright install
-chromium`. Rounds and designs are headless Claude Code runs (`claude -p`) with the login of whoever runs them: no key in
-the repository, `CRISSP_UX_MODEL` picks the model. They cost tokens, so the product owner asks for them; nothing runs on
-a schedule. A run may read the repository (never a `.env` file) and use agents; it cannot run commands, use the web or
-MCP servers, and it writes only into its own folder. Up to `parallel` runs at once (`UXSUITE_PARALLEL` overrides it),
+chromium`. Rounds and designs are headless runs of an agent CLI that is installed, Claude Code (`claude -p`) or
+Mistral Vibe (`vibe -p`), with the login of whoever runs them: no key in the repository. `CRISSP_UX_CLI` picks the CLI
+(`claude` or `vibe`; without it Claude Code when it is installed, else Vibe), `CRISSP_UX_MODEL` the model. They cost
+tokens, so the product owner asks for them; nothing runs on a schedule. A run cannot run commands, use the web or MCP
+servers, never reads a `.env` file, and writes only into its own folder. On Claude Code it may read the repository and
+use agents; on Vibe it works in its own folder (Vibe refuses a write anywhere else), reads only the UX suite and the
+agreement, and plays the personas itself. Up to `parallel` runs at once (`UXSUITE_PARALLEL` overrides it),
 none while a check run holds the lock; the rest waits in the queue, which the open suite works off.
 
 ## The team, the product, the walks

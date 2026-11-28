@@ -8,9 +8,12 @@ themes), checked once by the moderator, made on request with an optional focus. 
 the whole product: every persona tries their own jobs on the mapped screens (ux_map) and says done, hard or impossible,
 and the moderator turns what cannot be done into needs (ux_discovery).
 
-Each run is one headless Claude Code run (`claude -p`) that may read the repository (never a .env file) and use agents,
-nothing else: no shell, no web, no MCP servers, and it writes only into its own folder under results/ (Claude Code's own
-permission rules). It uses the login of whoever runs it: no key in the repository. CRISSP_UX_MODEL picks the model.
+Each run is one headless run of an agent CLI that is installed (F-103): Claude Code (`claude -p`) or Mistral Vibe
+(`vibe -p`); CRISSP_UX_CLI picks one, else Claude Code when it is installed, else Vibe. Either way it is read-only but
+for its own folder under results/, by the CLI's own permission rules: no shell, no web, no MCP servers, never a .env
+file. Claude Code may read the repository and use agents; Vibe works in the run's folder (its working directory:
+writes anywhere else are refused), may read only the UX suite and the agreement, and plays the personas itself. It
+uses the login of whoever runs it: no key in the repository. CRISSP_UX_MODEL picks the model.
 
 Up to `parallel` runs at once (team.json; UXSUITE_PARALLEL overrides it), never two for the same walk and kind, and none
 while a check run holds crissp/testsuite/results/.run.lock: the machine stays quiet for the tests. What cannot start now
@@ -21,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -38,6 +42,8 @@ FOLDER = {"round": "rounds", "proposal": "proposals", "discovery": "discovery"}
 PRODUCT = "product"  # a discovery round is about the whole product, not one walk: this is its "walk"
 STALE = 600  # a run started by another process counts as running while its log grew in the last ten minutes
 popen = subprocess.Popen  # the tests stand in for it: no Claude run in a test
+which = shutil.which  # and for this: which agent CLIs are installed
+RUNNERS = ("claude", "vibe")
 _running: dict[str, object] = {}  # the runs this process started: their folder → the process
 _busy = threading.Lock()
 _qlock = threading.RLock()
@@ -417,16 +423,51 @@ DO THIS, writing {vdir}/status.json as {{"phase": "...", "note": "..."}} at the 
 """ + FOREGROUND
 
 
-def _launch(suite: Suite, vdir: Path, prompt: str) -> None:
+VIBE_ALONE = """
+ON THIS RUN (Mistral Vibe): there are no agents here. Do the stages yourself, one after the other:
+play every persona and the moderator yourself, each in turn and in their own voice, never mixing them, and write the
+same files."""
+
+
+def runner() -> str:
+    """F-103: the agent CLI the team runs on: CRISSP_UX_CLI, else Claude Code when it is installed, else Vibe."""
+    asked = os.environ.get("CRISSP_UX_CLI")
+    if asked:
+        if asked not in RUNNERS:
+            raise ValueError(speak(f"CRISSP_UX_CLI must be one of {', '.join(RUNNERS)}, not {asked!r}"))
+        return asked
+    return next((name for name in RUNNERS if which(name)), "claude")
+
+
+def _claude(suite: Suite, vdir: Path, prompt: str) -> tuple[list[str], dict]:
     never = [f"Read(/{suite.root}/**/.env)", f"Read(/{suite.root}/**/.env.*)"]
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--no-session-persistence",
            "--strict-mcp-config", "--permission-mode", "default",
            "--allowedTools", "Read", "Glob", "Grep", "Agent", f"Write(/{vdir}/**)", f"Edit(/{vdir}/**)",
            "--disallowedTools", "Bash", "WebFetch", "WebSearch", "NotebookEdit", *never]
+    return cmd, {"cwd": suite.root}
+
+
+def _vibe(suite: Suite, vdir: Path, prompt: str) -> tuple[list[str], dict]:
+    """F-103: Vibe headless in the run's own folder (its working directory, so outside_workdir=deny refuses a write
+    anywhere else), only read_file, write_file and edit (no bash, no web, no agents), MCP off, and reading allowed
+    only in the UX suite and the agreement, never a .env (Vibe's VIBE_* settings for this run alone)."""
+    cmd = ["vibe", "-p", prompt + VIBE_ALONE, "--output", "streaming", "--approval-policy", "accept-edits",
+           "--enabled-tools", "read_file", "--enabled-tools", "write_file", "--enabled-tools", "edit"]
+    env = os.environ | {"VIBE_ENABLE_MCP": "false", "VIBE_OUTSIDE_WORKDIR": "deny",
+                        "VIBE_TOOLS__READ_FILE__ALLOWLIST": json.dumps(
+                            [f"vibe-path:directory_recursive:{suite.here}",
+                             f"vibe-path:exact:{suite.root / 'CLAUDE.md'}"]),
+                        "VIBE_TOOLS__READ_FILE__DENYLIST": json.dumps(["**/.env", "**/.env.*"])}
+    return cmd, {"cwd": vdir, "env": env}
+
+
+def _launch(suite: Suite, vdir: Path, prompt: str) -> None:
+    cmd, where = (_vibe if runner() == "vibe" else _claude)(suite, vdir, prompt)
     if os.environ.get("CRISSP_UX_MODEL"):
         cmd += ["--model", os.environ["CRISSP_UX_MODEL"]]
     with open(vdir / "run.log", "w") as log:  # the run keeps its own copy of the file
-        _running[str(vdir)] = popen(cmd, cwd=suite.root, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+        _running[str(vdir)] = popen(cmd, **where, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                     start_new_session=True)
 
 
@@ -435,6 +476,7 @@ def start(suite: Suite, conf: dict, kind: str, walk_id: str, focus: str = "") ->
     or ValueError when it cannot start."""
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {', '.join(KINDS)}")
+    runner()  # F-103: an unknown CRISSP_UX_CLI is said before anything is made
     if kind == "discovery":
         return _discover(suite, conf, walk_id)
     walk = conf["walks"].get(walk_id)

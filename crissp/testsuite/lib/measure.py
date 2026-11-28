@@ -35,6 +35,9 @@ import sessionview as sv
 ROOT = sv.ROOT  # the project (CRISSP_ROOT, or the current directory)
 BACKLOG = ("crissp/backlog", "crissp/backlog", "backlog")  # where the backlog is, and where it was before
 LONG = 300_000  # a history this long is a long history
+IMAGES = 10  # F-104 (F-18): this many images in a main thread: screenshots belong in a subagent that reports text
+BIG_LINES = 800  # F-104: a file longer than this is read in parts (offset and limit), not whole
+PICTURES = ("image", "image_url", "input_image")
 ITEM = re.compile(r"^### (E\d+-\d+) · .+?\[(todo|doing|review|done|parked)\]", re.MULTILINE)
 COMMIT_ITEM = re.compile(r"^((?:E\d+-\d+)|(?:F-\d+)):")
 
@@ -46,6 +49,35 @@ def words(n: float) -> str:
     if n >= 1e3:
         return f"{round(n / 1e3)} thousand"
     return f"{round(n)}"
+
+
+def images(node) -> int:
+    """F-104: the images in a record (a screenshot a tool returned, an image pasted in), however deep."""
+    if isinstance(node, dict):
+        return (node.get("type") in PICTURES) + sum(images(v) for v in node.values())
+    if isinstance(node, list):
+        return sum(images(v) for v in node)
+    return 0
+
+
+def whole(rel: str | None, given: dict, root: Path) -> str | None:
+    """F-104: the repository file a read took whole while it is longer than BIG_LINES lines, else None."""
+    if not rel or given.get("offset") or given.get("limit") or not (root / rel).is_file():
+        return None
+    with (root / rel).open("rb") as f:
+        return rel if sum(1 for _ in f) > BIG_LINES else None
+
+
+def budget(pictures: int, wholes: list[str]) -> list[str]:
+    """F-104: the context-budget habits as checks: what a session's main thread spends its context on, said."""
+    out = []
+    if pictures >= IMAGES:
+        out.append(f"{pictures} images in the main thread: browser checks and screenshots belong in a subagent "
+                   "that reports text")
+    if wholes:
+        out.append(f"read whole, past {BIG_LINES} lines: {', '.join(sorted(set(wholes))[:5])}: read the part "
+                   "needed (offset and limit), or ask a subagent")
+    return out
 
 
 def history(record: dict) -> int:

@@ -25,9 +25,8 @@ crissp/testsuite/results/
 .claude/worktrees/
 .DS_Store
 crissp/uxsuite/results/
-# Vibe: .vibe/config.toml is committed like .mcp.json (the same pin); the rest of .vibe/ stays local
-.vibe/*
-!.vibe/config.toml
+# Vibe: .vibe/config.toml names this machine's folder (F-100); crissp repair --yes writes each clone's own
+.vibe/
 # Terraform: state and real variables hold secrets
 .terraform/
 *.tfstate

@@ -132,3 +132,16 @@ def test_the_framework_and_the_agreement_say_how_a_session_stays_small():
         for words in ("Sessions that stay small", "/clear", "/compact", "in a subagent", "start with `run` and are read with `status`",
                       "Explore agent"):
             assert words in text, (doc.name, words)
+
+
+def test_the_sessions_section_names_the_vibe_way_too():
+    """F-102: 'Sessions that stay small' spoke only Claude Code; a Vibe session gets its own equivalents, in the same
+    section repair keeps in step (F-21), so projects brought in earlier get them with crissp repair --yes."""
+    for doc in (REPO / "crissp" / "CRISSP.md", TEMPLATE / "CLAUDE.md", REPO / "crissp" / "CLAUDE.md"):
+        text = doc.read_text()
+        start = text.index("## Sessions that stay small")
+        section = " ".join(text[start:text.index("\n## ", start + 1)].split())
+        for words in ("Mistral Vibe", "a new session in the desktop app", "`/compact <what to keep>`", "`task` tool",
+                      "`explore` agent", "auto_compact_threshold",
+                      "Vibe sessions too"):
+            assert words in section, (doc.name, words)

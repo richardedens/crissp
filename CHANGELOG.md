@@ -35,6 +35,30 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   tests list in `crissp/uxsuite/results/test-shots/screens.json` (`map.tests` points elsewhere), and the walks' own. Per
   area you see every screen with its pictures, how it was found and its gaps: no link reaches it, the crawl could not
   open it, or no walk looks at it.
+- **Vibe's desktop app gets the crissp tools (F-100).** A Vibe desktop session listed only Vibe's own tools: the
+  desktop app starts MCP servers from its own folder with only a few environment variables, so the server was not
+  found (a relative path) or did not know the project. `.vibe/config.toml` now names the project's folder (`cwd` and
+  `CRISSP_ROOT`), starts `uvx` by its full path and gives the first download 60 seconds. `crissp init` writes it, and
+  `crissp repair --yes` writes it anew for a project brought in earlier (when it holds only crissp's server; it says
+  what to add when it has servers of its own). Because the file names your machine's folder, `.vibe/` is now kept out
+  of git as a whole: each clone runs `crissp repair --yes` once (which it already does for the git hook). If your
+  project committed `.vibe/config.toml`, repair tells you to `git rm --cached` it. Restart Vibe afterwards.
+- **The agreement says how a Vibe session stays small (F-102).** "Sessions that stay small" now names Vibe's own
+  commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
+  automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings
+  the section into projects brought in earlier.
+- **The Activity page shows Mistral Vibe's sessions too (F-101).** `/activity` lists the Vibe sessions working in
+  the repository next to Claude Code's, read from Vibe's own session logs (`VIBE_HOME`, else `~/.vibe`): the last
+  prompt, the latest step, its subagents, and the history the last request carried, with the same "start fresh"
+  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe.
+- **The Activity page warns about the context budget (F-104).** Besides the 300k-token history, a session's card
+  now says when its main thread holds 10 or more images (screenshots belong in a subagent that reports text) or read
+  a file of more than 800 lines whole (read the part needed). For Claude Code and Mistral Vibe sessions alike.
+- **The UX team walks on Mistral Vibe too (F-103).** Rounds and designs run on an agent CLI that is installed:
+  Claude Code, or Mistral Vibe when Claude Code is not there; `CRISSP_UX_CLI=vibe` (or `claude`) picks one. On Vibe a
+  run stays as safe as on Claude Code: it works in its own results folder and Vibe refuses a write anywhere else, it has
+  no shell, no web and no MCP servers, it reads only the UX suite and the agreement and never a `.env` file. It plays
+  the personas itself, one after the other, since Vibe gives a headless run no agents.
 - **crissp's own lint holds the engine to the standard library and finds copied code (F-93).** The `python-lint`
   step also scans every import in the engine's runtime code (anything outside the standard library and the engine's
   own modules fails, by file and line) and runs pylint's duplicate-code check (six similar lines or more).
