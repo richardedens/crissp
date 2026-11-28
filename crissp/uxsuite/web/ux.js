@@ -1,11 +1,11 @@
 /* The UX suite's page: reads /ux/api/state (crissp/uxsuite/api.py) and shows the walks, the team's rounds and advice,
-   its designs and the product owner's verdicts; writes verdicts and requests back. The look, the theme and the top bar
+   its designs, the product owner's verdicts, the team and the rules; writes verdicts, requests, personas and rules back. The look, the theme and the top bar
    are the framework's own (crissp/look). No dependencies, nothing loaded from outside. */
 (() => {
   const $ = (sel, el = document) => el.querySelector(sel);
   const { esc, badge } = window.Look;
   let S = null, tab = "overview", query = new URLSearchParams();
-  const TABS = [["overview", "Overview"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"]];
+  const TABS = [["overview", "Overview"], ["rounds", "Rounds & advice"], ["proposals", "Designs"], ["team", "Team"], ["rules", "Rules"]];
 
   const api = async (path, body) => {
     const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -20,6 +20,8 @@
     d.showModal();
   });
   const say = text => { $("#stamp").textContent = text; };
+  let notice = "", noticeAt = 0;  // what an action just said stays in the top bar a while, over the poll's redraws
+  const tell = text => { notice = text; noticeAt = Date.now(); say(text); };
 
   const last = list => list[list.length - 1];
   const avg = scores => { const v = Object.values(scores || {}).filter(x => typeof x === "number"); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "–"; };
@@ -77,7 +79,7 @@
           ${(res.disputes || []).length ? `<details><summary>Where they disagree (${res.disputes.length})</summary>${res.disputes.map(d => `<p><b>${esc(d.topic)}</b></p><ul>${(d.positions || []).map(x => `<li>${esc(name(x.persona))}: ${esc(x.position)}</li>`).join("")}</ul>`).join("")}</details>` : ""}
           <div class="label">Advice</div>${(res.advice || []).map((a, i) => `<div class="advice ${esc(a.priority)}">
             <div class="row">${badge(a.priority, a.priority)}${a.effort ? badge("ver", a.effort) : ""}<b>${esc(a.title)}</b></div>
-            <p>${esc(a.detail)}</p><p class="small">Asked by ${(a.personas || []).map(name).map(esc).join(", ") || "the team"}${a.shot ? ` · ${esc(a.shot)}` : ""}</p>
+            <p>${esc(a.detail)}</p><p class="small">Asked by ${(a.personas || []).map(name).map(esc).join(", ") || "the team"}${a.shot ? ` · ${esc(a.shot)}` : ""}${a.rule ? ` · rule <code>${esc(a.rule)}</code>` : ""}</p>
             ${verdictButtons(`${w.id}/r${r.version}/a${i}`, [["agree", "Agree"], ["disagree", "Disagree"], ["later", "Later"]])}</div>`).join("") || '<p class="muted small">No advice.</p>'}</article>`;
       }).join("") || '<div class="card">No round yet. <button class="ghost" data-request="round" data-walk="' + esc(w.id) + '">Ask for a round</button></div>');
   }
@@ -138,15 +140,64 @@
   }
   window.addEventListener("resize", fit);
 
+  /* The Team and Rules tabs (E7-F1-01, E7-F2-01): every persona and rule is a file of the project's own
+     (crissp/uxsuite/personas/, rules/); these forms add, change, switch off and remove them. */
+  const editing = () => query.get("edit");
+  const field = (label, name, value, extra = "") => `<label class="field"><span>${label}</span><input type="text" name="${name}" value="${esc(value ?? "")}" ${extra}></label>`;
+  const area = (label, name, value, hint = "") => `<label class="field"><span>${label}${hint ? `<span class="hint muted small">${hint}</span>` : ""}</span><textarea name="${name}">${esc(value ?? "")}</textarea></label>`;
+  const choose = (label, name, value, options) => `<label class="field"><span>${label}</span><select name="${name}">${options.map(o => `<option ${o === value ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+  const tick = (label, name, value) => `<label class="chk"><input type="checkbox" name="${name}" ${value ? "checked" : ""}> ${label}</label>`;
+
+  function personaForm(p) {
+    const fresh = !p;
+    p = p || { key: "", name: "", role: "", device: "desktop", moderator: false, on: true, brief: "", jobs: [] };
+    return `<form class="card edit" data-form="persona" data-key="${esc(p.key)}"><h3>${fresh ? "A new persona" : "Edit " + esc(p.name)}</h3>
+      ${field("Name", "name", p.name, "required")}${field("Who they are (one line)", "role", p.role, "required")}
+      ${choose("Device", "device", p.device, ["desktop", "mobile", "both"])}
+      ${area("Brief", "brief", p.brief, "how they look at a screen, in their own voice")}
+      ${area("Jobs", "jobs", p.jobs.join("\n"), "one per line: what they come to do")}
+      <div class="row">${tick("Takes part", "on", p.on)}${tick("Moderates", "moderator", p.moderator)}</div>
+      <div class="row"><button class="primary">Save</button><a href="#team">Cancel</a></div></form>`;
+  }
+
   function team() {
-    return `<div class="walks-list">${S.personas.map(p => `<article class="card persona"><div class="row"><h3>${esc(p.name)}</h3>${p.moderator ? badge("area", "moderator") : ""}${badge("ver", p.device)}</div>
-      <div class="small muted">${esc(p.role)}</div><p class="small">${esc(p.brief)}</p></article>`).join("")}</div>
-      <p class="small muted">The team, the product and the walks are configured in <code>crissp/uxsuite/team.json</code> and <code>crissp/uxsuite/walks/</code>.</p>`;
+    const where = S.personas_from === "files" ? "<code>crissp/uxsuite/personas/</code>, one file each"
+      : "<code>crissp/uxsuite/team.json</code> for now: the first change here moves them to <code>crissp/uxsuite/personas/</code>, one file each";
+    const e = editing();
+    return `<div class="toolbar"><button class="primary" data-goto="team?edit=new">Add a persona</button><span class="small muted">The team lives in ${where}.</span></div>
+      ${e === "new" ? personaForm(null) : ""}
+      <div class="walks-list">${S.personas.map(p => e === p.key ? personaForm(p) : `<article class="card persona ${p.on ? "" : "off"}"><div class="row"><h3>${esc(p.name)}</h3>${p.moderator ? badge("area", "moderator") : ""}${badge("ver", p.device)}${p.on ? "" : badge("missing", "off")}</div>
+      <div class="small muted">${esc(p.role)}</div><p class="small">${esc(p.brief)}</p>
+      ${p.jobs.length ? `<div class="label">Jobs</div><ul class="small">${p.jobs.map(j => `<li>${esc(j)}</li>`).join("")}</ul>` : ""}
+      <div class="row"><a href="#team?edit=${encodeURIComponent(p.key)}">Edit</a>
+        <button class="ghost small" data-toggle="persona" data-id="${esc(p.key)}">${p.on ? "Switch off" : "Switch on"}</button>
+        <button class="ghost small" data-remove="persona" data-id="${esc(p.key)}">Remove</button></div></article>`).join("")}</div>`;
+  }
+
+  function ruleForm(r) {
+    const fresh = !r;
+    r = r || { id: "", title: "", severity: "should", on: true, text: "" };
+    return `<form class="card edit" data-form="rule" data-key="${esc(r.id)}"><h3>${fresh ? "A new rule" : "Edit " + esc(r.title)}</h3>
+      ${field("Title", "title", r.title, "required")}${choose("Weight", "severity", r.severity, ["must", "should", "could"])}
+      ${area("What it asks", "text", r.text, "in plain words, as the team should judge it")}
+      <div class="row">${tick("Holds", "on", r.on)}</div>
+      <div class="row"><button class="primary">Save</button><a href="#rules">Cancel</a></div></form>`;
+  }
+
+  function rulesTab() {
+    const e = editing();
+    return `<div class="toolbar"><button class="primary" data-goto="rules?edit=new">Add a rule</button><span class="small muted">Every round judges by the rules that hold, and every design follows them. They live in <code>crissp/uxsuite/rules/</code>, one file each${S.rules_from === "PRINCIPLES.md" ? " (the first change moves them out of PRINCIPLES.md)" : ""}.</span></div>
+      ${e === "new" ? ruleForm(null) : ""}
+      ${S.rules.map(r => e === r.id ? ruleForm(r) : `<article class="card rule ${r.on ? "" : "off"}"><div class="row">${badge(r.severity, r.severity)}<h3>${esc(r.title)}</h3><code class="small muted">${esc(r.id)}</code>${r.on ? "" : badge("missing", "off")}</div>
+        <p class="small">${esc(r.text)}</p>
+        <div class="row"><a href="#rules?edit=${encodeURIComponent(r.id)}">Edit</a>
+          <button class="ghost small" data-toggle="rule" data-id="${esc(r.id)}">${r.on ? "Switch off" : "Switch on"}</button>
+          <button class="ghost small" data-remove="rule" data-id="${esc(r.id)}">Remove</button></div></article>`).join("") || '<div class="card">No rules yet: add the first one.</div>'}`;
   }
 
   function render() {
     $("#tabs").innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("");
-    const view = { overview, rounds, proposals, team }[tab] || overview;
+    const view = { overview, rounds, proposals, team, rules: rulesTab }[tab] || overview;
     $("#view").innerHTML = view();
     fit();
     if (query.get("key")) $(`[id="p-${CSS.escape(query.get("key"))}"]`)?.scrollIntoView();
@@ -172,13 +223,15 @@
     } catch (e) { $("#view").innerHTML = `<div class="card">The UX suite does not answer: ${esc(e.message)}</div>`; return; }
     if (S.error) { $("#view").innerHTML = `<div class="card"><b>The configuration is wrong:</b> ${esc(S.error)}</div>`; return; }
     window.Look.brand(S.product, S.monogram, "UX");
-    say(S.team.text);
+    say(notice && Date.now() - noticeAt < 10000 ? notice : S.team.text);
     render();
   }
 
   document.addEventListener("click", async e => {
     const dv = e.target.closest("[data-device]");
     if (dv) { query.set("device", dv.dataset.device); render(); return; }  // Before on the laptop or the phone
+    const go = e.target.closest("[data-goto]");
+    if (go) { location.hash = go.dataset.goto; return; }
     const t = e.target.closest("[data-tab]");
     if (t) { location.hash = t.dataset.tab; return; }
     const r = e.target.closest("[data-request]");
@@ -186,8 +239,19 @@
       const focus = r.dataset.request === "proposal" ? await ask("What should the design focus on?", "Leave it empty for the must-advice first.") : "";
       if (focus === null) return;
       try { const out = await api("api/request", { kind: r.dataset.request, walk: r.dataset.walk, focus });
-        say(out.started ? `Started: ${out.started.kind} ${out.started.version} of ${out.started.walk}` : `Queued as number ${out.queued}: ${out.why}`);
-      } catch (err) { say(err.message); }
+        tell(out.started ? `Started: ${out.started.kind} ${out.started.version} of ${out.started.walk}` : `Queued as number ${out.queued}: ${out.why}`);
+      } catch (err) { tell(err.message); }
+      return load();
+    }
+    const tg = e.target.closest("[data-toggle]"), rm = e.target.closest("[data-remove]");
+    if (tg || rm) {
+      const kind = (tg || rm).dataset.toggle || (tg || rm).dataset.remove, id = (tg || rm).dataset.id;
+      if (rm && rm.dataset.sure !== "yes") { rm.dataset.sure = "yes"; rm.textContent = "Remove: sure?"; return; }  // a second click removes
+      const held = kind === "persona" ? S.personas.find(p => p.key === id) : S.rules.find(r => r.id === id);
+      try {
+        await api(`api/${kind}`, rm ? { remove: id } : { [kind]: { ...held, [kind === "persona" ? "key" : "id"]: id, on: !held.on } });
+        tell(rm ? `Removed ${id}` : `${id} is ${held.on ? "off" : "on"} now`);
+      } catch (err) { tell(err.message); }
       return load();
     }
     const v = e.target.closest("[data-verdict]");
@@ -199,10 +263,20 @@
         remark ? "It goes into the backlog item, before the changes: the builder reads it first." : "The team reads this next time.") : "";
       if (reason === null || (remark && !reason.trim())) return;
       try { const out = await api("api/verdict", { id: v.dataset.id, verdict, reason });
-        say(out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
-      } catch (err) { say(err.message); }
+        tell(out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
+      } catch (err) { tell(err.message); }
       return load();
     }
+  });
+  document.addEventListener("submit", async e => {
+    const f = e.target.closest("form[data-form]");
+    if (!f) return;
+    e.preventDefault();
+    const kind = f.dataset.form, data = Object.fromEntries(new FormData(f));
+    const body = { ...data, on: !!data.on, ...(kind === "persona" ? { key: f.dataset.key || undefined, moderator: !!data.moderator } : { id: f.dataset.key || undefined }) };
+    try { await api(`api/${kind}`, { [kind]: body }); tell(`Saved ${kind === "persona" ? data.name : data.title}`); location.hash = kind === "persona" ? "team" : "rules"; }
+    catch (err) { tell(err.message); }
+    return load();
   });
   document.addEventListener("change", e => {
     if (e.target.id === "walk") location.hash = `${e.target.dataset.to}?walk=${encodeURIComponent(e.target.value)}`;
@@ -210,5 +284,5 @@
   window.addEventListener("hashchange", () => { route(); if (S && !S.error) render(); });
   route();
   load();
-  setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) load(false); }, 5000);
+  setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open], form.edit")) load(false); }, 5000);  // never under a form being filled in
 })();

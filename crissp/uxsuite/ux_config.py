@@ -15,7 +15,8 @@ team.json
     rounds           debate rounds after the first look, 1-5 (default 2)
     parallel         how many runs at once, at least 1 (default 3; UXSUITE_PARALLEL overrides it)
     backlog          {"epic": "E<n>"} or {"epic_title": "..."}: where approved designs become PBIs
-    personas         [{key, name, role, device: desktop|mobile|both, moderator: bool, brief}], one moderator at least
+    personas         [{key, name, role, device: desktop|mobile|both, moderator: bool, on: bool, brief, jobs: [text]}],
+                     one moderator that is on; only while there are no files in personas/ (ux_cards: the team's files)
 walks/<id>.json
     title            what the walk is about
     steps            [{do: goto (path) | click (text or selector) | fill (selector, value) | press (key) | wait (ms)
@@ -148,6 +149,8 @@ def load(suite: Suite) -> dict:
     if not isinstance(backlog, dict) or ("epic" in backlog and not re.fullmatch(r"E\d+", str(backlog["epic"]))):
         raise ConfigError('team.json: backlog must be {"epic": "E<n>"} or {"epic_title": "..."}')
     walks = [walk(p) for p in sorted((suite.here / "walks").glob("*.json"))]
+    import ux_cards  # the persona files (ux_cards reads team.json's personas with personas() below when there are none)
+    team, source = ux_cards.team(suite.here, data)
     return {"product": product, "monogram": _text(data, "monogram", "team.json", product[:1].upper()),
             "about": str(data.get("about", "")).strip(), "audience": str(data.get("audience", "")).strip(),
             "ui_language": _text(data, "ui_language", "team.json", "English"),
@@ -155,4 +158,4 @@ def load(suite: Suite) -> dict:
             "rounds": _whole(data, "rounds", "team.json", 2, 1, 5),
             "parallel": _whole(data, "parallel", "team.json", 3, 1, 12),
             "backlog": {"epic": backlog.get("epic"), "epic_title": str(backlog.get("epic_title") or "UX: approved designs")},
-            "personas": personas(data), "walks": {w["id"]: w for w in walks}}
+            "personas": team, "personas_from": source, "walks": {w["id"]: w for w in walks}}

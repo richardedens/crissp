@@ -299,8 +299,8 @@ NOT_GREEN = {
     "audit": "Not green: update the package or image to the fixed version, or accept it for a while with a reason in "
              "crissp/testsuite/accepted-risks.json (at most 90 days).",
     "secrets": "Not green: a secret in git has leaked. Rotate it first, then remove it from the history. A finding that "
-               "is no secret goes into .gitleaksignore (its fingerprint, from results/secrets.json, with a comment "
-               "saying why).",
+               "is no secret is allowed in .gitleaks.toml by its file and value ([[allowlists]], with a description "
+               "saying why), never by its commit: a .gitleaksignore fingerprint misses in a shallow clone.",
     "sast": "Not green: change the code (each finding says why), or accept it for a while with a reason in "
             "crissp/testsuite/accepted-risks.json (at most 90 days).",
 }

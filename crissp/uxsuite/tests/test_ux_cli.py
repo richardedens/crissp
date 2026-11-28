@@ -100,3 +100,11 @@ def test_ux_sh_without_an_argument_opens_the_suite_in_the_dashboard(tmp_path):
     (root / "crissp" / "test.sh").chmod(0o755)
     r = sh(root)
     assert r.returncode == 0 and r.stdout == "test.sh --ux\n"
+
+
+def test_list_marks_a_persona_that_is_off(product, capsys):
+    import ux_cards
+    ux_cards.save_persona(product, {"key": "phone", "name": "Mo", "role": "student", "device": "mobile",
+                                    "brief": "Uses a thumb.", "on": False})
+    assert cli.main(["list"], product) == 0
+    assert "phone      Mo, student (mobile) — off" in capsys.readouterr().out

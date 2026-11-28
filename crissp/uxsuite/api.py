@@ -9,6 +9,9 @@ request under /ux): its page, what the team did and does, and the product owner'
     GET  /ux/results/proposals/…   the team's designs; their HTML in a sandbox of its own (never this origin)
     POST /ux/api/verdict           {id, verdict, reason}: a verdict (ux_verdicts), and what it sets going
     POST /ux/api/request           {kind: round|proposal, walk, focus}: start it now, or queue it
+    POST /ux/api/persona           {persona: {key?, name, role, device, moderator, on, brief, jobs}} or {remove: key}:
+                                   the Team tab (ux_cards: a file per persona in personas/)
+    POST /ux/api/rule              {rule: {id?, title, severity, on, text}} or {remove: id}: the Rules tab (rules/)
 
 A write is accepted only from the suite's own page (the same Origin): no other web page open in the browser can write a
 verdict or start a run. The server listens on 127.0.0.1 only.
@@ -27,6 +30,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import ux_backlog  # noqa: E402
+import ux_cards  # noqa: E402
 import ux_config  # noqa: E402
 import ux_team  # noqa: E402
 import ux_verdicts  # noqa: E402
@@ -56,7 +60,9 @@ def state(suite: ux_config.Suite) -> dict:
         walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "shots": ux_team.shots(suite, w["id"]),
                       "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
-            "personas": conf["personas"], "walks": walks, "verdicts": verdicts, "queue": ux_team.queue(suite),
+            "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),
+            "rules_from": ux_cards.rules_from(suite),
+            "walks": walks, "verdicts": verdicts, "queue": ux_team.queue(suite),
             "team": ux_team.state(suite, conf)}
 
 
@@ -101,7 +107,7 @@ def handle(handler, method: str, suite: ux_config.Suite | None = None) -> None:
 
 
 def _post(handler, path: str, suite: ux_config.Suite) -> None:
-    if path not in ("/ux/api/verdict", "/ux/api/request"):
+    if path not in ("/ux/api/verdict", "/ux/api/request", "/ux/api/persona", "/ux/api/rule"):
         return _json(handler, 404, {"error": "not found"})
     if handler.headers.get("Origin") != f"http://127.0.0.1:{handler.server.server_address[1]}":
         return _json(handler, 403, {"error": "only the suite's own page may write"})
@@ -112,6 +118,8 @@ def _post(handler, path: str, suite: ux_config.Suite) -> None:
         body = json.loads(handler.rfile.read(size) or b"{}")
         if not isinstance(body, dict):
             raise ValueError("send one JSON object")  # noqa: TRY004  (a bad request: answered 400, like the rest)
+        if path in ("/ux/api/persona", "/ux/api/rule"):
+            return _json(handler, 200, _card(suite, path.rsplit("/", 1)[1], body))
         conf = ux_config.load(suite)
         if path == "/ux/api/verdict":
             line = ux_verdicts.record(suite, conf, body)
@@ -122,6 +130,16 @@ def _post(handler, path: str, suite: ux_config.Suite) -> None:
         return _json(handler, 200, ux_team.request(suite, conf, str(body.get("kind")), str(body.get("walk")), focus))
     except (ValueError, LookupError) as e:  # a ConfigError and a JSON error are ValueErrors too
         return _json(handler, 400, {"error": str(e)})
+
+
+def _card(suite: ux_config.Suite, kind: str, body: dict) -> dict:
+    """A persona or a rule from the page: added or changed, or removed."""
+    name = "key" if kind == "persona" else "id"
+    if isinstance(body.get(kind), dict):
+        return (ux_cards.save_persona if kind == "persona" else ux_cards.save_rule)(suite, body[kind])
+    if isinstance(body.get("remove"), str):
+        return (ux_cards.remove_persona if kind == "persona" else ux_cards.remove_rule)(suite, body["remove"])
+    raise ValueError(f"send {{{kind}: {{…}}}} or {{remove: <{name}>}}")
 
 
 def work(suite: ux_config.Suite, stop: threading.Event, interval: float) -> None:

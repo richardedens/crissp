@@ -1,0 +1,10 @@
+# gitleaks (crissp/testsuite/lib/audit.py secrets): crissp's own configuration. The default rules stay on; a made-up
+# value in a test is allowed by its file and its value, never by a commit, so it holds in any clone (a shallow one too).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "A made-up DB_PASSWORD in the test of the cluster plan's secret rules (minLength): never a real key."
+condition = "AND"
+paths = ['''^crissp/testsuite/tests/test_cluster_plan\.py$''']
+regexes = ['''^db-secret-0123456789abcdef$''']

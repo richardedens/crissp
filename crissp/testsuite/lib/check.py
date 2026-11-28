@@ -120,6 +120,11 @@ def say_plan(p: dict, since: str, out, spread_over: list[str] = ()) -> None:
     if spread_over:
         print("  Workers: " + ", ".join(spread_over), file=out)
     print(f"  About {p['minutes']} min.", file=out)
+    for s in p.get("split", []):
+        took = f"took {s['minutes']} min last time" if s["measured"] else f"takes about {s['minutes']} min (suites.json)"
+        print(f"  Advice: {s['label']} {took}, and every change in its part runs all of it. Split that part into smaller "
+              "ones (several backends or frontends, CRISSP.md: Several parts), so crissp/check.sh runs only the one "
+              "that changed.", file=out)
 
 
 def changed(root: Path, plan_only: bool, run=subprocess.run, out=None, err=None) -> int:

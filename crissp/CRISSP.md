@@ -236,6 +236,14 @@ page. A new capability is documented by a journey in the same piece of work.
   runs, the UX suite has nothing to walk; a look at a screen before it is built is `crissp ux --propose <walk>` (a
   mockup in `crissp/uxsuite/results/`), never a prototype written into `crissp/uxsuite/`, which holds only its
   configuration (`team.json`, `walks/`, `PRINCIPLES.md`).
+- **Several parts**: a product with more than one backend or frontend gives each its own folder, `app/backend-<name>/`
+  and `app/frontend-<name>/` (one of each stays `app/backend/` and `app/frontend/`), and each its own steps, path rule
+  and service in `docker-compose.yml`. Then `crissp/check.sh` runs only the part that changed. **Split when a part's
+  tests take more than about three minutes**, or when its parts have their own users, release or team: one big part
+  makes every change wait on all of its tests, and `crissp/check.sh --plan` says so ("Advice: … split that part").
+  What the parts share (a library, the API contract) is a part of its own, or shared ground. When a project is
+  brought in, Claude asks the product owner how many backends and frontends there are and will be, and advises the
+  split before the first suites are named.
 - **Out of place?** `crissp repair` says what a project brought in earlier has out of place (old steps on `src/`, a UX
   suite walking a dev server, files in `crissp/uxsuite/`); `crissp repair --yes` puts it in place, never deleting or
   committing.
@@ -249,8 +257,13 @@ them.
 - **The panel**: someone who knows technology (states, consistency, keyboard, edge cases, speed), someone who does not
   work with computers (words, readability, fear of mistakes, what it costs and what happens next), a student who only
   uses a phone (thumb reach, speed, small screens) and a UX expert who moderates (heuristics, accessibility, conversion)
-  and gives the verdict. Who they are exactly — names, ages, what they want from this product — is in the project's
-  `team.json`, with the product, its audience and its languages.
+  and gives the verdict. Who they are exactly — names, ages, what they want from this product, the jobs they come to
+  do — is the project's own: one file per persona in `crissp/uxsuite/personas/`, edited in the suite's Team tab or by
+  hand (the product, its audience and its languages are in `team.json`).
+- **The rules**: what the panel judges by and every design follows, one file per rule in `crissp/uxsuite/rules/`
+  (title, weight must · should · could, on or off), added and switched off in the suite's Rules tab. The framework
+  starts a project with its eight principles (`PRINCIPLES.md`); the product owner makes them the product's own. Every
+  piece of advice names the rule it is about.
 - **A session**: a **walk** (`walks/*.json`: goto, click by role and name, fill, press, wait, shot) is captured on a
   laptop and a phone, a screenshot and the page's accessible text per shot; a step that fails is a dead end the panel
   sees. Then each tester **looks** alone, on their own device; then **debate** rounds in which everyone answers the

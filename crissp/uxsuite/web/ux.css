@@ -33,3 +33,19 @@
 @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
 .decide { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
 .decide .verdicts button[data-verdict="approve"] { border-color: var(--green); }
+
+/* The Team and Rules tabs: a persona or rule that is off has a dashed edge and an "off" badge (its text keeps its
+   contrast); the forms that edit them */
+.persona.off, .rule.off { border-style: dashed; }
+.rule { display: grid; gap: 6px; margin-bottom: 10px; }
+.edit { display: grid; gap: 10px; margin-bottom: 14px; max-width: 760px; }
+.field { display: grid; gap: 4px; font-size: 13px; }
+.field > span { color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; }
+.field .hint { display: block; font-weight: 400; }
+@media (max-width: 800px) {  /* a phone: every tab in sight, and 44-point tap targets in the Team and Rules tabs */
+  .tabs { flex-wrap: wrap; }
+  .tabs button, .toolbar button, .edit button, .persona button, .rule button, .edit input, .edit select { min-height: 44px; }
+  .persona a, .rule a, .edit a { display: inline-flex; align-items: center; min-height: 44px; }
+  .edit input[type=checkbox] { width: 22px; height: 22px; min-height: 0; }
+}

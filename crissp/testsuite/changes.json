@@ -1018,7 +1018,7 @@
    "id": "secrets-step",
    "title": "Nothing scanned git for secrets (F-43, E6-F2-01)",
    "problem": "'Never in git: keys, .env' was guarded by .gitignore only. A key committed anyway, in crissp or in a project, was found by nothing, and stayed in the history.",
-   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is in .gitleaksignore with why.",
+   "fix": "lib/audit.py secrets runs the pinned gitleaks 8.30.1 (lib/tools.py) over the whole git history (over the files without git), redacted, into results/secrets.json. Findings carry file, line, commit, rule and fingerprint; the Secret and Match fields are never read. The project's own .gitleaks.toml, .gitleaksignore and gitleaks:allow count. A step in crissp (every part's change runs it, CI scans the full history) and in the template (audit secrets, every change under app/). crissp's one finding, a made-up value in a test, is allowed in .gitleaks.toml by its file and value, with why (F-51: a .gitleaksignore fingerprint names a commit and missed in a shallow clone).",
    "sources": [
     {
      "file": "crissp/testsuite/lib/audit.py",
@@ -1029,8 +1029,8 @@
      "symbol": "def from_gitleaks("
     },
     {
-     "file": ".gitleaksignore",
-     "symbol": ""
+     "file": ".gitleaks.toml",
+     "symbol": "[[allowlists]]"
     }
    ],
    "tests": [
@@ -1039,7 +1039,10 @@
     "test_audit::test_a_secrets_scan_that_cannot_run_is_a_problem",
     "test_audit::test_the_command_line_runs_each_scan_into_its_own_results",
     "test_audit::test_this_repository_scans_its_history_for_secrets",
-    "test_template::test_every_project_scans_its_git_history_for_secrets"
+    "test_template::test_every_project_scans_its_git_history_for_secrets",
+    "test_gitleaks_config::test_the_default_rules_stay_on",
+    "test_gitleaks_config::test_the_made_up_key_in_the_cluster_plan_test_is_allowed_by_file_and_value",
+    "test_gitleaks_config::test_no_finding_is_ignored_by_its_commit"
    ]
   },
   {
@@ -1078,6 +1081,82 @@
     "test_run::test_ruff_check_adds_the_bandit_rules_and_allows_asserts_and_made_up_passwords_in_tests",
     "test_template::test_every_project_s_code_is_scanned_for_unsafe_code",
     "test_package::test_init_makes_a_crissp_project_that_is_green"
+   ]
+  },
+  {
+   "id": "split-large-parts",
+   "title": "crissp never asked about several backends or frontends, nor advised splitting a part whose tests take long",
+   "problem": "The template knew one app/backend and one app/frontend: a big product became one part, every change in it ran all of its tests, and nothing said so (F-60).",
+   "fix": "CRISSP.md gets Several parts (app/backend-<name>, app/frontend-<name>, each with its own steps; split past about three minutes); the template's first CRISSP block asks the product owner how many parts there are; crissp init says so; crissp/check.sh --plan advises a split for a step over three minutes (the last measured time, else suites.json's).",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def too_long("
+    },
+    {
+     "file": "crissp/testsuite/lib/impact.py",
+     "symbol": "def measured("
+    },
+    {
+     "file": "crissp/testsuite/lib/check.py",
+     "symbol": "def say_plan("
+    },
+    {
+     "file": "crissp/CRISSP.md",
+     "symbol": "Several parts"
+    },
+    {
+     "file": "crissp/template/crissp/CLAUDE.md",
+     "symbol": "how many backends and frontends"
+    }
+   ],
+   "tests": [
+    "test_impact::test_a_part_whose_tests_take_long_is_advised_to_split",
+    "test_check_scripts::test_the_plan_advises_splitting_a_part_that_takes_long"
+   ]
+  },
+  {
+   "id": "ux-team-and-rules-as-files",
+   "title": "The UX suite's personas could only be edited by hand in team.json, and no rule could be added",
+   "problem": "The team was an array in team.json with no way to change it in the page, personas had no jobs and could not be switched off, and the rules were one prose PRINCIPLES.md: nothing to add, weigh or switch off, and advice never said which rule it was about (F-61).",
+   "fix": "ux_cards: one Markdown file per persona (personas/) and per rule (rules/), checked with clear errors; the page's Team and Rules tabs write them through POST /ux/api/persona and /ux/api/rule (same origin only); the first write moves team.json's personas and PRINCIPLES.md's sections into files; rounds and shoots use only the personas that are on, with their jobs; each run gets inputs/rules.md with the rules that hold, and advice names its rule; repair keeps both folders.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def save_persona("
+    },
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def save_rule("
+    },
+    {
+     "file": "crissp/uxsuite/ux_cards.py",
+     "symbol": "def team("
+    },
+    {
+     "file": "crissp/uxsuite/api.py",
+     "symbol": "def _card("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def on("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function team()"
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function rulesTab()"
+    }
+   ],
+   "tests": [
+    "test_ux_cards::test_the_page_adds_a_persona_and_the_first_write_moves_team_json_s_into_files",
+    "test_ux_cards::test_the_first_rule_written_moves_the_principles_into_files_and_keeps_their_intro",
+    "test_ux_api::test_the_page_edits_the_team_and_the_rules",
+    "test_ux_team::test_a_run_has_only_the_personas_that_are_on_their_jobs_and_the_rules_that_hold",
+    "test_ux_shoot::test_a_persona_that_is_off_brings_no_device",
+    "test_repair::test_the_team_s_and_the_rules_files_are_the_ux_suite_s_own"
    ]
   },
   {

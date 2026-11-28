@@ -30,6 +30,20 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **"Changes proven" on this repository's dashboard counts the package tests (F-40).** The `package` step now writes
   its test results for the dashboard, so the changes proven by `test_cli` and `test_package` no longer show as
   "missing" while they pass.
+- **The UX suite's team and rules are yours to edit (E7-F1-01, E7-F2-01).** The UX page has a **Team** tab that adds,
+  edits, switches off and removes a persona (name, role, device, moderator, the brief and the jobs they come to do),
+  and a **Rules** tab that does the same for the rules the team judges by (title, weight must · should · could, on or
+  off). Each persona is a file in `crissp/uxsuite/personas/` and each rule a file in `crissp/uxsuite/rules/`, in git
+  and editable by hand; the first change in the page moves the personas out of `team.json` and the rules out of
+  `PRINCIPLES.md` (which keeps its introduction), so there is one place for each. A persona that is off takes no part
+  in a round and brings no device to a shoot; a rule that is off is left out. Every round and design gets the rules
+  that hold, and the advice names the rule it is about. Projects that have not changed anything keep working as they
+  are; `crissp repair` leaves both folders where they are.
+- **Several backends and frontends, and the advice to split (F-60).** When a project is brought in, Claude now first
+  asks how many backends and frontends the product has and will have, and advises a part of its own for each
+  (`app/backend-<name>/`, `app/frontend-<name>/`, each with its own steps; CRISSP.md, *Several parts*). `crissp check
+  --plan` advises splitting a part whose tests take more than about three minutes (the last run's time, else
+  `suites.json`'s), because every change in that part runs all of them.
 - **Static security analysis (SAST) for every project (F-44).** A new `sast` step runs Semgrep (pinned, offline, no
   metrics) with crissp's own rules on `app/`: Python, JavaScript, TypeScript and JSX. It blocks on eval or exec of a
   value, a shell command built from a value, `yaml.load`, switched-off TLS checks and a debug server, and lists for
@@ -41,8 +55,8 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 - **The git history is scanned for secrets (F-43).** A new `secrets` step runs gitleaks (pinned) over every commit
   and is red on a key, token or password that reached git. It says the file, line, commit and rule, never the value.
   It runs in `crissp check` for every change under `app/`. The project's own `.gitleaks.toml`, `.gitleaksignore` and
-  `gitleaks:allow` count; a finding that is no secret goes into `.gitleaksignore` by its fingerprint (from
-  `crissp/testsuite/results/secrets.json`). A step runs it as `audit secrets`.
+  `gitleaks:allow` count; a finding that is no secret is best allowed in `.gitleaks.toml` by its file
+  and value, since a `.gitleaksignore` fingerprint names a commit and misses in a shallow clone (F-51). A step runs it as `audit secrets`.
 - **Every project is audited in its full run (F-42).** `crissp init` now gives a project an `audit` step (full run
   only, once `app/` exists): pip-audit of `app/backend/requirements.txt`, npm audit of `app/frontend`, trivy for the
   dependencies, the Dockerfiles, the Helm chart, Terraform and the images the compose file and the chart name. A
