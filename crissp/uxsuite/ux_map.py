@@ -231,7 +231,7 @@ def capture(plan_file: Path) -> None:  # pragma: no cover — drives a real brow
                     entry["file"] = f"{device}/{n:02d}.png"
                     page.screenshot(path=str(out / entry["file"]))
                     entry["links"] = follow(p["url"], page.eval_on_selector_all("a[href]", "els => els.map(a => a.href)"))
-                except Exception as e:  # noqa: BLE001  a page that does not open is a gap on the map
+                except Exception as e:  # a page that does not open is a gap on the map
                     entry["error"] = str(e).splitlines()[0][:200]
                 pages.append(entry)
                 if found and device != next(iter(p["devices"])):

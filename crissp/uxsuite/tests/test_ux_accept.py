@@ -3,6 +3,7 @@ next to the design; accept moves its PBI to review, not good sends it back to do
 
 import json
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -46,7 +47,7 @@ def test_the_walk_knows_when_it_was_last_shot(product):
 
 def test_a_built_screen_is_judged_only_after_the_walk_was_shot_again(approved):
     conf = ux_config.load(approved)
-    with pytest.raises(ValueError, match="shoot the walk again once it is built: crissp/ux.sh --shoot first-visit"):
+    with pytest.raises(ValueError, match=re.escape("shoot the walk again once it is built: crissp/ux.sh --shoot first-visit")):
         ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "accept"})
     _shoot_again(approved)
     line = ux_verdicts.record(approved, conf, {"id": "first-visit#v1/built", "verdict": "accept"})

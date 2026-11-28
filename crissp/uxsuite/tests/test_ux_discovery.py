@@ -3,6 +3,7 @@ impossible and where they gave up; the moderator turns what cannot be done into 
 approves becomes a design request: a walk with a brief whose first design starts at once. The team is a stand-in."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,7 +37,7 @@ def _mapped(product):
 
 def test_a_discovery_round_needs_a_map_first(product):
     conf = ux_config.load(product)
-    with pytest.raises(ValueError, match="map the product first: crissp/ux.sh --map"):
+    with pytest.raises(ValueError, match=re.escape("map the product first: crissp/ux.sh --map")):
         ux_team.request(product, conf, "discovery", "product")
     with pytest.raises(ValueError, match="a discovery round is about the whole product"):
         ux_team.request(product, _mapped(product), "discovery", "first-visit")
