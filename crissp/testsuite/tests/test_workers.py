@@ -126,11 +126,8 @@ def test_the_real_sources_answer_on_this_machine():
     m = workers.machine()
     assert m["cpus"] >= 1 and isinstance(m["cpu_from"], str)
     assert workers._command(["a-command-that-does-not-exist-anywhere"]) is None
-
-
-def test_a_command_answers_its_output_or_none_when_it_fails():
-    """Portable (F-31): the output of a command that succeeds, None for one that fails; on every platform."""
-    assert workers._command([sys.executable, "-c", "print('ok')"]) == "ok\n"
+    # a command that is there answers its output on every system (Linux reads /proc and runs none of its own)
+    assert workers._command([sys.executable, "-c", "print('here')"]) == "here\n"
     assert workers._command([sys.executable, "-c", "raise SystemExit(3)"]) is None
 
 
