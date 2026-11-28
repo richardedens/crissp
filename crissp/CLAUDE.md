@@ -18,15 +18,17 @@ instead of reading the backlog files; write findings, decisions, epics, features
 - This repository is both the source of the package and a C.R.I.S.S.P. project of its own:
   - `src/crissp/` — the `crissp` command (`cli.py`). Installed, the engine is package data under `crissp/engine/`.
   - `crissp/` — the engine, exactly as it ships: the guards (`check.sh`, `check-all.sh`, `deploy.sh`, `test.sh`,
-    `ux.sh`), the crissp MCP tool (`tool/server.py`), the testsuite (`testsuite/lib`, `dashboard/`), the uxsuite,
-    the shared look (`look/`, dark by default), the deploy template (`deploy/`: a Helm chart and Terraform) and the
-    project template (`template/`).
+    `ux.sh`), the crissp MCP tool (`tool/server.py`), the testsuite (`testsuite/lib`, `dashboard/`, and
+    `frontend-lint/`: the pinned tools a product's frontend is linted with), the uxsuite, the shared look (`look/`,
+    dark by default), the deploy template (`deploy/`: a Helm chart and Terraform) and the project template
+    (`template/`).
   - This project's own data, never in the wheel: this agreement, `crissp/backlog/`, `crissp/testsuite/suites.json`
     (its parts), `changes.json`, `accepted-risks.json`, `coverage-baseline.json`, and the results (git-ignored).
 - **The engine finds the project through `CRISSP_ROOT`** (the `crissp` command sets it), else the current directory;
   never from its own file location. Engine files (the look, the dashboard, the template) are found next to the code.
 - The engine uses the **Python standard library only** at runtime (Python 3.12 or newer). Test tools are pinned in
-  `crissp/testsuite/requirements.txt` (and `crissp/deploy/requirements.txt` for the chart's tests).
+  `crissp/testsuite/requirements.txt` (and `crissp/deploy/requirements.txt` for the chart's tests); a product's
+  frontend lint tools in `crissp/testsuite/frontend-lint/` (npm, with their lockfile).
 - Runtime dependencies are local: the dashboard and the uxsuite load nothing from a CDN; the font is bundled (OFL-1.1).
 
 ## Testing — the product owner drives, never on a schedule

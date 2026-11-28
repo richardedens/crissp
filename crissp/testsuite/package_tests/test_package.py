@@ -54,7 +54,8 @@ def test_the_wheel_carries_the_licences_and_the_engine_but_no_project_data(wheel
     for needed in ("CRISSP.md", "check.sh", "check-all.sh", "testsuite/lib/check.py", "tool/server.py",
                    "uxsuite/cli.py", "look/look.css", "template/crissp/CLAUDE.md", "deploy/helm/app/Chart.yaml",
                    "deploy/terraform/main.tf", "deploy/check.sh", "testsuite/lib/workers.py",
-                   "testsuite/lib/pytest_plugin/crissp_timing.py", "testsuite/dashboard/workers.html"):
+                   "testsuite/lib/pytest_plugin/crissp_timing.py", "testsuite/dashboard/workers.html",
+                   "testsuite/frontend-lint/package-lock.json", "testsuite/lib/frontend_lint.py"):
         assert engine + needed in names, needed
     for never in ("backlog/", "testsuite/results/", "uxsuite/results/", "testsuite/tests/", "testsuite/suites.json",
                   "testsuite/coverage-baseline.json", "testsuite/changes.json", "CLAUDE.md", "AGENTS.md"):

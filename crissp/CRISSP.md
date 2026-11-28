@@ -223,8 +223,10 @@ page. A new capability is documented by a journey in the same piece of work.
   emptied when it ends, so no worker sees another's rows.
 - **The template expects it**: the testsuite's steps (`backend`, `backend-lint`, `frontend`, `frontend-lint`) exist
   once their part does, so a project that was just brought in runs green with no code yet; the UX suite walks the
-  local stack (`compose.url`, `http://127.0.0.1:8080`). The frontend's lint is its package's `lint` script
-  (`npm run --silent lint`), so a frontend picks its own linter (ESLint, Biome …).
+  local stack (`compose.url`, `http://127.0.0.1:8080`). The frontend is linted with crissp's own tools
+  (`frontend_lint`): ESLint 9 (typescript-eslint, React hooks, jsx-a11y, `react/no-danger`) and stylelint, pinned
+  with their lockfile and configs in the engine, installed once into crissp's cache. The project's `package.json` and
+  files stay as they are.
 - **The lint runs before every commit**: `.githooks/pre-commit` runs the lint steps (`lint` and every `*-lint` step)
   with the crissp `.mcp.json` pins (`crissp hook`), and `core.hooksPath .githooks` turns it on. `crissp init` sets it
   and `crissp repair --yes` sets it in every clone that lacks it, but never over hooks the repository already has

@@ -1,0 +1,17 @@
+{
+  "name": "crissp-frontend-lint",
+  "private": true,
+  "description": "crissp's own lint tools for a project's frontend (lib/frontend_lint.py): installed into crissp's cache, never into the project",
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "@eslint/js": "9.39.5",
+    "typescript-eslint": "8.72.2",
+    "typescript": "6.0.3",
+    "globals": "17.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "stylelint": "17.16.0",
+    "stylelint-config-standard": "40.0.0"
+  }
+}
