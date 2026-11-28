@@ -206,7 +206,8 @@
         return `<article class="card walk" id="p-${esc(p.key)}"><header><h3>Design ${p.version}${res?.title ? ": " + esc(res.title) : ""}</h3>${phase(p.status)}
             ${p.verdict ? badge(p.verdict.verdict === "approve" ? "passed" : p.verdict.verdict === "reject" ? "failed" : "missing", p.verdict.verdict) : ""}
             ${p.pbi ? `<a href="../dashboard/#board?q=${encodeURIComponent(p.pbi)}">${badge("area", p.pbi)} on the board</a>` : ""}</header>
-          ${p.mockup ? compare(w, p) : ""}
+          ${p.mockup && !rebuilt(w, p) ? compare(w, p) : ""}
+          ${p.verdict?.verdict === "approve" ? builtOf(w, p) : ""}
           ${res ? `<div class="decide">${verdictButtons(p.key, [["approve", "Approve"], ["approve-remark", "Approve with a remark…"], ["redo", "Again, with…"], ["reject", "Reject"]])}<span class="small muted">Approve makes it a backlog item (a remark goes with it); Again asks the designer for the next version.</span></div>` : ""}
           ${p.request?.focus ? `<p class="small muted">Focus: ${esc(p.request.focus)}</p>` : ""}
           ${res ? `<p>${esc(res.summary)}</p>${(res.changes || []).length ? `<ol>${res.changes.map(c => `<li>${badge(c.priority || "should", c.priority || "should")} ${esc(c.what)} <span class="small muted">${esc(c.why)}</span></li>`).join("")}</ol>` : ""}
@@ -216,16 +217,28 @@
       }).join("") || '<div class="card">No design yet.</div>');
   }
 
+  /* What was built (E7-F5-01): once the walk is shot again after the approval, its new screens sit next to the design;
+     accept moves the PBI to review, not good sends it back to doing with the reason as a finding. */
+  const rebuilt = (w, p) => p.verdict?.verdict === "approve" && !!w.shot_at && w.shot_at > p.verdict.at;
+  function builtOf(w, p) {
+    const b = p.built, fresh = rebuilt(w, p);
+    const said = b ? badge(b.verdict === "accept" ? "passed" : "failed", b.verdict === "accept" ? "accepted" : "sent back") + (b.reason ? ` <span class="small muted">${esc(b.reason)}</span>` : "") : "";
+    if (!fresh) return `<div class="built card"><div class="label">What was built ${said}</div><p class="small muted">Once ${p.pbi ? esc(p.pbi) : "it"} is built, shoot the walk again (<code>crissp ux --shoot ${esc(w.id)}</code>): the new screens show here next to this design, to accept or send back.</p></div>`;
+    return `<div class="built card"><div class="label">What was built · shot ${esc(w.shot_at.replace("T", " ").slice(0, 16))} ${said}</div>
+      ${compare(w, p, "Built")}
+      <div class="decide">${verdictButtons(p.key + "/built", [["accept", "Accept"], ["send-back", "Not good…"]])}<span class="small muted">Accept moves ${p.pbi ? esc(p.pbi) : "the backlog item"} to review; Not good sends it back with your reason.</span></div></div>`;
+  }
+
   /* Before | After: what people see today (the walk's own screenshot, laptop or phone) next to the design, the same
      size, so a verdict is a look and a click. The mockup is drawn at the laptop size and scaled to fit (fit()). */
-  function compare(w, p) {
+  function compare(w, p, now = "Before") {
     const shot = d => (w.shots || []).find(s => s.device === d && s.url);
     const devices = ["laptop", "phone"].filter(shot);
     const d = devices.includes(query.get("device")) ? query.get("device") : devices[0];
     const before = d ? shot(d) : null;
     const pick = devices.length > 1 ? `<span class="seg">${devices.map(x => `<button class="ghost small" data-device="${x}" aria-pressed="${x === d}">${x === "laptop" ? "Laptop" : "Phone"}</button>`).join("")}</span>` : "";
     return `<div class="compare">
-        <figure class="pane"><figcaption><b>Before</b> · what people see now ${pick}</figcaption>
+        <figure class="pane"><figcaption><b>${now}</b> · what people see now ${pick}</figcaption>
           <div class="frame ${d === "phone" ? "tall" : ""}">${before ? `<button class="shot" data-view="design" data-walk="${esc(w.id)}" data-key="${esc(p.key)}" data-device="${esc(d)}" data-mode="before" title="Enlarge"><img src="${esc(before.url)}" alt="Before: ${esc(before.title || "")}"></button>` : '<p class="small muted">No screenshot of this walk yet: crissp ux --shoot ' + esc(w.id) + '</p>'}</div></figure>
         <figure class="pane"><figcaption><b>After</b> · design ${p.version}</figcaption>
           <div class="frame fit"><iframe sandbox="allow-scripts" src="${esc(p.mockup)}" title="After: design ${p.version}" tabindex="-1"></iframe>
@@ -436,12 +449,12 @@
     if (v) {
       const remark = v.dataset.verdict === "approve-remark";  // an approval with the product owner's words for the builder
       const verdict = remark ? "approve" : v.dataset.verdict;
-      const needs = remark || ["disagree", "redo", "reject"].includes(verdict);
-      const reason = needs ? await ask(remark ? "Your remark with the approval" : verdict === "redo" ? "What should the team do differently?" : "Why?",
+      const needs = remark || ["disagree", "redo", "reject", "send-back"].includes(verdict);
+      const reason = needs ? await ask(remark ? "Your remark with the approval" : verdict === "redo" ? "What should the team do differently?" : verdict === "send-back" ? "What is not good?" : "Why?",
         remark ? "It goes into the backlog item, before the changes: the builder reads it first." : "The team reads this next time.") : "";
       if (reason === null || (remark && !reason.trim())) return;
       try { const out = await api("api/verdict", { id: v.dataset.id, verdict, reason });
-        tell(out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
+        tell(out.moved ? `${out.pbi} moved to ${verdict === "accept" ? "review" : "doing"}${out.finding ? `, ${out.finding} written` : ""}` : out.not_moved ? out.not_moved : out.walk ? `Design requested: ${out.walk}${out.queued ? " (waits in the queue)" : ""}` : out.pbi ? `Approved: ${out.pbi} is on the board` : out.started ? "The next design has started" : out.queued ? "The next design waits in the queue" : "Saved");
       } catch (err) { tell(err.message); }
       return load();
     }

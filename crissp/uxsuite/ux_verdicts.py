@@ -1,14 +1,17 @@
 """The product owner's verdicts: on a piece of advice (agree · disagree · later), on a design (approve · redo · reject) and
-on a need a discovery round found (approve · reject).
+on a need a discovery round found (approve · reject), and on what was built from an approved design (accept ·
+send-back).
 
 Every verdict is one line appended to results/decisions.jsonl; a later line for the same item replaces an earlier one,
 which stays in the file as history. What a verdict sets going:
 - redo a design: the reason is the focus of the next design of that walk (started now, or queued)
 - approve a design: it becomes a PBI in the backlog (ux_backlog), once
 - approve a need: it becomes a design request, a walk with a brief, whose first design starts (ux_discovery)
+- accept what was built (judged on the walk shot after the approval): its PBI moves to review, for the product owner
+- send it back: its PBI moves to doing, and the reason becomes a finding that goes to it
 A disagreement, a redo and a rejection need a reason: that is what the team learns from.
 
-Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>".
+Ids: advice "<walk>/r<round>/a<index>", a design "<walk>#v<version>", a need "product/d<round>/n<index>", what was built "<walk>#v<version>/built".
 """
 
 from __future__ import annotations
@@ -19,15 +22,17 @@ import re
 import ux_backlog
 import ux_discovery
 import ux_team
-from ux_config import Suite
+from ux_config import Suite, speak
 
 ADVICE = ("agree", "disagree", "later")
 DESIGN = ("approve", "redo", "reject")
 ADVICE_ID = re.compile(r"([a-z0-9][a-z0-9-]*)/r(\d+)/a(\d+)")
 DESIGN_ID = re.compile(r"([a-z0-9][a-z0-9-]*)#v(\d+)")
 NEED = ("approve", "reject")
+BUILT = ("accept", "send-back")
+BUILT_ID = re.compile(r"([a-z0-9][a-z0-9-]*)#v(\d+)/built")
 NEED_ID = re.compile(rf"{ux_team.PRODUCT}/d(\d+)/n(\d+)")
-NEEDS_A_REASON = {"disagree", "redo", "reject"}
+NEEDS_A_REASON = {"disagree", "redo", "reject", "send-back"}
 
 
 def latest(suite: Suite) -> dict[str, dict]:
@@ -37,6 +42,22 @@ def latest(suite: Suite) -> dict[str, dict]:
 
 def _result(suite: Suite, kind: str, walk: str, n: int):
     return next((v["result"] for v in ux_team.versions(suite, kind, walk) if v["version"] == n), None)
+
+
+def _built(suite: Suite, conf: dict, walk: str, n: int, verdict) -> str:
+    """Check a verdict on what was built from a design; the design's title."""
+    found = _result(suite, "proposal", walk, n) if walk in conf["walks"] else None
+    if not found:
+        raise ValueError("unknown design")
+    if verdict not in BUILT:
+        raise ValueError("a verdict on a built design is accept or send-back")
+    held = latest(suite).get(f"{walk}#v{n}")
+    if not held or held["verdict"] != "approve":
+        raise ValueError("only an approved design is built and accepted")
+    shot = ux_team.shot_at(suite, walk)
+    if not shot or shot <= held["at"]:
+        raise ValueError(speak(f"shoot the walk again once it is built: crissp/ux.sh --shoot {walk}"))
+    return found.get("title", "")
 
 
 def record(suite: Suite, conf: dict, body: dict) -> dict:
@@ -53,6 +74,8 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
         if verdict not in ADVICE:
             raise ValueError("a verdict on advice is agree, disagree or later")
         level, title = "advice", advice[int(m.group(3))].get("title", "")
+    elif (m := BUILT_ID.fullmatch(item)):
+        level, title = "built", _built(suite, conf, m.group(1), int(m.group(2)), verdict)
     elif (m := NEED_ID.fullmatch(item)):
         needs = (_result(suite, "discovery", ux_team.PRODUCT, int(m.group(1))) or {}).get("needs", [])
         if int(m.group(2)) >= len(needs):
@@ -78,9 +101,30 @@ def record(suite: Suite, conf: dict, body: dict) -> dict:
     return line
 
 
+def _move(suite: Suite, line: dict) -> dict:
+    """Accept moves the design's PBI to review; send-back moves it to doing and files the reason as a finding for it."""
+    key = line["id"].removesuffix("/built")
+    crissp = ux_backlog.tool(suite)
+    pbi = ux_backlog.pbis(suite, crissp).get(key)
+    if not pbi:
+        return {"not_moved": f"{key} has no PBI in the backlog"}
+    try:
+        moved = crissp.item(suite.root, {"id": pbi, "status": "review" if line["verdict"] == "accept" else "doing"})
+    except (ValueError, LookupError) as why:  # done already, or the backlog changed: the verdict stands
+        return {"pbi": pbi, "not_moved": str(why)}
+    out = {"pbi": pbi, "moved": moved}
+    if line["verdict"] == "send-back":
+        said = crissp.finding(suite.root, {"seen": f"UX suite, built design {key} ({pbi})",
+                                           "observation": ux_backlog._flat(line["reason"]), "goes_to": pbi})
+        out["finding"] = said.split()[0]
+    return out
+
+
 def after(suite: Suite, conf: dict, line: dict) -> dict:
     """What the verdict sets going: a PBI for an approved design, the next design for a redo, a design request for an
     approved need; {} for the rest."""
+    if line["level"] == "built":
+        return _move(suite, line)
     if line["verdict"] == "reject" or line["level"] not in ("design", "need"):
         return {}
     if line["level"] == "need":

@@ -1383,6 +1383,37 @@
     "test_ux_api::test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs",
     "test_ux_cli::test_discover_asks_for_a_discovery_round"
    ]
+  },
+  {
+   "id": "ux-accept-what-was-built",
+   "title": "Nobody compared a built screen with the design that was approved",
+   "problem": "After an approved design was built, nothing put the built screen next to the design, and there was no way to accept it or send it back from the UX suite (E7-F5-01).",
+   "fix": "A verdict on what was built (<walk>#v<n>/built: accept or send-back with a reason), allowed only for an approved design and only on screenshots taken after the approval (ux_team.shot_at). Accept moves the design's PBI to review; send-back moves it to doing and files the reason as a finding that goes to the PBI, both through the crissp tool. The Designs tab shows the new screens next to the approved design with Accept and Not good.",
+   "sources": [
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _built("
+    },
+    {
+     "file": "crissp/uxsuite/ux_verdicts.py",
+     "symbol": "def _move("
+    },
+    {
+     "file": "crissp/uxsuite/ux_team.py",
+     "symbol": "def shot_at("
+    },
+    {
+     "file": "crissp/uxsuite/web/ux.js",
+     "symbol": "function builtOf("
+    }
+   ],
+   "tests": [
+    "test_ux_accept::test_a_built_screen_is_judged_only_after_the_walk_was_shot_again",
+    "test_ux_accept::test_not_good_sends_the_pbi_back_with_the_reason",
+    "test_ux_accept::test_only_an_approved_design_can_be_accepted",
+    "test_ux_accept::test_a_pbi_that_cannot_move_is_told_and_the_verdict_stands",
+    "test_ux_api::test_the_state_says_when_a_walk_was_shot_and_what_was_built"
+   ]
   }
  ],
  "gaps": [

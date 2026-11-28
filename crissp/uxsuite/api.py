@@ -58,9 +58,10 @@ def state(suite: ux_config.Suite) -> dict:
         pbis = {}
     walks = []
     for w in conf["walks"].values():
-        designs = [{**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"])}
+        designs = [{**v, "verdict": verdicts.get(v["key"]), "pbi": pbis.get(v["key"]), "built": verdicts.get(v["key"] + "/built")}
                    for v in ux_team.versions(suite, "proposal", w["id"])]
-        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"), "shots": ux_team.shots(suite, w["id"]),
+        walks.append({"id": w["id"], "title": w["title"], "steps": len(w["steps"]), "need": w.get("need"),
+                      "shot_at": ux_team.shot_at(suite, w["id"]), "shots": ux_team.shots(suite, w["id"]),
                       "rounds": ux_team.versions(suite, "round", w["id"]), "proposals": designs})
     return {"product": conf["product"], "monogram": conf["monogram"], "about": conf["about"], "url": conf["url"],
             "personas": conf["personas"], "personas_from": conf["personas_from"], "rules": ux_cards.rules(suite),

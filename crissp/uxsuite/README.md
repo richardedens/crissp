@@ -91,6 +91,10 @@ need (with a reason) is not proposed again unless something changed. The product
   format: in the epic `backlog.epic` names, or the open epic titled `backlog.epic_title` (default *UX: approved
   designs*, made once), one feature per walk. Its Depends line says ``UX proposal `<walk>#v<n>` ``: the Tests board links
   the PBI back to its design, and a design never gets a second PBI. It starts at todo; only the product owner accepts.
+- **What was built**: once the PBI is built and the walk shot again (`crissp ux --shoot <walk>`, after the approval),
+  the approved design shows the new screens next to it: **accept** moves the PBI to review (ready for the product
+  owner's own acceptance in the backlog) · **not good…** (with a reason) moves it back to doing and files the reason as
+  a finding that goes to that PBI. Shots taken before the approval are never judged as the build.
 
 ## The files
 

@@ -4,6 +4,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **Accept what was built, or send it back (E7-F5-01).** Once an approved design is built and its walk shot again, the
+  Designs tab puts the new screens next to the design. **Accept** moves its backlog item to review; **Not good…** moves
+  it back to doing and writes your reason as a finding for that item. Screenshots taken before the approval are never
+  judged as the build.
 - **Discovery: can every persona do their jobs? (E7-F3-02).** `crissp ux --discover` (or the new **Jobs** tab) asks
   the team about the whole product: every persona tries their own jobs on the mapped screens and says done, hard or
   impossible, where they gave up and why. The moderator turns what cannot be done into needs. Approve a need and it

@@ -110,3 +110,6 @@ table.jobs td:first-child { width: 1%; white-space: nowrap; }
 .chip { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; font-family: ui-monospace, monospace; font-size: 12px; text-decoration: none; color: inherit; }
 .gave-up { color: var(--red); }
 @media (max-width: 600px) { table.jobs td { display: block; border-top: 0; padding: 2px 0; } table.jobs tr { display: block; border-top: 1px solid var(--line); padding: 6px 0; } }
+
+/* What was built (E7-F5-01) */
+.built { margin-top: 12px; display: grid; gap: 10px; }

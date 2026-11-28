@@ -117,6 +117,16 @@ def test_the_state_holds_the_discovery_rounds_with_the_verdicts_on_their_needs(s
                                                                "reason": "no", "title": "Pay", "at": d["needs"][0]["verdict"]["at"]}}]
 
 
+def test_the_state_says_when_a_walk_was_shot_and_what_was_built(site):
+    suite, base = site
+    w = json.loads(get(base + "/ux/api/state")[2])["walks"][0]
+    assert w["shot_at"] is None and w["need"] is None
+    add_shots(suite)
+    finish(suite, "proposal", "first-visit", 1, PROPOSAL)
+    w = json.loads(get(base + "/ux/api/state")[2])["walks"][0]
+    assert w["shot_at"] == ux_team.shot_at(suite, "first-visit") and w["proposals"][0]["built"] is None
+
+
 def test_a_broken_configuration_or_a_missing_tool_is_told_not_crashed(site):
     suite, base = site
     (suite.root / "crissp" / "tool" / "server.py").unlink()

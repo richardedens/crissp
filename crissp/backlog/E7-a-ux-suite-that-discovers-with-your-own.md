@@ -93,7 +93,7 @@ Depends    E7-F2-01 E7-F4-01
 ## E7-F5 · Accepting what was built                                                      [todo]
 Why        An approved design is only done when the built screen matches it.
 
-### E7-F5-01 · Built next to the approved design, accept or send back                    [todo] [M]
+### E7-F5-01 · Built next to the approved design, accept or send back                    [review] [M]
 Why        After a build nobody compares the screen with the design that was approved.
 What       After a build, the walk's new shots sit next to the approved design; accept marks the PBI ready for the
            product owner's review, not good (with a reason) sends it back with that reason.

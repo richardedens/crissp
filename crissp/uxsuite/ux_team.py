@@ -110,6 +110,13 @@ def shots(suite: Suite, walk: str) -> list[dict]:
     return out
 
 
+def shot_at(suite: Suite, walk: str) -> str | None:
+    """When the walk was last shot (its shots.json), or None: a built design is judged on shots taken after it was
+    approved (E7-F5-01)."""
+    listed = suite.results / "shots" / walk / "shots.json"
+    return datetime.fromtimestamp(listed.stat().st_mtime, UTC).isoformat(timespec="seconds") if listed.is_file() else None
+
+
 def decisions(suite: Suite) -> list[dict]:
     """Every verdict of the product owner, oldest first (results/decisions.jsonl)."""
     log = suite.results / "decisions.jsonl"

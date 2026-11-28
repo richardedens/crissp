@@ -1,6 +1,6 @@
 {
  "accepted": [],
- "commit": "1e2225ad778e4f443faec400d8ba5eed0bba754a",
+ "commit": "38da4b47479e36b47003ff407f31395d54242b66",
  "suites": {
   "tools": {
    "branch": 100.0,
@@ -122,6 +122,10 @@
      "line": 100.0
     },
     "crissp/uxsuite/ux_config.py": {
+     "branch": 100.0,
+     "line": 100.0
+    },
+    "crissp/uxsuite/ux_discovery.py": {
      "branch": 100.0,
      "line": 100.0
     },
