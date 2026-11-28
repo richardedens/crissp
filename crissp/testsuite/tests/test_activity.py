@@ -64,7 +64,7 @@ def world(tmp_path: Path) -> tuple[Path, Path]:
 
 def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
     repo, projects = world(tmp_path)
-    found = activity.state(repo, projects, now=NOW)
+    found = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")
     assert found["now"] == NOW and [s["id"] for s in found["sessions"]] == ["s1"]  # the old session is left out
     s = found["sessions"][0]
     assert (s["title"], s["prompt"], s["busy"]) == ("The board moves", "Build the board", True)
@@ -79,13 +79,13 @@ def test_the_busy_session_its_orchestrator_and_its_agents_now(tmp_path):
 
 def test_a_quiet_session_and_no_sessions_at_all(tmp_path):
     repo, projects = world(tmp_path)
-    quiet = activity.state(repo, projects, now=NOW + 300)["sessions"][0]
+    quiet = activity.state(repo, projects, now=NOW + 300, vibe_home=tmp_path / "no-vibe")["sessions"][0]
     assert quiet["busy"] is False  # nothing written for five minutes: still listed, no longer busy
-    assert activity.state(repo, tmp_path / "nowhere", now=NOW) == {"sessions": [], "now": NOW, "product": "repo",
+    assert activity.state(repo, tmp_path / "nowhere", now=NOW, vibe_home=tmp_path / "no-vibe") == {"sessions": [], "now": NOW, "product": "repo",
                                                                     "monogram": "R"}  # no suites.json: the folder's name
     (repo / "crissp" / "testsuite").mkdir(parents=True)
     (repo / "crissp" / "testsuite" / "suites.json").write_text('{"product": "Shop", "monogram": "S", "steps": []}')
-    assert activity.state(repo, projects, now=NOW)["product"] == "Shop"
+    assert activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["product"] == "Shop"
 
 
 def test_a_session_whose_last_step_started_an_agent(tmp_path):
@@ -93,7 +93,7 @@ def test_a_session_whose_last_step_started_an_agent(tmp_path):
     repo.mkdir()
     lines(sv.project_dir(repo, projects) / "s2.jsonl",
           [use("Agent", {"description": "Review", "subagent_type": "general-purpose"}, "a1", 5, history=12_000)], NOW)
-    s = activity.state(repo, projects, now=NOW)["sessions"][0]
+    s = activity.state(repo, projects, now=NOW, vibe_home=tmp_path / "no-vibe")["sessions"][0]
     assert s["main"] == {"tool": "Agent", "kind": "agent", "text": "started an agent: Review", "since": T.format(5)}
     assert s["title"] == "" and s["prompt"] == ""
     assert (s["history"], s["long"]) == (12_000, False)

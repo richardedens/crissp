@@ -1347,6 +1347,37 @@
    "tests": [
     "test_template::test_the_sessions_section_names_the_vibe_way_too"
    ]
+  },
+  {
+   "id": "activity-reads-vibe",
+   "title": "The Activity page saw only Claude Code's sessions (F-101)",
+   "problem": "lib/activity.py read only ~/.claude/projects: a Mistral Vibe session in the repository was invisible on /activity, and its 300k-token 'start fresh' warning could never fire.",
+   "fix": "lib/vibesessions.py reads Vibe's own session folders (VIBE_HOME, else ~/.vibe: logs/session/unified/<id>/meta.json and the journal) for the sessions of this repository written in the last half hour: title, last prompt, the latest tool call (masked), its subagents (sessions that name it as parent), and the last request's input tokens (else the context breakdown) against the 300k line. activity.state lists them beside Claude's, each with its source; the page names the source and gives Vibe's own advice for a long history.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def sessions("
+    },
+    {
+     "file": "crissp/testsuite/lib/vibesessions.py",
+     "symbol": "def read("
+    },
+    {
+     "file": "crissp/testsuite/lib/activity.py",
+     "symbol": "def state("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/activity.js",
+     "symbol": "function session("
+    }
+   ],
+   "tests": [
+    "test_vibesessions::test_a_busy_vibe_session_with_its_prompt_step_agents_and_long_history",
+    "test_vibesessions::test_the_activity_page_lists_vibe_sessions_next_to_claudes",
+    "test_vibesessions::test_a_session_without_a_journal_or_usage_still_shows",
+    "test_activity_page::test_vibe_sessions_show_beside_claudes_with_their_own_advice",
+    "test_activity_page::test_no_session_at_all_names_both"
+   ]
   }
  ],
  "gaps": [

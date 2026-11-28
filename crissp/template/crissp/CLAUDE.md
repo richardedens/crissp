@@ -94,8 +94,8 @@ context (this agreement, the tools) is small. Keeping sessions short saves the m
   history for the rest of the session.
 - **Agents on separate parts**, each briefed narrowly, so they do not each rediscover the same files.
 - **The lighter model and effort for routine work** (release notes, small fixes), the strongest for design and hard bugs.
-- The Activity page (`crissp dashboard`, `/activity`) shows each session's history; past 300k tokens it says to start
-  fresh.
+- The Activity page (`crissp dashboard`, `/activity`) shows each session's history, Claude Code's and Vibe sessions too;
+  past 300k tokens it says to start fresh.
 
 The same in **Mistral Vibe** (the same habits, its own commands):
 

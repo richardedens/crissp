@@ -142,5 +142,6 @@ def test_the_sessions_section_names_the_vibe_way_too():
         start = text.index("## Sessions that stay small")
         section = " ".join(text[start:text.index("\n## ", start + 1)].split())
         for words in ("Mistral Vibe", "a new session in the desktop app", "`/compact <what to keep>`", "`task` tool",
-                      "`explore` agent", "auto_compact_threshold"):
+                      "`explore` agent", "auto_compact_threshold",
+                      "Vibe sessions too"):
             assert words in section, (doc.name, words)

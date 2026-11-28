@@ -13,9 +13,13 @@ read them, lib/sessionview.py), the sessions written in the last half hour, newe
   more than an hour ago are only counted ("earlier").
 
 Only what Claude sent to its tools is shown, never what came back.
+
+F-101: Mistral Vibe's sessions of this repository are listed beside them (lib/vibesessions.py, from VIBE_HOME, else
+~/.vibe), in the same shape; each session says its source (claude or vibe).
 """
 
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +27,8 @@ from pathlib import Path
 import measure
 import project
 import sessionview as sv
+import vibe
+import vibesessions
 
 WINDOW_S = 30 * 60  # a session written longer ago than this is not activity any more
 QUIET_S = 120  # nothing written for this long: listed, no longer busy
@@ -88,18 +94,20 @@ def session(path: Path, root: Path, now: float) -> dict:
     agents = sorted((a for a in agents if a not in old), key=lambda a: not a["running"])
     sized = [r for r in main if r.get("type") == "assistant" and (r.get("message") or {}).get("usage")]
     history = measure.history(sized[-1]) if sized else 0
-    return {"id": path.stem, "title": sv.mask(titles[-1]) if titles else "", "history": history,
+    return {"id": path.stem, "source": "claude", "title": sv.mask(titles[-1]) if titles else "", "history": history,
             "long": history > measure.LONG,
             "prompt": sv.mask(prompts[-1][:300]) if prompts else "", "busy": now - updated < QUIET_S,
             "updated": updated, "main": _latest(main, repo), "agents": agents, "earlier": len(old)}
 
 
-def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None) -> dict:
-    """The sessions of this repository written in the last half hour, newest first, as the Activity page shows them."""
+def state(root: Path, projects: Path = sv.PROJECTS, now: float | None = None, vibe_home: Path | None = None) -> dict:
+    """The sessions of this repository written in the last half hour, newest first, as the Activity page shows them:
+    Claude Code's and Mistral Vibe's (F-101)."""
     now = time.time() if now is None else now
     folder = sv.project_dir(root, projects)
     recent = [p for p in folder.glob("*.jsonl") if now - p.stat().st_mtime <= WINDOW_S] if folder.is_dir() else []
     found = [session(p, root, now) for p in recent]
+    found += vibesessions.sessions(root, vibe.home(os.environ) if vibe_home is None else vibe_home, now)
     try:
         conf = project.load(root)
     except project.ConfigError:

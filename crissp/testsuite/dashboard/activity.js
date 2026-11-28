@@ -1,4 +1,4 @@
-/* The Activity page (E3-F3-01): what this repository's Claude sessions do now. Per session the orchestrator (the main
+/* The Activity page (E3-F3-01): what this repository's Claude and Mistral Vibe sessions (F-101) do now. Per session the orchestrator (the main
    thread) with its latest step and since when, and every agent it started, running first, each with its own latest
    step. It asks activity.json (lib/serve.py → lib/activity.py state()) every two seconds while it is open; the times
    count on between two answers. Only what Claude sent to its tools is shown, never what came back. */
@@ -28,19 +28,27 @@
       <div class="act">${step(a, a.running)}</div></li>`;
   }
 
+  const SOURCE = { claude: "Claude Code", vibe: "Mistral Vibe" };
+  const FRESH = {
+    claude: "<b>/clear</b> between items, <b>/compact</b> in the middle of one",
+    vibe: "<b>/clear</b> or a new session in the desktop app between items, <b>/compact</b> in the middle of one",
+  };
+
   function session(s) {
     const running = s.agents.filter(a => a.running).length;
+    const vibe = s.source === "vibe", page = `/results/sessions/${encodeURIComponent(s.id)}.html`;
     return `<article class="card session">
       <header class="session-head"><h2>${esc(s.title || "Session " + s.id.slice(0, 8))}</h2>
+        <span class="muted small">${esc(SOURCE[s.source] || SOURCE.claude)}</span>
         ${s.busy ? badge("area", "busy") : badge("missing", "quiet")}
         <span class="muted small">${s.agents.length ? `${running} of ${s.agents.length} agent${s.agents.length === 1 ? "" : "s"} running` : "no agents"}</span>
         ${s.history ? `<span class="small ${s.long ? "st-review" : "muted"}" title="what the last request carried: every step resends it">history ${Math.round(s.history / 1000)}k tokens</span>` : ""}
-        <a class="small" href="/results/sessions/${encodeURIComponent(s.id)}.html">the whole session</a></header>
-      ${s.long ? `<p class="long-history">${badge("missing", "long history")} Every step now resends more than 300k tokens. <b>/clear</b> between items, <b>/compact</b> in the middle of one; <code>brief</code>, <code>backlog</code> and git bring back what is needed.</p>` : ""}
+        ${vibe ? "" : `<a class="small" href="${page}">the whole session</a>`}</header>
+      ${s.long ? `<p class="long-history">${badge("missing", "long history")} Every step now resends more than 300k tokens. ${FRESH[vibe ? "vibe" : "claude"]}; <code>brief</code>, <code>backlog</code> and git bring back what is needed.</p>` : ""}
       ${s.prompt ? `<p class="session-prompt"><span class="muted">Asked:</span> ${esc(s.prompt)}</p>` : ""}
       <div class="orchestrator"><div class="label">Orchestrator · main thread</div><div class="act">${step(s.main, s.busy)}</div></div>
       ${s.agents.length ? `<ul class="agents">${s.agents.map(agent).join("")}</ul>` : ""}
-      ${s.earlier ? `<p class="muted small">and ${s.earlier} earlier agent${s.earlier === 1 ? "" : "s"}, finished more than an hour ago: <a href="/results/sessions/${encodeURIComponent(s.id)}.html">in the whole session</a></p>` : ""}
+      ${s.earlier ? `<p class="muted small">and ${s.earlier} earlier agent${s.earlier === 1 ? "" : "s"}, finished more than an hour ago: <a href="${page}">in the whole session</a></p>` : ""}
     </article>`;
   }
 
@@ -49,7 +57,7 @@
     const busy = d.sessions.filter(s => s.busy).length;
     $("#stamp").textContent = `${busy ? `${busy} session${busy === 1 ? "" : "s"} busy` : "nothing running"} · live`;
     $("#view").innerHTML = d.sessions.length ? d.sessions.map(session).join("")
-      : `<div class="card">No Claude session wrote in this repository in the last half hour. Earlier sessions are under <a href="/results/sessions/index.html">Sessions</a>.</div>`;
+      : `<div class="card">No Claude or Vibe session wrote in this repository in the last half hour. Earlier sessions are under <a href="/results/sessions/index.html">Sessions</a>.</div>`;
   }
 
   let last = "";

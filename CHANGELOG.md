@@ -16,6 +16,10 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
   commands next to Claude Code's: `/clear` or a new desktop session per item, `/compact <what to keep>`, Vibe's
   automatic compaction threshold, and the `task` tool's `explore` agent for heavy output. `crissp repair --yes` brings
   the section into projects brought in earlier.
+- **The Activity page shows Mistral Vibe's sessions too (F-101).** `/activity` lists the Vibe sessions working in
+  the repository next to Claude Code's, read from Vibe's own session logs (`VIBE_HOME`, else `~/.vibe`): the last
+  prompt, the latest step, its subagents, and the history the last request carried, with the same "start fresh"
+  warning past 300k tokens. Each session says whether it is Claude Code or Mistral Vibe.
 - **The dashboard opens with a verdict (F-70).** The Overview first says whether the last run is ready to release,
   and when it is not, which steps failed, each linked to its own log. Tiles have short names, say what is not right
   yet and link to it ("3 changes without a passing test" opens just those changes); line and branch coverage share
