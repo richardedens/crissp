@@ -751,6 +751,36 @@
     "test_crissp_tool::test_status_waits_until_the_run_has_ended",
     "test_crissp_tool::test_a_check_runs_in_the_background_and_status_follows_it"
    ]
+  },
+  {
+   "id": "dashboard-current-and-findings",
+   "title": "The dashboard could stay behind, and findings and decisions were not on it (F-31)",
+   "problem": "The live server rebuilt the dashboard's data when a watched file was newer than data.js; a change made while collect.py ran was older than the data.js it then wrote, so it was never picked up until the next change. A failed rebuild was only said in the server's log while the page still said live. The board showed epics, features and PBIs only: a new finding or an open decision was nowhere on the dashboard.",
+   "fix": "Live compares with the newest of what it watches as it was when the rebuild began, so a change during a rebuild triggers the next one. The stamp carries the reason a rebuild failed and the page shows 'not current' with it. collect.py adds the open findings and decisions (through the crissp tool's parser) and the board lists them above the lanes. The dashboard tool says the open page keeps itself current.",
+   "sources": [
+    {
+     "file": "crissp/testsuite/lib/serve.py",
+     "symbol": "def stamp("
+    },
+    {
+     "file": "crissp/testsuite/lib/collect.py",
+     "symbol": "def _backlog("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function findingsView("
+    },
+    {
+     "file": "crissp/testsuite/dashboard/app.js",
+     "symbol": "function decisionsView("
+    }
+   ],
+   "tests": [
+    "test_serve::test_a_change_made_while_the_data_is_rebuilt_is_not_missed",
+    "test_serve::test_a_failed_rebuild_is_said_on_the_page",
+    "test_collect::test_the_backlog_board_reads_epics_features_and_pbis_through_the_crissp_tool",
+    "test_crissp_tool::test_the_dashboard_is_served_and_its_address_answered"
+   ]
   }
  ],
  "gaps": [

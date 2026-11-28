@@ -142,8 +142,9 @@ TOOLS = [
     {"name": "dashboard",
      "description": "Build the Tests dashboard's data from the last runs and serve it with the UX suite on 127.0.0.1 "
                     "(crissp/test.sh --dashboard: one local server); answers the address of the view asked for: tests "
-                    "(what the runs proved, the backlog board; the default) or ux (rounds, advice, designs, verdicts). "
-                    "Never runs a test.",
+                    "(what the runs proved, the backlog board with the open decisions and findings; the default) or ux "
+                    "(rounds, advice, designs, verdicts). The open page keeps itself current: a changed backlog, change "
+                    "or run result rebuilds its data. Never runs a test.",
      "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
          "view": {"type": "string", "enum": list(VIEWS), "description": "tests (default) or ux"}}}},
 ]
@@ -573,7 +574,7 @@ def dashboard(root: Path, args: dict | None = None) -> str:
         found = re.search(r"Dashboard: (\S+)", text)
         # what the script says is checked: it says so before the server is up (the Tests page answers for both views)
         if found and served(re.sub(r"/ux/$", "/dashboard/", found.group(1)), root):
-            return f"Dashboard: {found.group(1)} (data rebuilt from the last runs)"
+            return f"Dashboard: {found.group(1)} (data rebuilt from the last runs; the open page keeps itself current)"
         if EXIT.search(text):
             raise ValueError("the dashboard did not start:\n" + EXIT.sub("", text).strip()[-1500:])
         time.sleep(0.2)

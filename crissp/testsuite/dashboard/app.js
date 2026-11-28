@@ -23,16 +23,19 @@
   $("#stamp").title = S.root || "";  /* the folder's name in sight, the whole path only on hover: a screenshot never shows a home folder */
   // live: the server (lib/serve.py) rebuilds the data when the backlog, a change or a run's results changed; the page
   // reloads when it did, on the same tab. Served without it (a plain file server) the page simply stays as it is.
+  // A rebuild that failed is said here, so a page that says live is current (F-31).
   let seen = null;
+  const said = $("#stamp").textContent;
   const poll = async () => {
     if (document.hidden) return;
     try {
       const r = await fetch("stamp", { cache: "no-store" });
       if (!r.ok) return;
-      const { stamp } = await r.json();
+      const { stamp, error } = await r.json();
       if (seen !== null && stamp !== seen) { location.reload(); return; }
-      if (seen === null) $("#stamp").textContent += " · live";
       seen = stamp;
+      $("#stamp").textContent = said + (error ? ` · not current, the data was not rebuilt: ${error}` : " · live");
+      $("#stamp").classList.toggle("stale", !!error);
     } catch { /* the server is gone: keep what is shown */ }
   };
   poll(); setInterval(poll, 3000);
@@ -335,6 +338,21 @@
     return rows ? `<details class="card moved" open><summary><b>Moved recently</b> <span class="muted small">newest first, from git and what is not committed yet</span></summary>
       <ul class="moves">${rows}</ul></details>` : "";
   }
+  // F-31: what waits for the product owner and what was noticed, on the board too (crissp/backlog/DECISIONS.md, FINDINGS.md)
+  const md = v => esc(v).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");  // the backlog's **bold**, nothing else of Markdown
+  function decisionsView() {
+    const open = B.decisions || [];
+    return open.length ? `<details class="card moved" open><summary><b>Open decisions</b> <span class="n">${open.length}</span> <span class="muted small">for the product owner to take</span></summary>
+      <table class="notes"><thead><tr><th style="width:7%">#</th><th style="width:38%">Question</th><th>Options</th><th style="width:22%">Recommendation</th></tr></thead><tbody>
+      ${open.map(d => `<tr><td><code>${esc(d.id)}</code></td><td>${md(d.question)}</td><td class="small">${md(d.options)}</td><td class="small">${md(d.recommendation)}</td></tr>`).join("")}</tbody></table></details>` : "";
+  }
+  function findingsView() {
+    const all = [...(B.findings || [])].reverse();  // newest first
+    const left = all.filter(f => !/^(fixed|closed|done|answered)\b/i.test(f.goes_to)).length;  // not closed with a fix yet
+    return all.length ? `<details class="card moved"${left || all.length <= 12 ? " open" : ""}><summary><b>Findings</b> <span class="n">${all.length}</span> <span class="muted small">${left} not fixed yet · newest first, from ${esc(all[0].file)}; what each goes to on the right</span></summary>
+      <table class="notes"><thead><tr><th style="width:7%">#</th><th style="width:18%">Seen</th><th>Observation</th><th style="width:22%">Goes to</th></tr></thead><tbody>
+      ${all.map(f => `<tr><td><code>${esc(f.id)}</code></td><td class="small muted">${esc(f.seen)}</td><td class="small">${md(f.observation)}</td><td class="small">${md(f.goes_to)}</td></tr>`).join("")}</tbody></table></details>` : "";
+  }
   function boardView(query) {
     const p = new URLSearchParams(query), count = s => allPbis.filter(x => x.status === s).length;
     return `<div class="grid kpis five" style="margin-bottom:14px">${COLUMNS.map(([s, l]) => `<div class="card kpi"><div class="l">${l}</div>
@@ -342,7 +360,7 @@
       <div class="toolbar"><select id="be"><option value="">Every open epic</option>${B.epics.map(e => `<option value="${esc(e.id)}"${p.get("epic") === e.id ? " selected" : ""}>${esc(e.id)} · ${esc(e.title)}${e.done ? " (done)" : ""}</option>`).join("")}</select>
         <input type="search" id="bq" placeholder="Search PBIs…" value="${esc(p.get("q") || "")}"></div>
       <p class="muted small">Epic → feature → PBI, read from crissp/backlog/ by the crissp tool. Only the product owner moves work to done.</p>
-      ${movedView()}
+      ${decisionsView()}${findingsView()}${movedView()}
       <div class="board-head">${COLUMNS.map(([s, l]) => `<div class="st-${s}">${l}</div>`).join("")}</div><div id="lanes"></div>`;
   }
   function fillBoard() {

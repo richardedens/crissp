@@ -4,6 +4,11 @@ What changed in C.R.I.S.S.P., newest first. One entry per version (the version i
 
 ## 0.1.10 — 2026-11-26
 
+- **The dashboard no longer misses a change, and the board shows the open decisions and findings (F-31).** The open
+  page already rebuilt its data when the backlog, `changes.json` or a run's results changed, but a change made while a
+  rebuild ran was skipped until the next one; now it is picked up. When a rebuild fails, the page says "not current"
+  with the reason instead of "live". The Backlog board lists the open decisions and the findings (newest first, with
+  how many are not fixed yet) above the lanes.
 - **A check started with `run` no longer stays a zombie, and `status` can wait (F-30).** The crissp MCP server now
   reaps every check it starts the moment it ends; before, a finished check stayed a zombie that `kill -0 <pid>` still
   found alive, so an agent waiting on the pid hung until its own timeout. `status` takes `wait: true` (and `timeout`,

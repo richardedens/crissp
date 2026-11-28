@@ -67,6 +67,8 @@ pre.log { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--
 .lane-now { word-break: break-word; }
 .lane-busy span { width: 3.2em; text-align: right; flex: none; }
 /* E3-F2-01: how the board moved */
+#stamp.stale { color: var(--red); }
+.notes { margin-top: 10px; } .notes td { vertical-align: top; overflow-wrap: anywhere; }
 .moved { margin: 0 0 14px; } .moved summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .moves { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
 .moves li { display: grid; grid-template-columns: 5.5em auto 1fr auto auto; gap: 4px 10px; align-items: baseline; min-width: 0; }

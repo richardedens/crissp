@@ -100,6 +100,54 @@ def test_a_failed_rebuild_keeps_the_last_good_data(world, capsys):
     assert "dashboard data not rebuilt: changes.json is not JSON" in capsys.readouterr().err
 
 
+
+def test_a_change_made_while_the_data_is_rebuilt_is_not_missed(world):
+    """F-31: a finding written or a run that ended while collect.py was busy is older than the data.js it then wrote;
+    compared with data.js it was never seen, and the dashboard stayed behind until the next change."""
+    root, _, _ = world
+    findings = root / "crissp" / "backlog" / "FINDINGS.md"
+    findings.write_text("| F-01 | here | old | x |\n")
+    for p in sv.watched(root):
+        if p.exists():
+            _age(p, 120)
+    calls = []
+    build = _builder(root, calls)
+
+    def slow():  # the first rebuild: a finding lands while it runs, before the data is written
+        if not calls:
+            findings.write_text("| F-01 | here | old | x |\n| F-02 | there | new | y |\n")
+            _age(findings, 30)  # it landed during the rebuild: newer than what was read, older than the data.js written
+        build()
+    live = sv.Live(root, slow)
+    first = live.stamp()
+    assert calls == [1] and sv.newest([findings]) < live.built()
+    assert live.stamp() != first and calls == [1, 1]  # seen: rebuilt, with the new finding in
+    assert live.stamp() == live.built() and calls == [1, 1]  # and nothing more after that
+
+
+def test_a_failed_rebuild_is_said_on_the_page(world):
+    """F-31: the page says live while its data no longer is; the stamp carries why the data was not rebuilt."""
+    root, _, _ = world
+    httpd, base, calls = _serve(world, FakeUx())
+    try:
+        assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == ""
+        live = httpd.RequestHandlerClass.func.live
+        build = live.rebuild
+
+        def broken():
+            raise ValueError("changes.json is not JSON")
+        live.rebuild = broken
+        _age(root / "crissp/testsuite/results/data.js", 60)
+        (root / "crissp/testsuite/changes.json").write_text("{")
+        assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == "changes.json is not JSON"
+        live.rebuild = lambda: (_ for _ in ()).throw(RuntimeError())
+        assert live.stamp() and live.error == "RuntimeError"  # a reason without words still names itself
+        live.rebuild = build
+        assert json.loads(_get(base + "/dashboard/stamp")[2])["error"] == ""  # rebuilt: current again
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
 class FakeUx:
     """The UX suite's handler, stood in: answers every request with what it was asked."""
 

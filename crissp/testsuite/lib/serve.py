@@ -7,7 +7,8 @@ What it serves, only on 127.0.0.1:
                 backlog, changes.json or a run's results are newer than the dashboard's data, the data is rebuilt
                 (lib/collect.py) the moment the page asks for it: the page asks GET /dashboard/stamp every few seconds and
                 reloads itself when the stamp changes, so a story moved on the board, a finding written or a check that
-                finished shows up without anyone running anything.
+                finished shows up without anyone running anything. A change made while the data was being rebuilt is
+                picked up by the next ask, and a rebuild that failed is said on the page (F-31).
 - /workers      the workers page (dashboard/workers.html, E1-F1-04): this machine's CPUs and memory, and per step
                 that runs (or ran) how its tests are spread over the workers; its data is /dashboard/workers.json
                 (lib/workers.py state(), from results/timing), asked for every two seconds while the page is open.
@@ -62,17 +63,24 @@ class Live:
         self.root, self.rebuild = root, rebuild
         self.data = project.results(root) / "data.js"
         self.lock = threading.Lock()
+        self.seen: float | None = None  # the newest of what it shows when the data was last rebuilt here (F-31)
+        self.error = ""  # why the last rebuild failed: the page says so instead of "live" (F-31)
 
     def built(self) -> float:
         return self.data.stat().st_mtime if self.data.exists() else 0.0
 
     def stamp(self) -> float:
         with self.lock:
-            if newest([p for p in watched(self.root) if p != self.data]) > self.built():
+            now = newest([p for p in watched(self.root) if p != self.data])
+            # compared with what it saw as the rebuild began, not with data.js: a change made while collect.py ran is
+            # older than the data.js it wrote, and would never be picked up (F-31)
+            if now > (self.built() if self.seen is None else self.seen):
                 try:
                     self.rebuild()
-                except Exception as err:  # noqa: BLE001  the page keeps the last good data; the reason goes to the log
-                    print(f"dashboard data not rebuilt: {err}", file=sys.stderr)
+                    self.seen, self.error = now, ""
+                except Exception as err:  # noqa: BLE001  the page keeps the last good data and says why
+                    self.error = str(err) or type(err).__name__
+                    print(f"dashboard data not rebuilt: {self.error}", file=sys.stderr)
             return self.built()
 
 
@@ -127,7 +135,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == "/dashboard/activity.json":
             return self._json(200, activity.state(self.live.root))
         if path == "/dashboard/stamp":
-            return self._json(200, {"stamp": self.live.stamp(), "root": str(self.live.root.resolve())})  # whose (F-09)
+            stamp = self.live.stamp()  # whose (F-09), and why it is not current when it is not (F-31)
+            return self._json(200, {"stamp": stamp, "root": str(self.live.root.resolve()), "error": self.live.error})
         if path.startswith("/look/"):
             return self._look(path[len("/look/"):])
         if path == "/ux" or path.startswith("/ux/"):

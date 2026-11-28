@@ -488,7 +488,7 @@ def test_the_dashboard_is_served_and_its_address_answered(tmp_path, monkeypatch)
     url = f"http://127.0.0.1:{httpd.server_address[1]}/dashboard/"
     try:
         _scripts(tmp_path, test=f'echo "dashboard data: 3 tests"; echo "Dashboard: {url}   (Ctrl-C to stop)"; sleep 30')
-        assert srv.dashboard(tmp_path) == f"Dashboard: {url} (data rebuilt from the last runs)"
+        assert srv.dashboard(tmp_path) == f"Dashboard: {url} (data rebuilt from the last runs; the open page keeps itself current)"
         pid = json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"]
         assert srv.alive(pid)  # it keeps serving after the answer
         srv.os.killpg(pid, 15)
@@ -504,7 +504,7 @@ def test_the_ux_view_is_the_same_server_opened_on_the_ux_suite(tmp_path):
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
     try:
         _scripts(tmp_path, test=f'[ "$1" = --ux ] || exit 9; echo "Dashboard: {base}/ux/"; sleep 30')
-        assert srv.dashboard(tmp_path, {"view": "ux"}) == f"Dashboard: {base}/ux/ (data rebuilt from the last runs)"
+        assert srv.dashboard(tmp_path, {"view": "ux"}) == f"Dashboard: {base}/ux/ (data rebuilt from the last runs; the open page keeps itself current)"
         srv.os.killpg(json.loads((tmp_path / "crissp/testsuite/results/mcp/runs.json").read_text())["dashboard"]["pid"], 15)
     finally:
         httpd.shutdown()
